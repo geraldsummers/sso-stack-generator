@@ -3,7 +3,8 @@ name: Docs and Smoke
 on:
   push:
     branches:
-      - main
+      - dev
+      - stable
   pull_request:
 
 jobs:
