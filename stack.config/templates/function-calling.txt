@@ -1,0 +1,7 @@
+Available stack capabilities are exposed through workspace controllers and service APIs.
+
+When using a capability:
+1. Prefer authenticated workspace endpoints over direct internal network assumptions.
+2. Validate inputs before sending requests.
+3. Handle retries explicitly for networked services.
+4. Use exact document retrieval when search results need verification.

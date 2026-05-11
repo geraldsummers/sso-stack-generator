@@ -1,0 +1,8 @@
+# Dovecot OAuth2 configuration for IMAP/SMTP access via Keycloak OIDC.
+#
+# The userinfo endpoint includes the email claim used for IMAP/SMTP login
+# and avoids embedding a client secret in the Dovecot config.
+
+introspection_mode = auth
+introspection_url = http://keycloak:8080/realms/webservices/protocol/openid-connect/userinfo
+username_attribute = email

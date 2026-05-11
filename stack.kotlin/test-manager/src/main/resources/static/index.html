@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Quality Control</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #06121d;
+      --panel: rgba(12, 24, 37, 0.88);
+      --line: rgba(137, 194, 255, 0.16);
+      --text: #f3f8ff;
+      --muted: #9db0c9;
+      --accent: #73d5ff;
+      --green: #6bdea2;
+      --yellow: #ffd36e;
+      --red: #ff8a85;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "IBM Plex Sans", "Segoe UI", sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(circle at top left, rgba(115, 213, 255, 0.14), transparent 24%),
+        radial-gradient(circle at bottom right, rgba(255, 211, 110, 0.1), transparent 28%),
+        linear-gradient(180deg, #07111b, var(--bg));
+    }
+    main { max-width: 1240px; margin: 0 auto; padding: 28px 18px 56px; }
+    h1 { margin: 0; font-size: 2rem; }
+    p { color: var(--muted); }
+    .topline { display: flex; justify-content: space-between; gap: 16px; align-items: end; flex-wrap: wrap; }
+    .summary {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 14px;
+      margin: 22px 0;
+    }
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      padding: 16px;
+      backdrop-filter: blur(12px);
+    }
+    .value { font-size: 1.8rem; font-weight: 700; }
+    .layout {
+      display: grid;
+      grid-template-columns: 2fr 1fr;
+      gap: 16px;
+    }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { padding: 12px 10px; text-align: left; border-bottom: 1px solid var(--line); vertical-align: top; }
+    th { font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); }
+    tr:last-child td { border-bottom: 0; }
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      border-radius: 999px;
+      padding: 4px 10px;
+      font-size: 0.75rem;
+      font-weight: 700;
+    }
+    .passing { background: rgba(107, 222, 162, 0.16); color: var(--green); }
+    .running, .queued, .stale, .blocked { background: rgba(255, 211, 110, 0.16); color: var(--yellow); }
+    .failing { background: rgba(255, 138, 133, 0.16); color: var(--red); }
+    .waiting { background: rgba(115, 213, 255, 0.12); color: var(--accent); }
+    button {
+      background: transparent;
+      color: var(--accent);
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      padding: 7px 12px;
+      cursor: pointer;
+    }
+    pre {
+      margin: 0;
+      white-space: pre-wrap;
+      font-family: "IBM Plex Mono", monospace;
+      font-size: 0.84rem;
+      color: #dbe7f6;
+      max-height: 420px;
+      overflow: auto;
+    }
+    ul { margin: 0; padding-left: 18px; color: var(--muted); }
+    @media (max-width: 900px) {
+      .layout { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <div class="topline">
+      <div>
+        <h1>Quality Control</h1>
+        <p>Fresh suite state, trigger reasons, and the latest run logs without rerunning the whole stack by hand.</p>
+      </div>
+      <div id="fingerprints" class="panel"></div>
+    </div>
+
+    <section id="knownGood" class="panel" style="margin: 0 0 16px;"></section>
+
+    <section id="summary" class="summary"></section>
+
+    <div class="layout">
+      <section class="panel">
+        <h2>Suites</h2>
+        <table>
+          <thead>
+            <tr>
+              <th>Suite</th>
+              <th>State</th>
+              <th>Latest</th>
+              <th>Blockers</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody id="suiteRows"></tbody>
+        </table>
+      </section>
+
+      <section class="panel">
+        <h2>Latest Log</h2>
+        <div id="logMeta"><p>Select a run.</p></div>
+        <pre id="logBody">No run selected.</pre>
+      </section>
+    </div>
+  </main>
+
+  <script>
+    const stateClass = (state) => ['passing', 'running', 'queued', 'stale', 'blocked', 'failing', 'waiting'].includes(state) ? state : 'waiting';
+
+    async function loadOverview() {
+      const overview = await fetch('/api/overview').then(r => r.json());
+      const counts = overview.suites.reduce((acc, suite) => {
+        acc.total += 1;
+        acc[suite.state] = (acc[suite.state] || 0) + 1;
+        return acc;
+      }, { total: 0 });
+
+      document.getElementById('summary').innerHTML = [
+        ['Suites', counts.total || 0],
+        ['Passing', counts.passing || 0],
+        ['Blocked', counts.blocked || 0],
+        ['Running', counts.running || 0],
+        ['Failing', counts.failing || 0],
+        ['Stale', counts.stale || 0],
+      ].map(([label, value]) => `<section class="panel"><div>${label}</div><div class="value">${value}</div></section>`).join('');
+
+      const knownGood = overview.knownGoodBaseline;
+      document.getElementById('knownGood').innerHTML = knownGood ? `
+        <div style="display:flex;justify-content:space-between;gap:16px;align-items:flex-start;flex-wrap:wrap;">
+          <div>
+            <div><strong>Known Good Baseline</strong></div>
+            <div style="margin-top:6px;">
+              <span class="badge passing">${knownGood.status.toLowerCase()}</span>
+              <strong style="margin-left:8px;">${knownGood.suite}</strong>
+            </div>
+            <p style="margin:10px 0 0;">
+              ${knownGood.passed}/${knownGood.total} passed
+              ${knownGood.durationMs ? `in ${(knownGood.durationMs / 1000).toFixed(1)}s` : ''}
+              ${knownGood.recordedAt ? `at ${knownGood.recordedAt}` : ''}
+            </p>
+            <p style="margin:8px 0 0;"><code>${knownGood.resultsPath}</code></p>
+          </div>
+          <div>
+            ${knownGood.logPath ? '<button onclick="showKnownGoodLog()">Log</button>' : ''}
+          </div>
+        </div>` : `
+        <div><strong>Known Good Baseline</strong></div>
+        <p>No passing imported filesystem run found under the test results directory yet.</p>`;
+
+      document.getElementById('fingerprints').innerHTML = `
+        <div><strong>Release</strong><br><code>${(overview.releaseInfo?.gitShortSha || overview.releaseInfo?.version || overview.releaseFingerprint).slice(0, 12)}</code></div>
+        <div style="margin-top:8px"><strong>Branch</strong><br><code>${overview.releaseInfo?.gitBranch || 'unknown'}</code></div>
+        <div style="margin-top:8px"><strong>Built</strong><br><code>${overview.releaseInfo?.sourceBuiltAt || 'unknown'}</code></div>
+        <div style="margin-top:8px"><strong>Rendered</strong><br><code>${overview.releaseInfo?.renderedAt || 'unknown'}</code></div>
+        <div style="margin-top:8px"><strong>Domain</strong><br><code>${overview.domainFingerprint.slice(0, 12)}</code></div>`;
+
+      document.getElementById('suiteRows').innerHTML = overview.suites.map(suite => {
+        const latest = suite.latestRun
+          ? `${suite.latestRun.status} ${suite.latestRun.finishedAt || suite.latestRun.requestedAt}`
+          : 'never';
+        const blockers = suite.blockers.length ? `<ul>${suite.blockers.map(item => `<li>${item}</li>`).join('')}</ul>` : '<span class="badge passing">ready</span>';
+        return `
+          <tr>
+            <td><strong>${suite.title}</strong><br><code>${suite.command}</code></td>
+            <td><span class="badge ${stateClass(suite.state)}">${suite.state}</span><br><small>${suite.lastTriggerReason || ''}</small></td>
+            <td>${latest}</td>
+            <td>${blockers}</td>
+            <td>
+              ${suite.latestRun ? `<button onclick="showLog(${suite.latestRun.id})">Log</button>` : ''}
+              <button onclick="rerun('${suite.name}')">Queue</button>
+            </td>
+          </tr>`;
+      }).join('');
+    }
+
+    async function rerun(name) {
+      await fetch(`/api/suites/${name}/runs`, { method: 'POST' });
+      await loadOverview();
+    }
+
+    async function showLog(runId) {
+      const run = await fetch(`/api/runs/${runId}`).then(r => r.json());
+      const log = await fetch(`/api/runs/${runId}/log`).then(r => r.text());
+      document.getElementById('logMeta').innerHTML = `<p><strong>${run.title}</strong><br>${run.status} via ${run.triggerReason}</p>`;
+      document.getElementById('logBody').textContent = log || run.logTail || 'No log available.';
+    }
+
+    async function showKnownGoodLog() {
+      const baseline = await fetch('/api/known-good').then(r => r.json());
+      const log = await fetch('/api/known-good/log').then(r => r.text());
+      document.getElementById('logMeta').innerHTML = `<p><strong>Known Good Baseline</strong><br>${baseline.status} ${baseline.recordedAt || ''}</p>`;
+      document.getElementById('logBody').textContent = log || 'No log available.';
+    }
+
+    loadOverview();
+    setInterval(loadOverview, 10000);
+  </script>
+</body>
+</html>

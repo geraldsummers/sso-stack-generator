@@ -1,0 +1,44 @@
+services:
+  chatgpt-connector:
+    image: webservices/chatgpt-connector:local-build
+    build:
+      context: .
+      dockerfile: ./stack.containers/chatgpt-connector/Dockerfile
+    container_name: chatgpt-connector
+    restart: unless-stopped
+    networks:
+      - caddy
+      - ai
+    depends_on:
+      keycloak:
+        condition: service_started
+      search-service:
+        condition: service_started
+      workspace-provisioner:
+        condition: service_started
+    environment:
+      CHATGPT_CONNECTOR_PORT: 8130
+      CHATGPT_CONNECTOR_DATA_DIR: /data
+      CHATGPT_CONNECTOR_DB_PATH: /data/db/chatgpt_connector.sqlite
+      CHATGPT_CONNECTOR_OIDC_BASE_URL: http://keycloak:8080/realms/webservices
+      CHATGPT_CONNECTOR_TRUSTED_PROXY_SECRET: ${MODEL_CONTEXT_PROXY_AUTH_SECRET:?MODEL_CONTEXT_PROXY_AUTH_SECRET is required}
+      CHATGPT_CONNECTOR_SEARCH_SERVICE_BASE_URL: http://search-service:8098
+      CHATGPT_CONNECTOR_KEYCLOAK_BASE_URL: http://keycloak:8080
+      CHATGPT_CONNECTOR_KEYCLOAK_REALM: webservices
+      CHATGPT_CONNECTOR_KEYCLOAK_ADMIN_CLIENT_ID: ${CHATGPT_CONNECTOR_KEYCLOAK_ADMIN_CLIENT_ID:-admin-cli}
+      CHATGPT_CONNECTOR_KEYCLOAK_ADMIN_CLIENT_SECRET: ${CHATGPT_CONNECTOR_KEYCLOAK_ADMIN_CLIENT_SECRET:-}
+      CHATGPT_CONNECTOR_KEYCLOAK_ADMIN_USERNAME: ${KEYCLOAK_ADMIN_USER:-admin}
+      CHATGPT_CONNECTOR_KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:?KEYCLOAK_ADMIN_PASSWORD is required}
+    volumes:
+      - chatgpt_connector_data:/data
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - wget --quiet --tries=1 --timeout=3 -O- http://127.0.0.1:8130/health | grep -q ok
+      interval: 15s
+      timeout: 5s
+      retries: 6
+      start_period: 30s
+
+volumes:
+  chatgpt_connector_data:

@@ -1,0 +1,31 @@
+services:
+  ntfy:
+    image: binwiederhier/ntfy:v2.15.0
+    container_name: ntfy
+    restart: unless-stopped
+    networks:
+      - caddy
+    depends_on:
+      caddy:
+        condition: service_started
+    entrypoint: /entrypoint.sh
+    environment:
+      TZ: America/New_York
+      NTFY_BASE_URL: https://ntfy.${DOMAIN}
+      NTFY_CACHE_FILE: /var/lib/ntfy/cache.db
+      NTFY_AUTH_FILE: /var/lib/ntfy/auth.db
+      NTFY_AUTH_DEFAULT_ACCESS: read-only
+      NTFY_ATTACHMENT_CACHE_DIR: /var/lib/ntfy/attachments
+      NTFY_ENABLE_LOGIN: false
+      NTFY_USERNAME: ${NTFY_USERNAME}
+      NTFY_PASSWORD: ${NTFY_PASSWORD}
+    volumes:
+      - ntfy_data:/var/lib/ntfy
+      - ./configs/ntfy/entrypoint.sh:/entrypoint.sh:ro
+      - ./configs/ntfy/init-users.sh:/init-users.sh:ro
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --tries=1 --spider http://localhost:80/v1/health || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s

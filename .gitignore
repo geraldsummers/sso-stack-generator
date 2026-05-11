@@ -1,0 +1,106 @@
+# Ignore local volumes directory (containers data, models, databases, etc.)
+# Anchored to the repository root to avoid matching similarly named paths elsewhere.
+
+# Secrets and sensitive data
+
+.env
+.env.server
+.env.local
+volumes/secrets/
+stack.config/model-context-server/shadow-accounts/*.pwd
+*.key
+stackops_ed25519
+.gradle/
+# Generated configuration files (from templates)
+# Now generated during build process in dist/
+# (No longer needed in project - all configs in build output)
+dist/
+__pycache__/
+*.pyc
+# Runtime data
+volumes/
+!volumes/.gitkeep
+
+# Docker
+.docker/
+.gradle/*
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Temporary files
+*.tmp
+*.bak1
+*.backup
+tmp/
+.tmp/
+
+#SATURN stuff
+build/
+downloads/
+isofiles/
+id_ed*
+/volumes/
+*.iso
+# SSH keys (NEVER COMMIT)
+ssh-keystore/
+id_ed25519*
+*.pem
+!*.pem.example
+
+# No encrypted secrets - keep local secrets in ~/.config/stack
+venv/
+
+# Test artifacts
+htmlReport/.gradle-container/
+test-results/
+test-results-*/
+playwright-test-results-latest/
+playwright-test-results/
+playwright-test-results-full/
+
+.kotlin/
+
+*.tar.*
+*.tar
+
+# Local screenshot exports
+.tmp-images/
+mastodon-test-failed-*.png
+mastodon-test-failed-*.b64
+mastodon-oidc-authenticated.*
+grafana-forward-authenticated.*
+.tmp-screenshots/
+.tmp_screenshots/
+.tmp-test-screens/
+.tmp-server-screenshots/
+test-artifacts/
+.tmp-screenshot-review/
+
+# Heap dumps from OutOfMemoryError
+*.hprof
+
+# Bazel
+bazel-*
+bazel-bin/
+bazel-out/
+bazel-testlogs/
+MODULE.bazel.lock
+
+# site overlay
+global.settings/stack.config.yaml
+obsolete/global.settings/stack.config.yaml
+site-config
+out/

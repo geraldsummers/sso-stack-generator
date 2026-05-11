@@ -1,0 +1,63 @@
+networks:
+  internet:
+    driver: bridge
+
+  postgres:
+    driver: bridge
+    internal: true
+
+  mariadb:
+    driver: bridge
+    internal: true
+
+
+  qdrant:
+    driver: bridge
+    internal: true
+
+  valkey:
+    driver: bridge
+    internal: true
+
+  mailserver:
+    driver: bridge
+
+  memcached:
+    driver: bridge
+    internal: true
+
+  docker-proxy:
+    driver: bridge
+    internal: true
+
+  docker-controller:
+    driver: bridge
+    internal: true
+
+  caddy:
+    driver: bridge
+
+  ai:
+    driver: bridge
+    internal: true
+
+  monitoring:
+    driver: bridge
+    internal: true
+
+  mastodon-internal:
+    driver: bridge
+    internal: true
+
+  matrix-internal:
+    driver: bridge
+    internal: true
+
+  erpnext-internal:
+    driver: bridge
+    internal: true
+
+  trading:
+    driver: bridge
+    # NOTE: Not internal - trading workers need external API access
+    # (Hyperliquid, Base/Arbitrum/Optimism RPC endpoints)

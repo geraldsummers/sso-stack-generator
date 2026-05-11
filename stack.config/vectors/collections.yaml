@@ -1,0 +1,22 @@
+vector_size: 1024
+distance: Cosine
+
+collections:
+  - name: rss_feeds
+    description: RSS/Atom feed articles from various sources
+  - name: cve
+    description: Common Vulnerabilities and Exposures from NVD
+  - name: torrents
+    description: Torrent metadata from DHT network
+  - name: wikipedia
+    description: Wikipedia article extracts and content
+  - name: australian_laws
+    description: Australian legislation from various jurisdictions
+  - name: linux_docs
+    description: Linux kernel documentation and man pages
+  - name: stack_knowledge
+    description: Webservices stack documentation for AI agents and operators
+  - name: debian_wiki
+    description: Debian Wiki documentation
+  - name: arch_wiki
+    description: Arch Linux Wiki documentation

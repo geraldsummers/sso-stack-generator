@@ -1,0 +1,129 @@
+#!/usr/bin/env bash
+
+# shellcheck source=scripts/lib/common.sh
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/common.sh"
+
+extract_top_level_section() {
+  local file="$1"
+  local section="$2"
+  awk -v section="$section" '
+    $0 == section { in_section = 1; next }
+    in_section {
+      if ($0 ~ /^[^ \t]/ && $0 !~ /^[[:space:]]*$/) {
+        exit
+      }
+      print
+    }
+  ' "$file"
+}
+
+extract_extension_blocks() {
+  local file="$1"
+  awk '
+    function flush() {
+      if (length(block) > 0) {
+        printf "%s\n", block
+        block = ""
+      }
+    }
+    /^[^ \t]/ {
+      if ($0 ~ /^x-[^:]+:/) {
+        flush()
+        in_extension = 1
+        block = $0 ORS
+        next
+      }
+      if (in_extension) {
+        flush()
+        in_extension = 0
+      }
+    }
+    in_extension {
+      block = block $0 ORS
+    }
+    END {
+      flush()
+    }
+  ' "$file"
+}
+
+compose_service_files() {
+  local stage_dir="$1"
+  local file
+  for file in "$stage_dir"/stack.compose/*.yml; do
+    [ -f "$file" ] || continue
+    [ "$(basename "$file")" = "test-runners.yml" ] && continue
+    printf '%s\n' "$file"
+  done | sort
+}
+
+build_merged_compose() {
+  local stage_dir="$1"
+  local output_file="$2"
+  local global_settings="$stage_dir/global.settings"
+  local service_file
+
+  {
+    printf '# Auto-generated docker-compose.yml\n'
+    printf '# Generated: %s\n\n' "$(iso_timestamp_utc)"
+
+    while IFS= read -r service_file; do
+      extract_extension_blocks "$service_file"
+    done < <(compose_service_files "$stage_dir")
+
+    printf 'services:\n'
+    if [ -f "$global_settings/volume-init.yml" ]; then
+      extract_top_level_section "$global_settings/volume-init.yml" 'services:'
+    fi
+    while IFS= read -r service_file; do
+      extract_top_level_section "$service_file" 'services:'
+    done < <(compose_service_files "$stage_dir")
+
+    printf '\nvolumes:\n'
+    if [ -f "$global_settings/volume-init.yml" ]; then
+      extract_top_level_section "$global_settings/volume-init.yml" 'volumes:'
+    fi
+    if [ -f "$global_settings/volumes.yml" ]; then
+      extract_top_level_section "$global_settings/volumes.yml" 'volumes:'
+    fi
+    while IFS= read -r service_file; do
+      extract_top_level_section "$service_file" 'volumes:'
+    done < <(compose_service_files "$stage_dir")
+
+    printf '\nnetworks:\n'
+    if [ -f "$global_settings/networks.yml" ]; then
+      extract_top_level_section "$global_settings/networks.yml" 'networks:'
+    fi
+  } > "$output_file"
+}
+
+rewrite_compose_runtime_paths() {
+  local output_file="$1"
+  local temp_file
+  temp_file="$(mktemp)"
+  sed -e 's|context: \.$|context: ./build|g' \
+      -e 's|context: \./stack\.containers/|context: ./build/stack.containers/|g' \
+      -e 's|^\([[:space:]]*-[[:space:]]*\)\./stack\.containers/|\1./build/stack.containers/|g' \
+      -e 's|\./configs/|./runtime/configs/|g' \
+      "$output_file" > "$temp_file"
+  mv "$temp_file" "$output_file"
+}
+
+validate_generated_compose() {
+  local stage_dir="$1"
+  local output_file="$2"
+  local deploy_root
+
+  [ -d "$stage_dir" ] || die "missing stage directory for compose validation: $stage_dir"
+  [ -f "$output_file" ] || die "missing generated compose file: $output_file"
+
+  require_cmd docker
+  docker compose version >/dev/null 2>&1 || die "docker compose plugin is unavailable"
+  deploy_root="$(cd "$stage_dir/.." && pwd -P)"
+
+  (
+    cd "$deploy_root"
+    COMPOSE_PROJECT_NAME="${COMPOSE_PROJECT_NAME:-webservices}" \
+      docker compose --project-directory "$deploy_root" -f "$output_file" config --quiet --no-interpolate >/dev/null
+  )
+}

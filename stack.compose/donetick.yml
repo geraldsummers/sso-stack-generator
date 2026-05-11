@@ -1,0 +1,40 @@
+services:
+  donetick:
+    image: donetick/donetick:latest
+    container_name: donetick
+    restart: unless-stopped
+    networks:
+      caddy:
+    depends_on:
+      caddy:
+        condition: service_healthy
+    environment:
+      TZ: UTC
+      DT_ENV: selfhosted
+      DT_SQLITE_PATH: /donetick-data/donetick.db
+      DT_JWT_SECRET: ${DONETICK_JWT_SECRET:?DONETICK_JWT_SECRET is required}
+      DT_SERVER_PUBLIC_HOST: https://donetick.${DOMAIN}
+      DONETICK_DISABLE_SIGNUP: "true"
+      DT_IS_USER_CREATION_DISABLED: "true"
+      DT_OAUTH2_CLIENT_ID: donetick
+      DT_OAUTH2_CLIENT_SECRET: ${DONETICK_OAUTH_SECRET:?DONETICK_OAUTH_SECRET is required}
+      DT_OAUTH2_REDIRECT_URL: https://donetick.${DOMAIN}/auth/oauth2
+      DT_OAUTH2_AUTH_URL: https://keycloak.${DOMAIN}/realms/webservices/protocol/openid-connect/auth
+      DT_OAUTH2_TOKEN_URL: https://keycloak.${DOMAIN}/realms/webservices/protocol/openid-connect/token
+      DT_OAUTH2_USER_INFO_URL: https://keycloak.${DOMAIN}/realms/webservices/protocol/openid-connect/userinfo
+      DT_OAUTH2_NAME: Keycloak
+      DT_OAUTH2_SCOPES: openid profile email groups
+      SSL_CERT_FILE: /ca/caddy-ca.crt
+    volumes:
+      - donetick_data:/donetick-data
+      - ./configs/donetick/selfhosted.yaml:/config/selfhosted.yaml:ro
+      - caddy_ca:/ca:ro
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:2021/api/v1/health || exit 1"]
+      interval: 60s
+      timeout: 5s
+      retries: 3
+      start_period: 60s
+
+volumes:
+  donetick_data:

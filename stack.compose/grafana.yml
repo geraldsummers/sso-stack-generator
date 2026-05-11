@@ -1,0 +1,53 @@
+services:
+  grafana:
+    image: grafana/grafana:11.6.9
+    container_name: grafana
+    restart: unless-stopped
+    networks:
+      caddy:
+      postgres:
+      monitoring:
+    depends_on:
+      caddy:
+        condition: service_started
+      postgres:
+        condition: service_started
+      postgres-ssd-bootstrap:
+        condition: service_completed_successfully
+    environment:
+      GF_DEFAULT_LOCALE: en_US
+      GF_SERVER_ROOT_URL: https://grafana.${DOMAIN}
+      GF_SERVER_DOMAIN: grafana.${DOMAIN}
+      GF_DATABASE_TYPE: postgres
+      GF_DATABASE_HOST: postgres:5432
+      GF_DATABASE_NAME: grafana
+      GF_DATABASE_USER: grafana
+      GF_DATABASE_PASSWORD: ${POSTGRES_GRAFANA_PASSWORD}
+      GF_DATABASE_SSL_MODE: disable
+      GF_DATABASE_CONN_MAX_LIFETIME: 12000
+      GF_AUTH_PROXY_ENABLED: true
+      GF_AUTH_PROXY_HEADER_NAME: X-WEBAUTH-USER
+      GF_AUTH_PROXY_HEADER_PROPERTY: username
+      GF_AUTH_PROXY_AUTO_SIGN_UP: true
+      GF_AUTH_PROXY_HEADERS: "Email:Remote-Email Name:Remote-Name"
+      GF_USERS_AUTO_ASSIGN_ORG_ROLE: ${GRAFANA_AUTO_ASSIGN_ORG_ROLE:-Viewer}
+      GF_USERS_DEFAULT_THEME: dark
+      GF_LOG_LEVEL: ${GRAFANA_LOG_LEVEL:-info}
+      GF_LOG_FILTERS: ${GRAFANA_LOG_FILTERS:-auth.proxy:info}
+      GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH: /etc/grafana/provisioning/dashboards/logs.json
+      GF_ALERTING_ENABLED: false
+      GF_UNIFIED_ALERTING_ENABLED: false
+      POSTGRES_PIPELINE_USER: ${POSTGRES_PIPELINE_USER}
+      POSTGRES_PIPELINE_PASSWORD: ${POSTGRES_PIPELINE_PASSWORD}
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./configs/grafana/provisioning:/provisioning-src:ro
+      - ./configs/grafana/entrypoint.sh:/entrypoint.sh:ro
+    entrypoint:
+      - /entrypoint.sh
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3000/api/health"]
+      interval: 10s
+      timeout: 10s
+      retries: 30
+      start_period: 180s

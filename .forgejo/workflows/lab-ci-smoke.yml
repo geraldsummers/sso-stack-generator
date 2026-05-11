@@ -1,0 +1,50 @@
+name: Lab CI Smoke
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+      - ci-probe/**
+
+jobs:
+  repo-smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Verify Bundled Source
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f MODULE.bazel
+          test -f build.sh
+          test -f sync.sh
+          test -f scripts/deploy.sh
+          test -f scripts/verify.sh
+          test -f scripts/lib/wait-ready.sh
+          test -d stack.compose
+          test -d stack.containers
+          test -d stack.kotlin
+          test ! -f deploy.sh
+          test ! -f render.sh
+          test ! -f sync-dist.sh
+          test ! -f test.sh
+          test ! -f wait-ready.sh
+          test ! -e site-config
+          test -f scripts/lib/site-manifest.sh
+          test ! -f scripts/lib/site-config.sh
+          bash -n build.sh sync.sh scripts/deploy.sh scripts/verify.sh scripts/lib/wait-ready.sh scripts/lib/site-manifest.sh
+
+      - name: Emit Probe Token
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p .ci-probe-results
+          if compgen -G '.ci-probe/*.txt' > /dev/null; then
+            cat .ci-probe/*.txt | tee .ci-probe-results/token.txt
+          else
+            echo 'no probe token present' | tee .ci-probe-results/token.txt
+          fi
+          echo "FORGEJO_CI_PROBE_SUCCESS $(cat .ci-probe-results/token.txt)" | tee .ci-probe-results/status.txt

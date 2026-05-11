@@ -1,0 +1,5 @@
+components:
+  - name: embedding-gpu
+    source_paths:
+      - stack.containers/embedding-bge
+      - stack.compose/embedding.yml

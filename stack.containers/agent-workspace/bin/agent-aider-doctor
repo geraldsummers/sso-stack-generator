@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+printf 'aider=%s\n' "$(command -v aider)"
+printf 'aider_version=%s\n' "$(aider --version)"
+printf 'aider_model=%s\n' "${AIDER_MODEL:-<unset>}"
+printf 'aider_ollama_api_base=%s\n' "${AIDER_OLLAMA_API_BASE:-<unset>}"
+printf 'python=%s\n' "$(python3 --version 2>/dev/null || echo unavailable)"
+printf 'docker=%s\n' "$(docker --version 2>/dev/null || echo unavailable)"
+printf 'docker_compose=%s\n' "$(docker compose version 2>/dev/null || echo unavailable)"
+printf 'stack_agent_env=%s\n' "$(if [ -f "${STACK_AGENT_ENV_FILE:-$HOME/.config/webservices/agent.env}" ]; then echo present; else echo absent; fi)"
+printf 'stack_search_helper=%s\n' "$(command -v stack-search 2>/dev/null || echo unavailable)"

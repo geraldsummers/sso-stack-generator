@@ -1,0 +1,33 @@
+version: '3.8'
+
+services:
+  playwright-tests:
+    build: .
+    environment:
+      # Legacy convenience compose file only.
+      # Preferred path is the bundled run-tests.sh with runtime/stack.env rendered by deploy.sh.
+
+      STACK_ADMIN_USER: ${STACK_ADMIN_USER:-}
+      STACK_ADMIN_PASSWORD: ${STACK_ADMIN_PASSWORD:-}
+      STACK_ADMIN_EMAIL: ${STACK_ADMIN_EMAIL:-}
+
+      # Service URLs
+      BASE_URL: ${BASE_URL:-https://datamancy.net}
+      KEYCLOAK_URL: ${KEYCLOAK_URL:-https://keycloak.datamancy.net}
+
+      # CI mode
+      CI: ${CI:-false}
+
+    volumes:
+      # Mount test results out
+      - ./test-results:/app/test-results
+      - ./playwright-report:/app/playwright-report
+      - ./coverage:/app/coverage
+
+    networks:
+      - webservices_default
+
+
+networks:
+  webservices_default:
+    external: true

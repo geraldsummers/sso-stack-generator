@@ -1,0 +1,28 @@
+services:
+  homepage:
+    image: ghcr.io/gethomepage/homepage:v1.8.0
+    container_name: homepage
+    restart: unless-stopped
+    networks:
+      caddy:
+      docker-proxy:
+    depends_on:
+      caddy:
+        condition: service_started
+    environment:
+      PUID: ${DOCKER_USER_ID:-1000}
+      PGID: ${DOCKER_GROUP_ID:-1000}
+      HOMEPAGE_ALLOWED_HOSTS: ${DOMAIN},homepage.${DOMAIN},homepage,homepage:3000
+      DOCKER_HOST: tcp://docker-socket-proxy:2375
+    volumes:
+      - ./configs/homepage/services.yaml:/app/config/services.yaml:ro
+      - ./configs/homepage/settings.yaml:/app/config/settings.yaml:ro
+      - ./configs/homepage/widgets.yaml:/app/config/widgets.yaml:ro
+      - ./configs/homepage/bookmarks.yaml:/app/config/bookmarks.yaml:ro
+      - ./configs/homepage/docker.yaml:/app/config/docker.yaml:ro
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3000/"]
+      interval: 60s
+      timeout: 10s
+      retries: 3
+      start_period: 30s

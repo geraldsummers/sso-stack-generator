@@ -1,0 +1,3 @@
+# Keep Bazel outputs out of the repo root so IDEs and Git only ever see the real
+# workspace. The build scripts resolve artifact paths through bazel cquery.
+common --experimental_convenience_symlinks=ignore

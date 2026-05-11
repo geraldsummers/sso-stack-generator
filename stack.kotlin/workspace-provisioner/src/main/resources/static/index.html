@@ -1,0 +1,365 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Workspaces</title>
+  <style>
+    :root {
+      --bg: #0f1720;
+      --panel: rgba(20, 30, 43, 0.85);
+      --line: rgba(148, 163, 184, 0.18);
+      --text: #e8eef5;
+      --muted: #9fb0c2;
+      --accent: #f97316;
+      --accent-soft: rgba(249, 115, 22, 0.14);
+      --ok: #22c55e;
+      --warn: #eab308;
+      --error: #fb7185;
+      --link: #7dd3fc;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      color: var(--text);
+      background:
+        radial-gradient(circle at top left, rgba(249,115,22,0.18), transparent 32%),
+        radial-gradient(circle at bottom right, rgba(56,189,248,0.14), transparent 28%),
+        linear-gradient(180deg, #0a1017 0%, #111b26 100%);
+      font-family: "Iosevka Term", "SFMono-Regular", ui-monospace, monospace;
+    }
+    .shell {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 32px 20px 56px;
+    }
+    .masthead {
+      display: grid;
+      gap: 12px;
+      margin-bottom: 24px;
+    }
+    h1 {
+      margin: 0;
+      font-size: clamp(2.2rem, 4vw, 4rem);
+      letter-spacing: -0.04em;
+    }
+    .sub {
+      color: var(--muted);
+      max-width: 72ch;
+      line-height: 1.5;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: 320px 1fr;
+      gap: 20px;
+    }
+    .card {
+      border: 1px solid var(--line);
+      background: var(--panel);
+      backdrop-filter: blur(16px);
+      border-radius: 18px;
+      padding: 18px;
+      box-shadow: 0 24px 50px rgba(0,0,0,0.28);
+    }
+    .card h2 {
+      margin: 0 0 12px;
+      font-size: 1rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--muted);
+    }
+    .stack { display: grid; gap: 10px; }
+    label { display: grid; gap: 6px; font-size: 0.82rem; color: var(--muted); }
+    input, button {
+      border-radius: 12px;
+      border: 1px solid var(--line);
+      background: rgba(8, 14, 22, 0.92);
+      color: var(--text);
+      padding: 12px 14px;
+      font: inherit;
+    }
+    button {
+      cursor: pointer;
+      background: linear-gradient(135deg, var(--accent), #fb923c);
+      color: #130f0c;
+      font-weight: 700;
+      border: 0;
+    }
+    button[disabled] {
+      opacity: 0.45;
+      cursor: not-allowed;
+    }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { padding: 12px 8px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }
+    th { color: var(--muted); font-size: 0.82rem; text-transform: uppercase; letter-spacing: 0.08em; }
+    .muted { color: var(--muted); }
+    .pill {
+      display: inline-block;
+      border-radius: 999px;
+      padding: 4px 9px;
+      background: var(--accent-soft);
+      color: #ffb074;
+      font-size: 0.75rem;
+    }
+    .status-running { color: var(--ok); }
+    .status-stopped, .status-missing { color: var(--warn); }
+    .status-error { color: var(--error); }
+	    .actions { display: flex; gap: 8px; flex-wrap: wrap; }
+	    .notice {
+	      margin: 12px 0 0;
+	      min-height: 1.4rem;
+	      color: var(--muted);
+	      line-height: 1.4;
+	    }
+	    .notice[data-state="busy"] { color: var(--link); }
+	    .notice[data-state="ok"] { color: var(--ok); }
+	    .notice[data-state="error"] { color: var(--error); }
+    .secret-form {
+      display: grid;
+      gap: 6px;
+      min-width: 220px;
+      margin-top: 8px;
+    }
+    .secret-form input {
+      width: 100%;
+      min-width: 0;
+    }
+    .ghost { background: transparent; border: 1px solid var(--line); color: var(--text); }
+    .ghost.link {
+      display: inline-flex;
+      align-items: center;
+      text-decoration: none;
+      color: var(--link);
+      border-color: rgba(125, 211, 252, 0.35);
+    }
+    .profile-grid { display: flex; gap: 6px; flex-wrap: wrap; }
+    .profile { border-radius: 999px; padding: 4px 8px; font-size: 0.75rem; background: rgba(125, 211, 252, 0.12); color: #bae6fd; }
+    pre {
+      margin: 0;
+      white-space: pre-wrap;
+      word-break: break-word;
+      color: #ffd7b3;
+    }
+    a { color: var(--link); }
+    @media (max-width: 920px) {
+      .grid { grid-template-columns: 1fr; }
+      table, thead, tbody, tr, th, td { display: block; }
+      thead { display: none; }
+      td { padding: 10px 0; }
+      tr { padding: 12px 0; border-bottom: 1px solid var(--line); }
+    }
+  </style>
+  <link rel="stylesheet" href="/theme.css">
+</head>
+<body>
+  <div class="shell">
+    <div class="masthead">
+      <div class="pill">labware runtime · ssh access · ttyd shell · notebook companion</div>
+      <h1>Disposable Workspaces</h1>
+      <div class="sub">Provision SSH-first agent workspaces on the isolated labware Docker runtime. TTYD shell access is Keycloak-gated and follows the workspace lifecycle. Notebook access is optional, path-based, and mounted against the same workspace home volume. Each workspace also gets controller-issued knowledge access for search and exact raw-document retrieval.</div>
+    </div>
+    <div class="grid">
+      <section class="card">
+        <h2>Create Workspace</h2>
+        <div class="stack">
+	          <label>Display Name<input id="displayName" placeholder="research-sprint"></label>
+	          <label>Initial Delegate<input id="initialDelegate" placeholder="agent-1234 (optional)"></label>
+	          <button id="createButton">Create Workspace</button>
+	          <div id="createNotice" class="notice" aria-live="polite"></div>
+	        </div>
+        <h2 style="margin-top:20px">CLI</h2>
+        <pre>scripts/workspaces/wsctl.py auth login
+scripts/workspaces/wsctl.py workspace list
+scripts/workspaces/wsctl.py workspace ssh &lt;workspace-id&gt;</pre>
+      </section>
+      <section class="card">
+        <h2>Your Workspaces</h2>
+        <table>
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Status</th>
+              <th>Access</th>
+              <th>Shell</th>
+              <th>Notebook</th>
+              <th>Profiles</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="workspaceRows"></tbody>
+        </table>
+      </section>
+    </div>
+  </div>
+  <script>
+    async function api(path, options = {}) {
+      const response = await fetch(path, {
+        headers: { 'Content-Type': 'application/json', ...(options.headers || {}) },
+        credentials: 'same-origin',
+        ...options,
+      });
+      if (!response.ok) {
+        const body = await response.text();
+        throw new Error(body || response.statusText);
+      }
+      const text = await response.text();
+      return text ? JSON.parse(text) : null;
+    }
+
+	    function escapeHtml(value) {
+      return String(value)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+	    }
+
+	    function setCreateNotice(message, state = '') {
+	      const notice = document.getElementById('createNotice');
+	      notice.textContent = message;
+	      notice.dataset.state = state;
+	    }
+
+    function renderProfiles(workspace) {
+      if (!workspace.profiles || workspace.profiles.length === 0) {
+        return '<span class="muted">no profile state</span>';
+      }
+      return `<div class="profile-grid">${workspace.profiles.map((profile) => {
+        const label = `${profile.name}:${profile.status}`;
+        const title = [profile.tier, profile.summary, profile.lastAppliedAt].filter(Boolean).join(' · ');
+        return `<span class="profile" title="${escapeHtml(title)}">${escapeHtml(label)}</span>`;
+      }).join('')}</div>`;
+    }
+
+    function renderNotebook(workspace) {
+      const notebook = workspace.notebook;
+      const status = `<div><span class="status-${escapeHtml(notebook.status)}">${escapeHtml(notebook.status)}</span>${notebook.lastError ? `<div class="muted">${escapeHtml(notebook.lastError)}</div>` : ''}</div>`;
+      const link = notebook.status === 'running'
+        ? `<a class="ghost link" href="${escapeHtml(notebook.url)}" target="_blank" rel="noreferrer">open</a>`
+        : '<span class="muted">start on demand</span>';
+      return `${status}<div class="muted">${escapeHtml(notebook.basePath)}</div><div style="margin-top:8px">${link}</div>`;
+    }
+
+    function renderShell(workspace) {
+      const shell = workspace.shell;
+      const status = `<div><span class="status-${escapeHtml(shell.status)}">${escapeHtml(shell.status)}</span>${shell.lastError ? `<div class="muted">${escapeHtml(shell.lastError)}</div>` : ''}</div>`;
+      const link = `<a class="ghost link" href="${escapeHtml(shell.url)}" target="_blank" rel="noreferrer">open</a>`;
+      return `${status}<div class="muted">${escapeHtml(shell.basePath)}</div><div style="margin-top:8px">${link}</div>`;
+    }
+
+    function renderActions(workspace) {
+      const notebookAction = workspace.notebook.status === 'running'
+        ? `<button class="ghost" data-action="stop-notebook" data-id="${workspace.id}">stop notebook</button>`
+        : `<button class="ghost" data-action="start-notebook" data-id="${workspace.id}">start notebook</button>`;
+      return `
+        <div class="actions">
+          <button class="ghost" data-action="start" data-id="${workspace.id}">start</button>
+          <button class="ghost" data-action="stop" data-id="${workspace.id}">stop</button>
+          ${notebookAction}
+          <button class="ghost" data-action="renew" data-id="${workspace.id}">renew</button>
+          <button class="ghost" data-action="delete" data-id="${workspace.id}">delete</button>
+        </div>
+        <div class="secret-form">
+          <input type="password" autocomplete="off" spellcheck="false" placeholder="Codex API key" data-codex-token="${workspace.id}">
+          <div class="actions">
+            <button class="ghost" data-action="set-codex-token" data-id="${workspace.id}">save Codex token</button>
+            <button class="ghost" data-action="clear-codex-token" data-id="${workspace.id}">clear</button>
+          </div>
+        </div>`;
+    }
+
+    async function performAction(id, action) {
+      if (action === 'delete') {
+        await api(`/api/workspaces/${id}`, { method: 'DELETE' });
+        return;
+      }
+      if (action === 'renew') {
+        await api(`/api/workspaces/${id}/lease/renew`, { method: 'POST', body: JSON.stringify({ days: 14 }) });
+        return;
+      }
+      if (action === 'start-notebook') {
+        await api(`/api/workspaces/${id}/notebook/start`, { method: 'POST', body: '{}' });
+        return;
+      }
+      if (action === 'stop-notebook') {
+        await api(`/api/workspaces/${id}/notebook/stop`, { method: 'POST', body: '{}' });
+        return;
+      }
+      if (action === 'set-codex-token') {
+        const input = document.querySelector(`input[data-codex-token="${CSS.escape(id)}"]`);
+        const token = input ? input.value.trim() : '';
+        if (!token) return;
+        await api(`/api/workspaces/${id}/codex-token`, { method: 'POST', body: JSON.stringify({ token }) });
+        if (input) input.value = '';
+        return;
+      }
+      if (action === 'clear-codex-token') {
+        await api(`/api/workspaces/${id}/codex-token`, { method: 'DELETE' });
+        return;
+      }
+      await api(`/api/workspaces/${id}/${action}`, { method: 'POST', body: '{}' });
+    }
+
+    async function load() {
+      const rows = document.getElementById('workspaceRows');
+      const workspaces = await api('/api/workspaces');
+      rows.innerHTML = '';
+      workspaces.forEach((workspace) => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td><strong>${escapeHtml(workspace.displayName)}</strong><div class="muted">${escapeHtml(workspace.id)}</div></td>
+          <td><span class="status-${escapeHtml(workspace.status)}">${escapeHtml(workspace.status)}</span>${workspace.lastError ? `<div class="muted">${escapeHtml(workspace.lastError)}</div>` : ''}<div class="muted">lease ${escapeHtml(workspace.leaseExpiresAt)}</div></td>
+          <td><div>${escapeHtml(workspace.sshUser)}@${escapeHtml(workspace.sshHost)}:${escapeHtml(workspace.sshPort)}</div><div class="muted">delegates ${workspace.delegates.length ? escapeHtml(workspace.delegates.join(', ')) : 'none'}</div><div class="muted">knowledge token until ${escapeHtml(workspace.agentAccess.tokenExpiresAt)}</div><div class="muted">stack-search · stack-doc-get</div></td>
+          <td>${renderShell(workspace)}</td>
+          <td>${renderNotebook(workspace)}</td>
+          <td>${renderProfiles(workspace)}</td>
+          <td>${renderActions(workspace)}</td>`;
+        rows.appendChild(tr);
+      });
+      rows.querySelectorAll('button[data-action]').forEach((button) => {
+        button.addEventListener('click', async () => {
+          button.disabled = true;
+          try {
+            await performAction(button.dataset.id, button.dataset.action);
+            await load();
+          } finally {
+            button.disabled = false;
+          }
+        });
+      });
+    }
+
+	    document.getElementById('createButton').addEventListener('click', async () => {
+	      const button = document.getElementById('createButton');
+	      const displayName = document.getElementById('displayName').value.trim();
+	      const initialDelegate = document.getElementById('initialDelegate').value.trim();
+	      if (!displayName) {
+	        setCreateNotice('Enter a display name before creating a workspace.', 'error');
+	        return;
+	      }
+	      button.disabled = true;
+	      setCreateNotice('Creating workspace and starting labware container...', 'busy');
+	      try {
+	        const created = await api('/api/workspaces', {
+	          method: 'POST',
+	          body: JSON.stringify({ displayName, initialDelegate: initialDelegate || null }),
+	        });
+	        document.getElementById('displayName').value = '';
+	        document.getElementById('initialDelegate').value = '';
+	        setCreateNotice(`Workspace ${created.id} created. Refreshing status...`, 'ok');
+	        await load();
+	      } catch (error) {
+	        setCreateNotice(error.message || 'Workspace creation failed.', 'error');
+	      } finally {
+	        button.disabled = false;
+	      }
+	    });
+
+    load().catch((error) => {
+      document.getElementById('workspaceRows').innerHTML = `<tr><td colspan="7"><pre>${escapeHtml(error.message)}</pre></td></tr>`;
+    });
+  </script>
+</body>
+</html>

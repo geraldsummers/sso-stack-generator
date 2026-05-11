@@ -1,0 +1,29 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+profiles_dir="${AGENT_TOOLCHAINS_DIR:-/opt/agent-toolchains}/profiles"
+usage() {
+    cat <<USAGE
+Usage: agent-verify-profile <profile> [<profile> ...]
+USAGE
+}
+
+if [ "$#" -eq 0 ]; then
+    usage >&2
+    exit 1
+fi
+
+for profile in "$@"; do
+    profile_dir="$profiles_dir/$profile"
+    verify_script="$profile_dir/verify.sh"
+    if [ ! -d "$profile_dir" ]; then
+        echo "Unknown profile: $profile" >&2
+        exit 1
+    fi
+    if [ ! -f "$verify_script" ]; then
+        echo "Profile has no verifier: $profile" >&2
+        exit 1
+    fi
+    echo "[agent-verify-profile] verifying $profile"
+    bash "$verify_script"
+done

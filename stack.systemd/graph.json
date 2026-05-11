@@ -1,0 +1,174 @@
+{
+  "unitPrefix": "webservices",
+  "defaultTarget": {
+    "name": "webservices.target",
+    "description": "Authenticated Web Services platform stack",
+    "install": true,
+    "includeUnitsFromNonOnDemandDomains": false,
+    "wantsTargets": [
+      "webservices-core.target",
+      "webservices-observability.target",
+      "webservices-inference.target",
+      "webservices-pipeline.target",
+      "webservices-apps.target"
+    ]
+  },
+  "auxiliaryTargets": [
+    {
+      "name": "webservices-core.target",
+      "description": "Core platform services, edge, identity, and stateful backends",
+      "services": [
+        "caddy",
+        "docker-socket-controller-proxy",
+        "docker-socket-proxy",
+        "docker-vm-controller-proxy",
+        "docker-vm-socket-proxy",
+        "isolated-docker-vm-tunnel",
+        "keycloak-bootstrap",
+        "keycloak",
+        "keycloak-configure",
+        "keycloak-auth-gateway",
+        "mariadb",
+        "memcached",
+        "onboarding",
+        "postgres",
+        "postgres-ssd",
+        "postgres-ssd-bootstrap",
+        "qdrant",
+        "valkey",
+        "vector-bootstrap",
+        "volume-init"
+      ]
+    },
+    {
+      "name": "webservices-observability.target",
+      "description": "Monitoring, logging, and container observability",
+      "afterTargets": [
+        "webservices-core.target"
+      ],
+      "services": [
+        "alertmanager",
+        "alloy",
+        "autoheal",
+        "cadvisor",
+        "docker-health-exporter",
+        "dozzle",
+        "grafana",
+        "loki",
+        "node-exporter",
+        "prometheus",
+        "watchtower"
+      ]
+    },
+    {
+      "name": "webservices-inference.target",
+      "description": "Embedding inference backend",
+      "afterTargets": [
+        "webservices-core.target"
+      ],
+      "services": [
+        "embedding-gpu"
+      ]
+    },
+    {
+      "name": "webservices-pipeline.target",
+      "description": "Search and publication services",
+      "afterTargets": [
+        "webservices-core.target",
+        "webservices-inference.target"
+      ],
+      "services": [
+        "knowledge-ingestion",
+        "embedding-worker",
+        "content-publisher",
+        "search-service"
+      ]
+    },
+    {
+      "name": "webservices-apps.target",
+      "description": "User-facing collaboration and application services",
+      "afterTargets": [
+        "webservices-core.target"
+      ],
+      "domains": [
+        "mastodon-runtime",
+        "vaultwarden-stack"
+      ],
+      "services": [
+        "bookstack",
+        "bookstack-procedural-docs",
+        "donetick",
+        "element",
+        "erpnext-configurator",
+        "erpnext-bootstrap",
+        "erpnext-backend",
+        "erpnext-websocket",
+        "erpnext-queue-short",
+        "erpnext-queue-long",
+        "erpnext-scheduler",
+        "erpnext",
+        "forgejo",
+        "forgejo-runner",
+        "homeassistant",
+        "homepage",
+        "jellyfin",
+        "jellyfin-profile-proxy",
+        "jupyterhub",
+        "kopia",
+        "livekit",
+        "mailserver",
+        "matrix-authentication-service-db",
+        "matrix-authentication-service-keys",
+        "matrix-authentication-service",
+        "matrix-rtc-auth",
+        "mastodon-init",
+        "ntfy",
+        "onlyoffice",
+        "planka",
+        "qbittorrent",
+        "seafile",
+        "sogo",
+        "synapse-permissions",
+        "synapse",
+        "synapse-room-bootstrap",
+        "workspace-provisioner",
+        "chatgpt-connector"
+      ]
+    }
+  ],
+  "lifecycleDomains": [
+    {
+      "name": "docker-vm-proxy",
+      "services": [
+        "isolated-docker-vm-tunnel",
+        "docker-vm-socket-proxy"
+      ]
+    },
+    {
+      "name": "vaultwarden-stack",
+      "services": [
+        "vaultwarden"
+      ]
+    },
+    {
+      "name": "mastodon-runtime",
+      "services": [
+        "mastodon-web",
+        "mastodon-streaming",
+        "mastodon-sidekiq",
+        "mastodon-recommendation-seeder"
+      ]
+    }
+  ],
+  "excludedServices": [
+    "jupyter-notebook-build"
+  ],
+  "onDemandServices": [
+    "embedding-gpu",
+    "knowledge-ingestion",
+    "embedding-worker",
+    "search-service",
+    "content-publisher"
+  ],
+  "onDemandDomains": []
+}

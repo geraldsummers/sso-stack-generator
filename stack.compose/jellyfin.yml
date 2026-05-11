@@ -1,0 +1,61 @@
+services:
+  jellyfin-profile-proxy:
+    image: webservices/jellyfin-profile-proxy:local-build
+    build:
+      context: .
+      dockerfile: ./stack.containers/jellyfin-profile-proxy/Dockerfile
+    container_name: jellyfin-profile-proxy
+    restart: unless-stopped
+    networks:
+      caddy:
+    depends_on:
+      jellyfin:
+        condition: service_healthy
+    environment:
+      JELLYFIN_UPSTREAM_HOST: jellyfin
+      JELLYFIN_UPSTREAM_PORT: "8096"
+    healthcheck:
+      test: ["CMD-SHELL", "python - <<'PY'\nimport urllib.request\nurllib.request.urlopen('http://127.0.0.1:8080/health', timeout=5).read()\nPY"]
+      interval: 60s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+  jellyfin:
+    image: webservices/jellyfin:local-build
+    build:
+      context: .
+      dockerfile: ./stack.config/jellyfin/Dockerfile
+    container_name: jellyfin
+    restart: unless-stopped
+    networks:
+      caddy:
+    depends_on:
+      caddy:
+        condition: service_healthy
+    environment:
+      DOMAIN: ${DOMAIN}
+      STACK_ADMIN_USER: ${STACK_ADMIN_USER}
+      JELLYFIN_ADMIN_USERS: ${JELLYFIN_ADMIN_USERS:-}
+      JELLYFIN_FORCE_BROWSER_SAFE_H264: ${JELLYFIN_FORCE_BROWSER_SAFE_H264:-true}
+      JELLYFIN_TRANSCODE_H264_PROFILE: ${JELLYFIN_TRANSCODE_H264_PROFILE:-baseline}
+      JELLYFIN_TRANSCODE_H264_LEVEL: ${JELLYFIN_TRANSCODE_H264_LEVEL:-31}
+      JELLYFIN_TRANSCODE_MAX_WIDTH: ${JELLYFIN_TRANSCODE_MAX_WIDTH:-1280}
+      JELLYFIN_TRANSCODE_MAX_HEIGHT: ${JELLYFIN_TRANSCODE_MAX_HEIGHT:-720}
+      JELLYFIN_OIDC_SECRET: ${JELLYFIN_OIDC_SECRET:?JELLYFIN_OIDC_SECRET is required}
+      SSL_CERT_FILE: /ca/caddy-ca.crt
+    volumes:
+      - jellyfin_config:/config
+      - jellyfin_cache:/cache
+      - jellyfin_media:/media
+      - caddy_ca:/ca:ro
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:8096/System/Info/Public >/dev/null"]
+      interval: 60s
+      timeout: 10s
+      retries: 3
+      start_period: 120s
+
+volumes:
+  jellyfin_config:
+  jellyfin_cache:

@@ -1,0 +1,49 @@
+package org.webservices.testrunner
+
+import java.nio.file.Files
+import java.nio.file.Path
+import kotlin.test.Test
+import kotlin.test.assertFalse
+import kotlin.test.assertTrue
+
+class SeafileSynapseHardeningConfigTest {
+
+    @Test
+    fun `synapse entrypoint fails closed when privilege drop helpers are missing`() {
+        val entrypoint = repoFileText("stack.config/synapse/entrypoint.sh")
+
+        assertTrue(entrypoint.contains("command -v gosu"))
+        assertTrue(entrypoint.contains("command -v su-exec"))
+        assertTrue(entrypoint.contains("refusing unsafe fallback re-exec"))
+        assertFalse(entrypoint.contains("exec su -s /bin/bash -c \"exec \$0 \$*\""))
+    }
+
+    @Test
+    fun `seafile schema reset validates identifiers and api edge strips remote user headers`() {
+        val runtimeEntrypoint = repoFileText("stack.config/seafile/runtime-entrypoint.sh")
+        val seahubSettings = repoFileText("stack.config/seafile/seahub_settings.py")
+        val caddyfile = repoFileText("stack.config/caddy/Caddyfile")
+
+        assertTrue(runtimeEntrypoint.contains("re.compile(r\"^[A-Za-z_][A-Za-z0-9_]*$\")"))
+        assertTrue(runtimeEntrypoint.contains("Invalid Seafile schema identifier(s) for DDL"))
+        assertTrue(seahubSettings.contains("ENABLE_REMOTE_USER_AUTHENTICATION = True"))
+        assertTrue(caddyfile.contains("api.seafile.{\$DOMAIN}"))
+        assertTrue(caddyfile.contains("header_up -Remote-User"))
+        assertTrue(caddyfile.contains("header_up -X-Remote-User"))
+        assertTrue(caddyfile.contains("header_up -X-Trusted-Proxy-Secret"))
+    }
+
+    private fun repoFileText(relativePath: String): String =
+        Files.readString(repoRoot().resolve(relativePath))
+
+    private fun repoRoot(): Path {
+        var current = Path.of("").toAbsolutePath()
+        repeat(8) {
+            if (Files.exists(current.resolve("MODULE.bazel"))) {
+                return current
+            }
+            current = current.parent ?: return@repeat
+        }
+        error("Could not locate repository root from ${Path.of("").toAbsolutePath()}")
+    }
+}

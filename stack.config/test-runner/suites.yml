@@ -1,0 +1,18 @@
+suites:
+  - name: stack-contract
+    type: kotlin
+    networks:
+      - default
+      - internet
+      - postgres
+      - mariadb
+      - qdrant
+      - valkey
+      - mailserver
+      - memcached
+      - docker-controller
+      - caddy
+      - ai
+      - monitoring
+      - mastodon-internal
+      - matrix-internal

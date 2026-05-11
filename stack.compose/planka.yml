@@ -1,0 +1,52 @@
+services:
+  planka:
+    image: ghcr.io/plankanban/planka:1.26.3
+    container_name: planka
+    restart: unless-stopped
+    labels:
+      autoheal: "true"
+    networks:
+      caddy:
+      postgres:
+    depends_on:
+      caddy:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+        restart: true
+    environment:
+      BASE_URL: https://planka.${DOMAIN}
+      DATABASE_URL: postgresql://planka:${POSTGRES_PLANKA_PASSWORD}@postgres:5432/planka
+      DEFAULT_ADMIN_EMAIL: ${STACK_ADMIN_EMAIL}
+      DEFAULT_ADMIN_PASSWORD: ${STACK_ADMIN_PASSWORD}
+      DEFAULT_ADMIN_NAME: ${STACK_ADMIN_USER}
+      DEFAULT_ADMIN_USERNAME: ${STACK_ADMIN_USER}
+      OIDC_ISSUER: https://keycloak.${DOMAIN}/realms/webservices
+      OIDC_CLIENT_ID: planka
+      OIDC_CLIENT_SECRET: ${PLANKA_OAUTH_SECRET}
+      OIDC_SCOPES: openid profile email groups
+      OIDC_ADMIN_ROLES: admins
+      OIDC_EMAIL_ATTRIBUTE: email
+      OIDC_NAME_ATTRIBUTE: name
+      OIDC_USERNAME_ATTRIBUTE: preferred_username
+      OIDC_REDIRECT_URI: https://planka.${DOMAIN}/oidc-callback
+      OIDC_AUTHORIZATION_ENDPOINT: https://keycloak.${DOMAIN}/realms/webservices/protocol/openid-connect/auth
+      OIDC_TOKEN_ENDPOINT: https://keycloak.${DOMAIN}/realms/webservices/protocol/openid-connect/token
+      OIDC_USERINFO_ENDPOINT: https://keycloak.${DOMAIN}/realms/webservices/protocol/openid-connect/userinfo
+      OIDC_TOKEN_ENDPOINT_AUTH_METHOD: client_secret_basic
+      OIDC_ENFORCED: true
+      OIDC_TIMEOUT: ${PLANKA_OIDC_TIMEOUT:-15000}
+      NODE_EXTRA_CA_CERTS: /ca/caddy-ca.crt
+      SSL_CERT_FILE: /ca/caddy-ca.crt
+    volumes:
+      - planka_data:/app/public/user-avatars
+      - caddy_ca:/ca:ro
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - |
+          wget --quiet --tries=1 --spider http://localhost:1337/ || exit 1
+      interval: 60s
+      timeout: 10s
+      retries: 3
+      start_period: 60s

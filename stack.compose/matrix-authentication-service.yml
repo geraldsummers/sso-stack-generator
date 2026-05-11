@@ -1,0 +1,91 @@
+services:
+  matrix-authentication-service-db:
+    image: timescale/timescaledb@sha256:0af03ecf697825f6ddae76fd275d16bf46007bed6d00eb3d754779cb7db96fa6
+    container_name: matrix-authentication-service-db
+    restart: "no"
+    networks:
+      - postgres
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_USER: ${POSTGRES_ADMIN_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_ADMIN_PASSWORD}
+      POSTGRES_DB: postgres
+      POSTGRES_MATRIX_AUTHENTICATION_SERVICE_PASSWORD: ${POSTGRES_MATRIX_AUTHENTICATION_SERVICE_PASSWORD}
+    volumes:
+      - ./configs/postgres/ensure-matrix-authentication-service-db.sh:/ensure-matrix-authentication-service-db.sh:ro
+    entrypoint: ["/bin/bash", "/ensure-matrix-authentication-service-db.sh"]
+
+  matrix-authentication-service-keys:
+    image: alpine/openssl:3.5.4
+    container_name: matrix-authentication-service-keys
+    restart: "no"
+    user: "0:0"
+    network_mode: none
+    cap_drop:
+      - ALL
+    cap_add:
+      - CHOWN
+      - DAC_OVERRIDE
+      - FOWNER
+    security_opt:
+      - no-new-privileges:true
+    volumes:
+      - matrix_authentication_service_keys:/keys
+    entrypoint:
+      - /bin/sh
+      - -ec
+      - |
+        mkdir -p /keys
+        if [ ! -s /keys/rsa.pem ]; then
+          umask 077
+          openssl genrsa -out /keys/rsa.pem 2048
+        fi
+        chown -R 65532:65532 /keys
+        chmod 0700 /keys
+        chmod 0600 /keys/rsa.pem
+
+  matrix-authentication-service:
+    image: ghcr.io/element-hq/matrix-authentication-service@sha256:969d33b20ef4449937ee7bce9e05d159c10d9d1504d9374f2b7d43087bbff924
+    container_name: matrix-authentication-service
+    restart: unless-stopped
+    user: "65532:65532"
+    read_only: true
+    init: true
+    tmpfs:
+      - /tmp:size=64m,mode=1777
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    networks:
+      caddy:
+      postgres:
+      matrix-internal:
+      internet:
+    depends_on:
+      matrix-authentication-service-keys:
+        condition: service_completed_successfully
+      matrix-authentication-service-db:
+        condition: service_completed_successfully
+      postgres:
+        condition: service_healthy
+      synapse:
+        condition: service_started
+      keycloak-configure:
+        condition: service_completed_successfully
+    environment:
+      MATRIX_AUTHENTICATION_SERVICE_ACTIVE: ${MATRIX_AUTHENTICATION_SERVICE_ACTIVE:-false}
+    command:
+      - server
+      - --config
+      - /config/config.yaml
+    volumes:
+      - matrix_authentication_service_keys:/keys:ro
+      - ./configs/matrix-authentication-service/config.yaml:/config/config.yaml:ro
+
+volumes:
+  matrix_authentication_service_keys:

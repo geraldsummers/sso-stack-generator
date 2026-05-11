@@ -1,0 +1,58 @@
+load("@rules_shell//shell:sh_binary.bzl", "sh_binary")
+
+filegroup(
+    name = "release_static_files",
+    srcs = glob(
+        [
+            "global.settings/**",
+            "scripts/**",
+            "stack.compose/**",
+            "stack.config/**",
+            "stack.containers/**",
+            "stack.systemd/**",
+        ],
+        exclude = [
+            "**/__pycache__/**",
+            "**/*.pyc",
+            "stack.containers/test-runner/**/node_modules/**",
+            "stack.containers/test-runner/**/coverage/**",
+            "stack.containers/test-runner/**/test-results/**",
+            "stack.containers/test-runner/**/playwright-report/**",
+            "stack.containers/test-runner/**/latest-screenshots/**",
+            "stack.containers/test-runner/**/.auth/**",
+            "stack.containers/test-runner/**/.tmp-screenshot-review/**",
+            "stack.containers/test-runner/**/.eslintcache",
+        ],
+    ),
+    visibility = ["//visibility:private"],
+)
+
+filegroup(
+    name = "release_built_jars",
+    srcs = glob([
+        "stack.kotlin/**/build/libs/*.jar",
+    ]),
+    visibility = ["//visibility:private"],
+)
+
+sh_binary(
+    name = "package_release_tool",
+    srcs = ["scripts/deploy/package_release.sh"],
+    visibility = ["//visibility:private"],
+)
+
+genrule(
+    name = "web_services_release",
+    srcs = [
+        ":release_static_files",
+        ":release_built_jars",
+    ],
+    outs = ["web_services_release.tar"],
+    tools = [":package_release_tool"],
+    cmd = "$(location :package_release_tool) $@ $(SRCS)",
+)
+
+alias(
+    name = "build_release",
+    actual = ":web_services_release",
+)

@@ -1,0 +1,341 @@
+FROM jupyter/minimal-notebook@sha256:1c4c8b6c7c27059c353d4e80523c2696e34723fde67d27418873ebeb42032551
+
+ARG KOTLIN_COMPILER_SHA256=b6698d5728ad8f9edcdd01617d638073191d8a03139cc538a391b4e3759ad297
+ARG GRADLE_DIST_SHA256=7a00d51fb93147819aab76024feece20b6b84e420694101f276be952e08bef03
+
+USER root
+
+RUN apt-get update && \
+    apt-get install -y curl gnupg build-essential python3 git && \
+    install -m 0755 -d /etc/apt/keyrings && \
+    curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key | gpg --dearmor -o /etc/apt/keyrings/nodesource.gpg && \
+    chmod a+r /etc/apt/keyrings/nodesource.gpg && \
+    echo "deb [signed-by=/etc/apt/keyrings/nodesource.gpg] https://deb.nodesource.com/node_20.x nodistro main" > /etc/apt/sources.list.d/nodesource.list && \
+    apt-get update && \
+    apt-get install -y nodejs && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
+
+RUN apt-get update && \
+    apt-get install -y openjdk-17-jdk wget unzip && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
+
+RUN cd /opt && \
+    wget -q https://github.com/JetBrains/kotlin/releases/download/v2.1.0/kotlin-compiler-2.1.0.zip && \
+    echo "${KOTLIN_COMPILER_SHA256}  kotlin-compiler-2.1.0.zip" | sha256sum -c - && \
+    unzip kotlin-compiler-2.1.0.zip && \
+    rm kotlin-compiler-2.1.0.zip && \
+    ln -s /opt/kotlinc/bin/kotlin /usr/local/bin/kotlin && \
+    ln -s /opt/kotlinc/bin/kotlinc /usr/local/bin/kotlinc
+
+RUN cd /opt && \
+    wget -q https://services.gradle.org/distributions/gradle-8.12-bin.zip && \
+    echo "${GRADLE_DIST_SHA256}  gradle-8.12-bin.zip" | sha256sum -c - && \
+    unzip gradle-8.12-bin.zip && \
+    rm gradle-8.12-bin.zip && \
+    ln -s /opt/gradle-8.12/bin/gradle /usr/local/bin/gradle
+
+ENV GRADLE_HOME=/opt/gradle-8.12
+ENV PATH=$PATH:$GRADLE_HOME/bin
+
+RUN npm install -g --unsafe-perm ijavascript && \
+    ijsinstall --install=global
+
+USER ${NB_UID}
+
+RUN pip install --no-cache-dir kotlin-jupyter-kernel && \
+    python -m kotlin_kernel add-kernel
+
+RUN pip install --no-cache-dir \
+    'openai>=1.0.0' \
+    'langchain>=0.3.0' \
+    'langchain-openai>=0.2.0' \
+    'python-dotenv>=1.0.0'
+
+RUN pip install --no-cache-dir \
+    'jupyter-ai>=2.0.0' \
+    'jupyterlab>=4.0.0'
+
+RUN pip install --no-cache-dir \
+    'jupyterlab-lsp>=5.0.0' \
+    'python-lsp-server[all]>=1.10.0' \
+    'jedi-language-server>=0.41.0'
+
+RUN pip install --no-cache-dir \
+    'jupyterlab-git>=0.50.0'
+
+RUN pip install --no-cache-dir \
+    'jupyterlab-code-formatter>=3.0.0' \
+    'black>=24.0.0' \
+    'isort>=5.13.0'
+
+RUN pip install --no-cache-dir \
+    'jupyterlab-execute-time>=3.0.0' \
+    'jupyter-resource-usage>=1.0.0'
+
+RUN pip install --no-cache-dir \
+    'jupytext>=1.16.0'
+
+RUN pip install --no-cache-dir \
+    'voila>=0.5.0'
+
+RUN pip install --no-cache-dir \
+    'ipywidgets>=8.0.0' \
+    'widgetsnbextension>=4.0.0'
+
+RUN pip install --no-cache-dir \
+    'jupyterlab-drawio>=0.9.0'
+
+RUN pip install --no-cache-dir \
+    'jupyterlab-spreadsheet-editor>=0.6.0'
+
+RUN pip install --no-cache-dir \
+    'plotly>=5.0.0'
+
+RUN pip install --no-cache-dir \
+    'papermill>=2.5.0'
+
+RUN pip install --no-cache-dir \
+    'lckr-jupyterlab-variableinspector>=3.0.0'
+
+RUN pip install --no-cache-dir \
+    'jupyterlab-system-monitor>=0.8.0'
+
+RUN pip install --no-cache-dir \
+    'jupyterlab-spellchecker>=0.8.0'
+
+USER root
+RUN npm install -g --unsafe-perm \
+    typescript-language-server \
+    typescript \
+    vscode-langservers-extracted
+
+USER ${NB_UID}
+
+RUN jupyter labextension list && \
+    jupyter server extension list && \
+    jupyter kernelspec list
+
+RUN mkdir -p /home/jovyan/.jupyter && \
+    echo '{ \
+      "AiExtension": { \
+        "default_api_keys": {}, \
+        "default_models": { \
+          "openai-chat": "qwen2.5-0.5b" \
+        }, \
+        "model_parameters": { \
+          "openai-chat:qwen2.5-0.5b": { \
+            "api_base": "http://inference-gateway:8111/llm/v1", \
+            "api_key": "unused" \
+          } \
+        } \
+      } \
+    }' > /home/jovyan/.jupyter/jupyter_jupyter_ai_config.json
+
+RUN mkdir -p /home/jovyan/.jupyter/lab/user-settings/@jupyter-lsp/jupyterlab-lsp && \
+    echo '{ \
+      "continuousHinting": true, \
+      "suppressContinuousHintingInNotebooks": false, \
+      "askServerToSendTraceNotifications": true \
+    }' > /home/jovyan/.jupyter/lab/user-settings/@jupyter-lsp/jupyterlab-lsp/plugin.jupyterlab-settings
+
+RUN mkdir -p /home/jovyan/templates/kotlin-project && \
+    chown -R ${NB_UID}:${NB_GID} /home/jovyan/templates
+
+RUN echo 'plugins {\n\
+    kotlin("jvm") version "2.1.0"\n\
+    application\n\
+}\n\
+\n\
+group = "org.webservices"\n\
+version = "1.0-SNAPSHOT"\n\
+\n\
+repositories {\n\
+    mavenCentral()\n\
+}\n\
+\n\
+dependencies {\n\
+    implementation(kotlin("stdlib"))\n\
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.8.0")\n\
+    testImplementation(kotlin("test"))\n\
+}\n\
+\n\
+tasks.test {\n\
+    useJUnitPlatform()\n\
+}\n\
+\n\
+kotlin {\n\
+    jvmToolchain(17)\n\
+}' > /home/jovyan/templates/kotlin-project/build.gradle.kts
+
+RUN echo 'rootProject.name = "kotlin-project"' > /home/jovyan/templates/kotlin-project/settings.gradle.kts
+
+RUN mkdir -p /home/jovyan/templates/kotlin-project/src/main/kotlin && \
+    echo 'package org.webservices\n\
+\n\
+fun main() {\n\
+    println("Hello from Kotlin!")\n\
+    println("Gradle version: " + System.getProperty("gradle.version", "N/A"))\n\
+    println("Kotlin version: " + KotlinVersion.CURRENT)\n\
+}' > /home/jovyan/templates/kotlin-project/src/main/kotlin/Main.kt
+
+COPY --chmod=755 src/jupyter-notebook/new-kotlin-project.sh /usr/local/bin/new-kotlin-project
+
+RUN echo '{\n\
+ "cells": [\n\
+  {\n\
+   "cell_type": "markdown",\n\
+   "metadata": {},\n\
+   "source": [\n\
+    "# Kotlin Development with Gradle in JupyterLab\\n",\n\
+    "\\n",\n\
+    "This notebook demonstrates how to use Kotlin as a first-class language with full Gradle build tool support.\\n",\n\
+    "\\n",\n\
+    "## Available Tools:\\n",\n\
+    "- **Kotlin 2.1.0** - Latest Kotlin compiler\\n",\n\
+    "- **Gradle 8.12** - Modern build tool\\n",\n\
+    "- **Java 17** - LTS JDK\\n",\n\
+    "- **Kotlin Kernel** - Interactive Kotlin REPL"\n\
+   ]\n\
+  },\n\
+  {\n\
+   "cell_type": "markdown",\n\
+   "metadata": {},\n\
+   "source": [\n\
+    "## 1. Quick Kotlin in Notebook (Kotlin Kernel)\\n",\n\
+    "\\n",\n\
+    "Use the Kotlin kernel for interactive development:"\n\
+   ]\n\
+  },\n\
+  {\n\
+   "cell_type": "code",\n\
+   "execution_count": null,\n\
+   "metadata": {},\n\
+   "outputs": [],\n\
+   "source": [\n\
+    "// This cell uses the Kotlin kernel - switch kernel to Kotlin\\n",\n\
+    "println(\\"Hello from Kotlin!\\")\\n",\n\
+    "println(\\"Kotlin version: ${KotlinVersion.CURRENT}\\")"\n\
+   ]\n\
+  },\n\
+  {\n\
+   "cell_type": "markdown",\n\
+   "metadata": {},\n\
+   "source": [\n\
+    "## 2. Creating Gradle Projects\\n",\n\
+    "\\n",\n\
+    "For serious Kotlin development, use Gradle projects:"\n\
+   ]\n\
+  },\n\
+  {\n\
+   "cell_type": "code",\n\
+   "execution_count": null,\n\
+   "metadata": {},\n\
+   "outputs": [],\n\
+   "source": [\n\
+    "# Create a new Kotlin project with Gradle\\n",\n\
+    "!new-kotlin-project my-awesome-app"\n\
+   ]\n\
+  },\n\
+  {\n\
+   "cell_type": "markdown",\n\
+   "metadata": {},\n\
+   "source": [\n\
+    "## 3. Building with Gradle"\n\
+   ]\n\
+  },\n\
+  {\n\
+   "cell_type": "code",\n\
+   "execution_count": null,\n\
+   "metadata": {},\n\
+   "outputs": [],\n\
+   "source": [\n\
+    "%%bash\\n",\n\
+    "cd my-awesome-app\\n",\n\
+    "gradle build"\n\
+   ]\n\
+  },\n\
+  {\n\
+   "cell_type": "markdown",\n\
+   "metadata": {},\n\
+   "source": [\n\
+    "## 4. Running Kotlin Applications"\n\
+   ]\n\
+  },\n\
+  {\n\
+   "cell_type": "code",\n\
+   "execution_count": null,\n\
+   "metadata": {},\n\
+   "outputs": [],\n\
+   "source": [\n\
+    "%%bash\\n",\n\
+    "cd my-awesome-app\\n",\n\
+    "gradle run"\n\
+   ]\n\
+  },\n\
+  {\n\
+   "cell_type": "markdown",\n\
+   "metadata": {},\n\
+   "source": [\n\
+    "## 5. Gradle Commands\\n",\n\
+    "\\n",\n\
+    "Common Gradle tasks:\\n",\n\
+    "- `gradle build` - Build the project\\n",\n\
+    "- `gradle run` - Run the application\\n",\n\
+    "- `gradle test` - Run tests\\n",\n\
+    "- `gradle clean` - Clean build artifacts\\n",\n\
+    "- `gradle dependencies` - Show dependencies\\n",\n\
+    "- `gradle tasks` - List all available tasks"\n\
+   ]\n\
+  },\n\
+  {\n\
+   "cell_type": "markdown",\n\
+   "metadata": {},\n\
+   "source": [\n\
+    "## 6. Terminal Access\\n",\n\
+    "\\n",\n\
+    "You can also use the terminal:\\n",\n\
+    "- File → New → Terminal\\n",\n\
+    "- Run gradle commands directly\\n",\n\
+    "- Use Git for version control\\n",\n\
+    "\\n",\n\
+    "## 7. AI-Assisted Kotlin Development\\n",\n\
+    "\\n",\n\
+    "Use the AI chat to help with Kotlin code!"\n\
+   ]\n\
+  },\n\
+  {\n\
+   "cell_type": "code",\n\
+   "execution_count": null,\n\
+   "metadata": {},\n\
+   "outputs": [],\n\
+   "source": [\n\
+    "%%ai openai-chat:qwen2.5-0.5b\\n",\n\
+    "Write a Kotlin data class for a User with properties: id, name, email"\n\
+   ]\n\
+  }\n\
+ ],\n\
+ "metadata": {\n\
+  "kernelspec": {\n\
+   "display_name": "Kotlin",\n\
+   "language": "kotlin",\n\
+   "name": "kotlin"\n\
+  },\n\
+  "language_info": {\n\
+   "name": "kotlin",\n\
+   "version": "2.1.0"\n\
+  }\n\
+ },\n\
+ "nbformat": 4,\n\
+ "nbformat_minor": 4\n\
+}' > /home/jovyan/templates/Kotlin_Development_Guide.ipynb
+
+RUN chown -R ${NB_UID}:${NB_GID} /home/jovyan/templates
+
+USER ${NB_UID}
+WORKDIR /home/jovyan
+
+ENV JUPYTER_ENABLE_LAB=yes \
+    JUPYTERLAB_LSP_LOG_LEVEL=DEBUG \
+    GRADLE_USER_HOME=/home/jovyan/.gradle

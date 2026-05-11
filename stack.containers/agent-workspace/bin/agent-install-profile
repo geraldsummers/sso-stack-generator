@@ -1,0 +1,34 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+profiles_dir="${AGENT_TOOLCHAINS_DIR:-/opt/agent-toolchains}/profiles"
+usage() {
+    cat <<USAGE
+Usage: agent-install-profile [--list] <profile> [<profile> ...]
+USAGE
+}
+
+if [ "$#" -eq 0 ]; then
+    usage >&2
+    exit 1
+fi
+
+if [ "$1" = "--list" ]; then
+    exec "${AGENT_TOOLCHAINS_DIR:-/opt/agent-toolchains}/bin/agent-list-profiles"
+fi
+
+for profile in "$@"; do
+    profile_dir="$profiles_dir/$profile"
+    install_script="$profile_dir/install.sh"
+    if [ ! -d "$profile_dir" ]; then
+        echo "Unknown profile: $profile" >&2
+        exit 1
+    fi
+    if [ ! -f "$install_script" ]; then
+        echo "Profile has no installer: $profile" >&2
+        exit 1
+    fi
+    echo "[agent-install-profile] installing $profile"
+    bash "$install_script"
+    agent-sync-profile-state record-install "$profile"
+done

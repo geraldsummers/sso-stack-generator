@@ -1,0 +1,171 @@
+#!/bin/sh
+set -eu
+
+DB_PATH="/data/db.sqlite3"
+ORG_NAME="{{VAULTWARDEN_ORG_NAME}}"
+ORG_IDENTIFIER="{{VAULTWARDEN_ORG_IDENTIFIER}}"
+ORG_UUID="{{VAULTWARDEN_ORG_ID}}"
+if [ -n "${VAULTWARDEN_ORG_IDENTIFIER:-}" ]; then
+  ORG_IDENTIFIER="$VAULTWARDEN_ORG_IDENTIFIER"
+fi
+if [ -n "${VAULTWARDEN_ORG_ID:-}" ]; then
+  ORG_UUID="$VAULTWARDEN_ORG_ID"
+fi
+ADMIN_EMAIL="{{STACK_ADMIN_EMAIL}}"
+PROFILE_SYNC_INTERVAL_SECONDS="${VAULTWARDEN_PROFILE_SYNC_INTERVAL_SECONDS:-2}"
+
+if [ -z "$ORG_IDENTIFIER" ]; then
+  echo "[vaultwarden-maintenance] ORG_IDENTIFIER is empty; skipping org provisioning."
+  ORG_PROVISIONING_DISABLED=1
+else
+  ORG_PROVISIONING_DISABLED=0
+fi
+if [ -z "$ORG_UUID" ]; then
+  echo "[vaultwarden-maintenance] ORG_UUID is empty; refusing nondeterministic org provisioning."
+  exit 1
+fi
+
+echo "[vaultwarden-maintenance] Waiting for DB to be created..."
+for i in $(seq 1 120); do
+  if [ -s "$DB_PATH" ]; then
+    break
+  fi
+  sleep 1
+done
+
+if [ ! -s "$DB_PATH" ]; then
+  echo "[vaultwarden-maintenance] DB not found or empty after wait, exiting."
+  exit 1
+fi
+
+sqlite_retry() {
+  sql="$1"
+  attempts="${2:-30}"
+  delay_s="${3:-1}"
+  i=1
+  while [ "$i" -le "$attempts" ]; do
+    out="$(sqlite3 "$DB_PATH" "$sql" 2>&1)" && {
+      printf '%s\n' "$out"
+      return 0
+    }
+    rc=$?
+    if printf '%s' "$out" | grep -qi "database is locked"; then
+      echo "[vaultwarden-maintenance] sqlite locked (attempt $i/$attempts), retrying..."
+      sleep "$delay_s"
+      i=$((i + 1))
+      continue
+    fi
+    printf '%s\n' "$out" >&2
+    return "$rc"
+  done
+  echo "[vaultwarden-maintenance] sqlite remained locked after $attempts attempts." >&2
+  return 1
+}
+
+sql_escape() {
+  printf '%s' "$1" | sed "s/'/''/g"
+}
+
+ensure_org_invitations() {
+  if [ "$ORG_PROVISIONING_DISABLED" = "1" ]; then
+    return 0
+  fi
+
+  sqlite_retry "SELECT uuid || '|' || email FROM users WHERE email != '' AND verified_at IS NOT NULL;" | while IFS='|' read -r user_uuid user_mail; do
+    [ -n "$user_uuid" ] || continue
+
+    user_uuid_sql="$(sql_escape "$user_uuid")"
+    existing_membership_uuid="$(sqlite_retry "SELECT uuid FROM users_organizations WHERE user_uuid = '$user_uuid_sql' AND org_uuid = '$ORG_UUID_SQL' LIMIT 1;" | head -n1)"
+    if [ -n "$existing_membership_uuid" ]; then
+      continue
+    fi
+
+    membership_uuid="$(cat /proc/sys/kernel/random/uuid)"
+    membership_uuid_sql="$(sql_escape "$membership_uuid")"
+    invited_by_email_sql="$(sql_escape "$ADMIN_EMAIL")"
+
+    echo "[vaultwarden-maintenance] inviting $user_mail to org $ORG_UUID"
+    sqlite_retry "INSERT INTO users_organizations (uuid, user_uuid, org_uuid, access_all, akey, status, atype, reset_password_key, external_id, invited_by_email) VALUES ('$membership_uuid_sql', '$user_uuid_sql', '$ORG_UUID_SQL', 0, '', 0, 2, NULL, NULL, '$invited_by_email_sql');" >/dev/null
+  done
+}
+
+ORG_NAME_SQL="$(sql_escape "$ORG_NAME")"
+ORG_IDENTIFIER_SQL="$(sql_escape "$ORG_IDENTIFIER")"
+ORG_UUID_SQL="$(sql_escape "$ORG_UUID")"
+ADMIN_EMAIL_SQL="$(sql_escape "$ADMIN_EMAIL")"
+
+org_reference_columns() {
+  sqlite_retry "SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%';" | while IFS= read -r table; do
+    [ -n "$table" ] || continue
+    sqlite_retry "PRAGMA table_info(\"$table\");" | awk -F'|' '
+      $2=="org_uuid" || $2=="organization_uuid" || $2=="organizations_uuid" || $2=="provider_org_uuid" { print $2 }
+    ' | while IFS= read -r column; do
+      [ -n "$column" ] || continue
+      printf '%s|%s\n' "$table" "$column"
+    done
+  done
+}
+
+migrate_org_references() {
+  SOURCE_UUID="$1"
+  TARGET_UUID="$2"
+
+  if [ "$SOURCE_UUID" = "$TARGET_UUID" ]; then
+    return 0
+  fi
+
+  SOURCE_UUID_SQL="$(sql_escape "$SOURCE_UUID")"
+  TARGET_UUID_SQL="$(sql_escape "$TARGET_UUID")"
+
+  org_reference_columns | while IFS='|' read -r table column; do
+    sqlite_retry "UPDATE \"$table\" SET \"$column\" = '$TARGET_UUID_SQL' WHERE \"$column\" = '$SOURCE_UUID_SQL';" >/dev/null
+  done
+}
+
+provision_org() {
+  if [ "$ORG_PROVISIONING_DISABLED" = "1" ]; then
+    return 0
+  fi
+
+  # Ensure identifier column exists (vaultwarden may already include it).
+  TABLE_INFO="$(sqlite_retry "PRAGMA table_info(organizations);")"
+  if ! printf '%s\n' "$TABLE_INFO" | awk -F'|' '{print $2}' | grep -qx "identifier"; then
+    echo "[vaultwarden-maintenance] Adding organizations.identifier column."
+    sqlite_retry "ALTER TABLE organizations ADD COLUMN identifier TEXT;" >/dev/null
+  fi
+
+  # Resolve org rows using configured UUID first, then by identifier/name to catch
+  # legacy randomly generated UUIDs from earlier deployments.
+  TARGET_UUID_EXISTS="$(sqlite_retry "SELECT uuid FROM organizations WHERE uuid = '$ORG_UUID_SQL' LIMIT 1;" | head -n1)"
+  LEGACY_UUID="$(sqlite_retry "SELECT uuid FROM organizations WHERE uuid != '$ORG_UUID_SQL' AND (identifier = '$ORG_IDENTIFIER_SQL' OR name = '$ORG_NAME_SQL') LIMIT 1;" | head -n1)"
+
+  if [ -n "$LEGACY_UUID" ] && [ -z "$TARGET_UUID_EXISTS" ]; then
+    LEGACY_UUID_SQL="$(sql_escape "$LEGACY_UUID")"
+    echo "[vaultwarden-maintenance] Migrating org UUID from $LEGACY_UUID to $ORG_UUID."
+    sqlite_retry "INSERT INTO organizations (uuid, name, billing_email, private_key, public_key, identifier) SELECT '$ORG_UUID_SQL', name, billing_email, private_key, public_key, identifier FROM organizations WHERE uuid = '$LEGACY_UUID_SQL';" >/dev/null
+    migrate_org_references "$LEGACY_UUID" "$ORG_UUID"
+    sqlite_retry "DELETE FROM organizations WHERE uuid = '$LEGACY_UUID_SQL';" >/dev/null
+  elif [ -n "$LEGACY_UUID" ]; then
+    LEGACY_UUID_SQL="$(sql_escape "$LEGACY_UUID")"
+    echo "[vaultwarden-maintenance] Merging duplicate org row $LEGACY_UUID into configured UUID $ORG_UUID."
+    migrate_org_references "$LEGACY_UUID" "$ORG_UUID"
+    sqlite_retry "DELETE FROM organizations WHERE uuid = '$LEGACY_UUID_SQL';" >/dev/null
+  elif [ -z "$TARGET_UUID_EXISTS" ]; then
+    echo "[vaultwarden-maintenance] Creating org $ORG_NAME ($ORG_UUID) with identifier $ORG_IDENTIFIER."
+    sqlite_retry "INSERT INTO organizations (uuid, name, billing_email, private_key, public_key, identifier) VALUES ('$ORG_UUID_SQL', '$ORG_NAME_SQL', '$ADMIN_EMAIL_SQL', NULL, NULL, '$ORG_IDENTIFIER_SQL');" >/dev/null
+  fi
+
+  echo "[vaultwarden-maintenance] Synchronizing org $ORG_UUID metadata."
+  sqlite_retry "UPDATE organizations SET name = '$ORG_NAME_SQL', billing_email = '$ADMIN_EMAIL_SQL', identifier = '$ORG_IDENTIFIER_SQL' WHERE uuid = '$ORG_UUID_SQL';" >/dev/null
+
+  echo "[vaultwarden-maintenance] Org provisioning complete."
+}
+
+provision_org
+ensure_org_invitations
+
+echo "[vaultwarden-maintenance] Entering org invitation loop (${PROFILE_SYNC_INTERVAL_SECONDS}s)."
+while true; do
+  ensure_org_invitations || true
+  sleep "$PROFILE_SYNC_INTERVAL_SECONDS"
+done

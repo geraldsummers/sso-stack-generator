@@ -1,0 +1,12 @@
+---
+- datetime:
+    text_size: xl
+    format:
+      timeStyle: short
+      dateStyle: long
+      hour12: false
+
+- search:
+    provider: custom
+    url: https://search.{{DOMAIN}}/?q=
+    target: _blank

@@ -1,0 +1,38 @@
+services:
+  forgejo-runner:
+    build:
+      context: ./stack.containers/forgejo-runner
+      dockerfile: Dockerfile
+    image: webservices/forgejo-runner:3.5.1
+    container_name: forgejo-runner
+    restart: unless-stopped
+    networks:
+      caddy:
+        aliases:
+          - forgejo-runner.${DOMAIN}
+      docker-controller:
+        aliases:
+          - forgejo-runner.${DOMAIN}
+    depends_on:
+      forgejo:
+        condition: service_started
+      docker-vm-controller-proxy:
+        condition: service_started
+    environment:
+      FORGEJO_INSTANCE_URL: http://forgejo:3000
+      FORGEJO_RUNNER_NAME: platform-runner-1
+      FORGEJO_RUNNER_LABELS: ubuntu-latest,ubuntu-22.04,linux
+      DOCKER_HOST: tcp://docker-vm-controller-proxy:2375
+    volumes:
+      - forgejo_runner_data:/data
+      - forgejo_runner_token:/runner-token:ro
+      - ./configs/forgejo-runner:/etc/forgejo-runner:ro
+      - ./configs/forgejo-runner/entrypoint.sh:/entrypoint.sh:ro
+      - ${HOME}/.ssh:/root/.ssh:ro
+    command: ["sh", "/entrypoint.sh"]
+    healthcheck:
+      test: ["CMD-SHELL", "pgrep -f forgejo-runner || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s

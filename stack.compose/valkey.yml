@@ -1,0 +1,41 @@
+services:
+  valkey:
+    image: valkey/valkey:8.1.5
+    container_name: valkey
+    restart: unless-stopped
+    networks:
+      - valkey
+    environment:
+      VALKEY_PASSWORD: ${VALKEY_ADMIN_PASSWORD}
+      VALKEY_SEAFILE_PASSWORD: ${VALKEY_SEAFILE_PASSWORD}
+      VALKEY_MASTODON_PASSWORD: ${VALKEY_MASTODON_PASSWORD}
+    volumes:
+      - redis_data:/data
+      - valkey_acl:/etc/valkey
+    entrypoint:
+      - /bin/sh
+      - -c
+      - |
+        set -e
+        mkdir -p /etc/valkey
+        cat > /etc/valkey/users.acl <<EOF
+        user default on >$$VALKEY_PASSWORD ~* &* +@all
+        user seafile on >$$VALKEY_SEAFILE_PASSWORD ~* &* +@all
+        user mastodon on >$$VALKEY_MASTODON_PASSWORD ~* &* +@all
+        EOF
+        exec valkey-server --appendonly yes --dir /data --databases 16 --aclfile /etc/valkey/users.acl
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - |
+          valkey-cli --user default -a "$$VALKEY_PASSWORD" ping >/dev/null && \
+          valkey-cli --user default -a "$$VALKEY_PASSWORD" --raw INFO persistence | awk -F: '$$1=="loading"{gsub(/\r/, "", $$2); found=1; ready=($$2=="0")} END{exit (found && ready) ? 0 : 1}' && \
+          valkey-cli --user default -a "$$VALKEY_PASSWORD" SET healthcheck:test "$$RANDOM" EX 5 >/dev/null && \
+          valkey-cli --user default -a "$$VALKEY_PASSWORD" GET healthcheck:test >/dev/null && \
+          valkey-cli --user default -a "$$VALKEY_PASSWORD" INFO replication | grep -q role:master
+      interval: 5s
+      timeout: 5s
+      retries: 24
+      start_period: 15s
+volumes:
+  valkey_acl:

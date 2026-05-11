@@ -1,0 +1,163 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+usage() {
+    cat <<USAGE
+Usage: agent-codex-run [--cwd DIR] [--task-file FILE | --task TEXT] [--output-file FILE] [--json-file FILE] [--skip-git-repo-check]
+USAGE
+}
+
+toml_quote() {
+    local value="$1"
+    value=${value//\\/\\\\}
+    value=${value//"/\\"}
+    printf '"%s"' "$value"
+}
+
+cwd="$PWD"
+task_file=""
+task_text=""
+output_file=""
+json_file=""
+skip_git_repo_check=0
+
+while [ "$#" -gt 0 ]; do
+    case "$1" in
+        --cwd)
+            cwd="$2"
+            shift 2
+            ;;
+        --task-file)
+            task_file="$2"
+            shift 2
+            ;;
+        --task)
+            task_text="$2"
+            shift 2
+            ;;
+        --output-file)
+            output_file="$2"
+            shift 2
+            ;;
+        --json-file)
+            json_file="$2"
+            shift 2
+            ;;
+        --skip-git-repo-check)
+            skip_git_repo_check=1
+            shift
+            ;;
+        --help|-h)
+            usage
+            exit 0
+            ;;
+        *)
+            echo "Unknown argument: $1" >&2
+            usage >&2
+            exit 1
+            ;;
+    esac
+done
+
+if [ -n "$task_file" ] && [ -n "$task_text" ]; then
+    echo "Specify either --task-file or --task, not both" >&2
+    exit 1
+fi
+if [ -z "$task_file" ] && [ -z "$task_text" ]; then
+    echo "A task is required" >&2
+    exit 1
+fi
+if [ -n "$task_file" ] && [ ! -f "$task_file" ]; then
+    echo "Task file not found: $task_file" >&2
+    exit 1
+fi
+if [ -z "${CODEX_MODEL:-}" ]; then
+    echo "CODEX_MODEL is required" >&2
+    exit 1
+fi
+
+codex_env_file="${CODEX_ENV_FILE:-$HOME/.config/webservices/codex.env}"
+if [ -f "$codex_env_file" ]; then
+    # shellcheck disable=SC1090
+    . "$codex_env_file"
+fi
+if [ -n "${CODEX_API_KEY:-}" ] && [ -z "${OPENAI_API_KEY:-}" ]; then
+    export OPENAI_API_KEY="$CODEX_API_KEY"
+fi
+
+mkdir -p "$HOME/.codex" "$HOME/state/session-journal" "$HOME/outputs/codex"
+run_stamp="$(date -u +%Y%m%dT%H%M%SZ)"
+log_file="$HOME/state/session-journal/codex-${run_stamp}.log"
+if [ -z "$output_file" ]; then
+    output_file="$HOME/outputs/codex/last-message-${run_stamp}.txt"
+fi
+
+cmd=(codex exec --cd "$cwd" --model "$CODEX_MODEL" --sandbox danger-full-access --config 'approval_policy="never"' --output-last-message "$output_file")
+cmd+=(--disable apps --disable plugins --disable multi_agent --disable tool_suggest)
+if [ -n "${CODEX_BASE_URL:-}" ]; then
+    provider_id="${CODEX_PROVIDER_ID:-local_openai}"
+    provider_name="${CODEX_PROVIDER_NAME:-Local OpenAI Compatible}"
+    cmd+=(--config "model_provider=$(toml_quote "$provider_id")")
+    cmd+=(--config "model_providers.${provider_id}={ name = $(toml_quote "$provider_name"), base_url = $(toml_quote "$CODEX_BASE_URL"), env_key = \"CODEX_API_KEY\", wire_api = \"responses\", supports_websockets = false }")
+fi
+if [ -n "${CODEX_REASONING_EFFORT:-}" ]; then
+    cmd+=(--config "model_reasoning_effort=$(toml_quote "$CODEX_REASONING_EFFORT")")
+fi
+if [ -n "${CODEX_PROFILE:-}" ]; then
+    cmd+=(--profile "$CODEX_PROFILE")
+fi
+if [ "${CODEX_ENABLE_WEB_SEARCH:-0}" = "1" ]; then
+    cmd+=(--search)
+fi
+if [ "$skip_git_repo_check" -eq 1 ] || [ "${CODEX_SKIP_GIT_REPO_CHECK:-0}" = "1" ]; then
+    cmd+=(--skip-git-repo-check)
+fi
+if [ -n "${CODEX_ADD_DIRS:-}" ]; then
+    OLD_IFS="$IFS"
+    IFS=':'
+    for extra_dir in $CODEX_ADD_DIRS; do
+        [ -n "$extra_dir" ] || continue
+        cmd+=(--add-dir "$extra_dir")
+    done
+    IFS="$OLD_IFS"
+fi
+if [ -n "$json_file" ]; then
+    cmd+=(--json)
+fi
+
+if [ -n "$task_file" ]; then
+    task_payload="$(cat "$task_file")"
+else
+    task_payload="$task_text"
+fi
+cmd+=("$task_payload")
+
+{
+    printf '[agent-codex-run] cwd=%s\n' "$cwd"
+    printf '[agent-codex-run] output_file=%s\n' "$output_file"
+    printf '[agent-codex-run] model=%s\n' "$CODEX_MODEL"
+    printf '[agent-codex-run] base_url=%s\n' "${CODEX_BASE_URL:-<default>}"
+    printf '[agent-codex-run] request_id=%s\n' "${CODEX_REQUEST_ID:-<unset>}"
+    printf '[agent-codex-run] command='
+    printf '%q ' "${cmd[@]}"
+    printf '\n'
+} | tee "$log_file"
+
+if [ -n "$json_file" ]; then
+    set +e
+    "${cmd[@]}" \
+        > >(tee "$json_file" | tee -a "$log_file") \
+        2> >(tee -a "$log_file" >&2)
+    exit_code=$?
+    set -e
+else
+    set +e
+    "${cmd[@]}" \
+        > >(tee -a "$log_file") \
+        2> >(tee -a "$log_file" >&2)
+    exit_code=$?
+    set -e
+fi
+
+printf '[agent-codex-run] last_message=%s\n' "$output_file" | tee -a "$log_file"
+exit "$exit_code"

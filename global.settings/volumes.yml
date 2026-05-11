@@ -1,0 +1,74 @@
+volumes:
+
+  alertmanager_data:
+  bookstack_data:
+  element_data:
+  forgejo_data:
+  grafana_data:
+  loki_data:
+  kopia_data:
+  mailserver_data:
+  mariadb_data:
+  onlyoffice_data:
+  onboarding_data:
+  open_webui_data:
+  planka_data:
+  planka_caddy_ca:
+  postgres_data:
+  prometheus_data:
+  redis_data:
+  vaultwarden_data:
+  vaultwarden_caddy_ca:
+  jupyterhub_data:
+  homeassistant_config:
+  homeassistant_data:
+  synapse_data:
+  ntfy_data:
+  couchdb_data:
+  registry_data:
+  isolated_registry_data:
+  forgejo_runner_data:
+  forgejo_runner_token:
+  pipeline_data:
+
+  caddy_config:
+  caddy_certs:
+  caddy_ca:
+  qbittorrent_config:
+
+  caddy_data:
+
+  seafile_files:
+
+
+  qdrant_data:
+    driver: local
+    driver_opts:
+      type: bind
+      o: bind
+      device: ${VECTOR_DB_ROOT}/qdrant
+
+  qbittorrent_data:
+    driver: local
+    driver_opts:
+      type: bind
+      o: bind
+      device: ${QBITTORRENT_DATA_ROOT}
+
+  seafile_media:
+    driver: local
+    driver_opts:
+      type: bind
+      o: bind
+      device: ${SEAFILE_MEDIA_ROOT}
+
+  jellyfin_media:
+    driver: local
+    driver_opts:
+      type: bind
+      o: bind
+      device: ${JELLYFIN_MEDIA_ROOT}
+
+  datafetcher_data:
+  model_context_server_known_hosts:
+  model_context_server_scripts:

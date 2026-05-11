@@ -1,0 +1,443 @@
+#!/usr/bin/env bash
+
+# shellcheck source=scripts/lib/common.sh
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/common.sh"
+# shellcheck source=scripts/lib/site-manifest.sh
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/site-manifest.sh"
+
+if [ -z "${RENDER_VALUES_INITIALIZED:-}" ]; then
+  declare -gA RENDER_VALUES=()
+  declare -g RENDER_VALUES_INITIALIZED=1
+fi
+
+render_context() {
+  printf '%s\n' "${RENDER_CONTEXT:-deploy}"
+}
+
+build_caddy_global_options() {
+  local context="$1"
+  local tls_mode="$2"
+  local storage_line=$'\tstorage file_system /certs'
+
+  case "$tls_mode" in
+    local)
+      printf '%s\n%s\n' "$storage_line" $'\tlocal_certs'
+      ;;
+    acme)
+      printf '%s\n%s\n%s\n' \
+        "$storage_line" \
+        $'\temail {$STACK_ADMIN_EMAIL:admin@example.com}' \
+        $'\tacme_ca https://acme-v02.api.letsencrypt.org/directory'
+      ;;
+    *)
+      die "unsupported Caddy TLS mode '$tls_mode' for render context '$context'"
+      ;;
+  esac
+}
+
+default_shadow_accounts_host_dir() {
+  if [ -n "${XDG_STATE_HOME:-}" ]; then
+    printf '%s\n' "$XDG_STATE_HOME/stack/shadow-accounts"
+  else
+    printf '%s\n' "$HOME/.local/state/stack/shadow-accounts"
+  fi
+}
+
+render_set() {
+  local key="$1"
+  local value="${2-}"
+  render_validate_key "$key"
+  RENDER_VALUES["$key"]="$value"
+}
+
+render_validate_key() {
+  local key="$1"
+  [[ "$key" =~ ^[A-Z_][A-Z0-9_]*$ ]] || die "invalid render key: $key"
+}
+
+render_get() {
+  printf '%s' "${RENDER_VALUES[$1]-}"
+}
+
+render_has() {
+  [[ -n ${RENDER_VALUES[$1]+x} ]]
+}
+
+load_secret_store() {
+  local secret_store="$1"
+  [ -f "$secret_store" ] || die "secret store not found: $secret_store"
+  require_cmd sops
+  require_cmd jq
+
+  while IFS= read -r -d '' key && IFS= read -r -d '' value; do
+    render_set "$key" "$value"
+  done < <(sops --decrypt "$secret_store" | jq -j 'to_entries[] | .key, "\u0000", ((.value // "") | tostring), "\u0000"')
+}
+
+render_envsubst() {
+  local envsubst_keys="$1"
+  shift
+  local keys=("$@")
+  (
+    local key
+    for key in "${keys[@]}"; do
+      render_has "$key" || die "missing template value: $key"
+      export "$key=${RENDER_VALUES[$key]}"
+    done
+    envsubst "$envsubst_keys"
+  )
+}
+
+load_site_values() {
+  local site_config_file="$1"
+  local domain admin_email admin_user vaultwarden_org_id
+
+  domain="$(yaml_get_scalar "$site_config_file" 'runtime.domain')"
+  admin_email="$(yaml_get_scalar "$site_config_file" 'runtime.admin_email')"
+  admin_user="$(yaml_get_scalar "$site_config_file" 'runtime.admin_user')"
+  vaultwarden_org_id="$(yaml_get_scalar "$site_config_file" 'vaultwarden.org_id')"
+
+  [ -n "$domain" ] || die "site config is missing runtime.domain in $site_config_file"
+  [ -n "$admin_email" ] || die "site config is missing runtime.admin_email in $site_config_file"
+  [ -n "$admin_user" ] || die "site config is missing runtime.admin_user in $site_config_file"
+  [ -n "$vaultwarden_org_id" ] || die "site config is missing vaultwarden.org_id in $site_config_file"
+
+  render_set DOMAIN "$domain"
+  render_set MAIL_DOMAIN "$domain"
+  render_set STACK_ADMIN_EMAIL "$admin_email"
+  render_set STACK_ADMIN_USER "$admin_user"
+  render_set VAULTWARDEN_ORG_NAME "$(yaml_get_scalar "$site_config_file" 'vaultwarden.org_name')"
+  render_set VAULTWARDEN_ORG_IDENTIFIER "$(yaml_get_scalar "$site_config_file" 'vaultwarden.org_identifier')"
+  render_set VAULTWARDEN_ORG_ID "$vaultwarden_org_id"
+
+  [ -n "$(render_get VAULTWARDEN_ORG_NAME)" ] || render_set VAULTWARDEN_ORG_NAME "Stack"
+  [ -n "$(render_get VAULTWARDEN_ORG_IDENTIFIER)" ] || render_set VAULTWARDEN_ORG_IDENTIFIER "$domain"
+
+  render_set VECTOR_DB_ROOT "$(normalize_host_path "$(yaml_get_scalar "$site_config_file" 'storage.vector_dbs')")"
+  render_set PG_SSD_ROOT "$(normalize_host_path "$(yaml_get_scalar "$site_config_file" 'storage.pg_ssd_root')")"
+  render_set NOCOW_DB_DIR "$(normalize_host_path "$(yaml_get_scalar "$site_config_file" 'storage.nocow_db_dir')")"
+  render_set QBITTORRENT_DATA_ROOT "$(normalize_host_path "$(yaml_get_scalar "$site_config_file" 'storage.custom.qbittorrent_data')")"
+  render_set SEAFILE_MEDIA_ROOT "$(normalize_host_path "$(yaml_get_scalar "$site_config_file" 'storage.custom.seafile_media')")"
+  render_set JELLYFIN_MEDIA_ROOT "$(normalize_host_path "$(yaml_get_scalar "$site_config_file" 'storage.custom.jellyfin_media')")"
+  render_set MEDIA_WRITER_UID "$(yaml_get_scalar "$site_config_file" 'storage.media_writer_uid')"
+  render_set MEDIA_WRITER_GID "$(yaml_get_scalar "$site_config_file" 'storage.media_writer_gid')"
+
+  [ -n "$(render_get PG_SSD_ROOT)" ] || render_set PG_SSD_ROOT "/mnt/pg_ssd"
+  [ -n "$(render_get NOCOW_DB_DIR)" ] || render_set NOCOW_DB_DIR "/mnt/raid/docker/nocow"
+  [ -n "$(render_get QBITTORRENT_DATA_ROOT)" ] || render_set QBITTORRENT_DATA_ROOT "/mnt/media/qbittorrent"
+  [ -n "$(render_get SEAFILE_MEDIA_ROOT)" ] || render_set SEAFILE_MEDIA_ROOT "/mnt/media/seafile-media"
+  [ -n "$(render_get JELLYFIN_MEDIA_ROOT)" ] || render_set JELLYFIN_MEDIA_ROOT "/mnt/media/jellyfin-media"
+  [ -n "$(render_get MEDIA_WRITER_UID)" ] || render_set MEDIA_WRITER_UID "1000"
+  [ -n "$(render_get MEDIA_WRITER_GID)" ] || render_set MEDIA_WRITER_GID "1000"
+
+  local isolated_docker_vm_host
+  isolated_docker_vm_host="$(yaml_get_scalar "$site_config_file" 'runtime.isolated_docker_vm_host')"
+  if [ -n "$isolated_docker_vm_host" ]; then
+    render_set ISOLATED_DOCKER_VM_HOST "$isolated_docker_vm_host"
+  fi
+
+  local isolated_docker_vm_ssh_dir
+  isolated_docker_vm_ssh_dir="$(yaml_get_scalar "$site_config_file" 'runtime.isolated_docker_vm_ssh_dir')"
+  if [ -n "$isolated_docker_vm_ssh_dir" ]; then
+    render_set ISOLATED_DOCKER_VM_SSH_DIR "$(normalize_host_path "$isolated_docker_vm_ssh_dir")"
+  fi
+
+  local workspace_runtime_public_host
+  workspace_runtime_public_host="$(yaml_get_scalar "$site_config_file" 'runtime.isolated_docker_vm_public_host')"
+  if [ -n "$workspace_runtime_public_host" ]; then
+    render_set WORKSPACE_RUNTIME_PUBLIC_HOST "$workspace_runtime_public_host"
+  elif [ -n "$isolated_docker_vm_host" ]; then
+    render_set WORKSPACE_RUNTIME_PUBLIC_HOST "${isolated_docker_vm_host##*@}"
+  else
+    render_set WORKSPACE_RUNTIME_PUBLIC_HOST "labware.local"
+  fi
+
+  local workspace_runtime_public_address
+  workspace_runtime_public_address="$(yaml_get_scalar "$site_config_file" 'runtime.isolated_docker_vm_public_address')"
+  if [ -z "$workspace_runtime_public_address" ]; then
+    local workspace_runtime_resolved_host
+    workspace_runtime_resolved_host="$(render_get WORKSPACE_RUNTIME_PUBLIC_HOST)"
+    if printf '%s\n' "$workspace_runtime_resolved_host" | grep -Eq '^[0-9]+(\.[0-9]+){3}$'; then
+      workspace_runtime_public_address="$workspace_runtime_resolved_host"
+    elif command -v getent >/dev/null 2>&1; then
+      workspace_runtime_public_address="$(
+        getent ahostsv4 "$workspace_runtime_resolved_host" 2>/dev/null | awk 'NR == 1 { print $1 }'
+      )"
+    fi
+  fi
+  [ -n "$workspace_runtime_public_address" ] || workspace_runtime_public_address="host-gateway"
+  render_set WORKSPACE_RUNTIME_PUBLIC_ADDRESS "$workspace_runtime_public_address"
+
+  render_set WORKSPACE_RUNTIME_SSH_PORT_START "$(yaml_get_scalar "$site_config_file" 'runtime.workspace_runtime_ssh_port_start')"
+  [ -n "$(render_get WORKSPACE_RUNTIME_SSH_PORT_START)" ] || render_set WORKSPACE_RUNTIME_SSH_PORT_START "47000"
+
+  render_set WORKSPACE_RUNTIME_SSH_PORT_END "$(yaml_get_scalar "$site_config_file" 'runtime.workspace_runtime_ssh_port_end')"
+  [ -n "$(render_get WORKSPACE_RUNTIME_SSH_PORT_END)" ] || render_set WORKSPACE_RUNTIME_SSH_PORT_END "47999"
+
+  render_set WORKSPACE_RUNTIME_NOTEBOOK_PORT_START "$(yaml_get_scalar "$site_config_file" 'runtime.workspace_runtime_notebook_port_start')"
+  [ -n "$(render_get WORKSPACE_RUNTIME_NOTEBOOK_PORT_START)" ] || render_set WORKSPACE_RUNTIME_NOTEBOOK_PORT_START "48000"
+
+  render_set WORKSPACE_RUNTIME_NOTEBOOK_PORT_END "$(yaml_get_scalar "$site_config_file" 'runtime.workspace_runtime_notebook_port_end')"
+  [ -n "$(render_get WORKSPACE_RUNTIME_NOTEBOOK_PORT_END)" ] || render_set WORKSPACE_RUNTIME_NOTEBOOK_PORT_END "48999"
+
+  render_set WORKSPACE_LEASE_DAYS "$(yaml_get_scalar "$site_config_file" 'runtime.workspace_lease_days')"
+  [ -n "$(render_get WORKSPACE_LEASE_DAYS)" ] || render_set WORKSPACE_LEASE_DAYS "14"
+
+  render_set WORKSPACE_CERT_TTL "$(yaml_get_scalar "$site_config_file" 'runtime.workspace_cert_ttl')"
+  [ -n "$(render_get WORKSPACE_CERT_TTL)" ] || render_set WORKSPACE_CERT_TTL "12h"
+
+  render_set CADDY_IP "$(yaml_get_scalar "$site_config_file" 'runtime.caddy_ip')"
+  [ -n "$(render_get CADDY_IP)" ] || render_set CADDY_IP "192.168.16.20"
+
+  render_set CADDY_TLS_MODE "$(yaml_get_scalar "$site_config_file" 'runtime.caddy_tls_mode')"
+  [ -n "$(render_get CADDY_TLS_MODE)" ] || render_set CADDY_TLS_MODE "local"
+
+  local matrix_authentication_service_active
+  matrix_authentication_service_active="$(yaml_get_scalar "$site_config_file" 'matrix_authentication_service.active')"
+  if [ -n "$matrix_authentication_service_active" ]; then
+    case "$matrix_authentication_service_active" in
+      true|false)
+        render_set MATRIX_AUTHENTICATION_SERVICE_ACTIVE "$matrix_authentication_service_active"
+        ;;
+      *)
+        die "site config matrix_authentication_service.active must be true or false"
+        ;;
+    esac
+  fi
+}
+
+compute_ssha() {
+  local password="$1"
+  printf '%s' "$password" | python3 -c "
+import base64, hashlib, os, sys
+password = sys.stdin.buffer.read()
+salt = os.urandom(4)
+digest = hashlib.sha1(password + salt).digest() + salt
+print('{SSHA}' + base64.b64encode(digest).decode())
+"
+}
+
+derive_stack_secret() {
+  local label="$1"
+  local length="${2:-48}"
+  local seed=""
+
+  if render_has MODEL_CONTEXT_PROXY_AUTH_SECRET && [ -n "$(render_get MODEL_CONTEXT_PROXY_AUTH_SECRET)" ]; then
+    seed="$(render_get MODEL_CONTEXT_PROXY_AUTH_SECRET)"
+  elif render_has OAUTH2_PROXY_CLIENT_SECRET && [ -n "$(render_get OAUTH2_PROXY_CLIENT_SECRET)" ]; then
+    seed="$(render_get OAUTH2_PROXY_CLIENT_SECRET)"
+  else
+    seed="$(render_get STACK_ADMIN_PASSWORD)"
+  fi
+
+  printf '%s' "$seed:$label:$(render_get DOMAIN)" | sha256sum | awk '{print $1}' | cut -c "1-$length"
+}
+
+build_derived_render_values() {
+  render_set GENERATION_TIMESTAMP "$(iso_timestamp_utc)"
+  render_set BASE_URL "https://$(render_get DOMAIN)"
+  render_set CADDY_GLOBAL_OPTIONS "$(build_caddy_global_options "$(render_context)" "$(render_get CADDY_TLS_MODE)")"
+  if ! render_has SHADOW_ACCOUNTS_HOST_DIR || [ -z "$(render_get SHADOW_ACCOUNTS_HOST_DIR)" ]; then
+    render_set SHADOW_ACCOUNTS_HOST_DIR "$(default_shadow_accounts_host_dir)"
+  fi
+  if render_has ISOLATED_DOCKER_VM_HOST && { ! render_has ISOLATED_DOCKER_VM_SSH_DIR || [ -z "$(render_get ISOLATED_DOCKER_VM_SSH_DIR)" ]; }; then
+    render_set ISOLATED_DOCKER_VM_SSH_DIR "$(normalize_host_path "$HOME/.ssh")"
+  fi
+  render_set SYSTEMD_USER_UID "$(id -u)"
+  render_set SYSTEMD_USER_GID "$(id -g)"
+  render_set SYSTEMD_USER_RUNTIME_DIR "${XDG_RUNTIME_DIR:-/run/user/$(id -u)}"
+  if ! render_has PLAYWRIGHT_IGNORE_HTTPS_ERRORS || [ -z "$(render_get PLAYWRIGHT_IGNORE_HTTPS_ERRORS)" ]; then
+    render_set PLAYWRIGHT_IGNORE_HTTPS_ERRORS "false"
+  fi
+  if ! render_has ADMIN_SSHA_PASSWORD || [ -z "$(render_get ADMIN_SSHA_PASSWORD)" ]; then
+    render_set ADMIN_SSHA_PASSWORD "$(compute_ssha "$(render_get STACK_ADMIN_PASSWORD)")"
+  fi
+  if ! render_has SOGO_DB_PASSWORD || [ -z "$(render_get SOGO_DB_PASSWORD)" ]; then
+    render_set SOGO_DB_PASSWORD "$(derive_stack_secret sogo-db 48)"
+  fi
+  if ! render_has SOGO_OAUTH_SECRET || [ -z "$(render_get SOGO_OAUTH_SECRET)" ]; then
+    render_set SOGO_OAUTH_SECRET "$(derive_stack_secret sogo-oauth 48)"
+  fi
+  if ! render_has JELLYFIN_OIDC_SECRET || [ -z "$(render_get JELLYFIN_OIDC_SECRET)" ]; then
+    render_set JELLYFIN_OIDC_SECRET "$(derive_stack_secret jellyfin-oidc 48)"
+  fi
+  if ! render_has DONETICK_JWT_SECRET || [ -z "$(render_get DONETICK_JWT_SECRET)" ]; then
+    render_set DONETICK_JWT_SECRET "$(derive_stack_secret donetick-jwt 48)"
+  fi
+  if ! render_has DONETICK_OAUTH_SECRET || [ -z "$(render_get DONETICK_OAUTH_SECRET)" ]; then
+    render_set DONETICK_OAUTH_SECRET "$(derive_stack_secret donetick-oauth 48)"
+  fi
+  if ! render_has ERPNEXT_OAUTH_SECRET || [ -z "$(render_get ERPNEXT_OAUTH_SECRET)" ]; then
+    render_set ERPNEXT_OAUTH_SECRET "$(derive_stack_secret erpnext-oauth 48)"
+  fi
+  if ! render_has POSTGRES_MATRIX_AUTHENTICATION_SERVICE_PASSWORD || [ -z "$(render_get POSTGRES_MATRIX_AUTHENTICATION_SERVICE_PASSWORD)" ]; then
+    render_set POSTGRES_MATRIX_AUTHENTICATION_SERVICE_PASSWORD "$(derive_stack_secret matrix-authentication-service-db 48)"
+  fi
+  if ! render_has MATRIX_AUTHENTICATION_SERVICE_ACTIVE || [ -z "$(render_get MATRIX_AUTHENTICATION_SERVICE_ACTIVE)" ]; then
+    render_set MATRIX_AUTHENTICATION_SERVICE_ACTIVE "false"
+  fi
+  if ! render_has MATRIX_AUTHENTICATION_SERVICE_UPSTREAM_PROVIDER_ID || [ -z "$(render_get MATRIX_AUTHENTICATION_SERVICE_UPSTREAM_PROVIDER_ID)" ]; then
+    render_set MATRIX_AUTHENTICATION_SERVICE_UPSTREAM_PROVIDER_ID "01JY9K7VKQ23V93TP9FB9VYQVM"
+  fi
+  if ! render_has MATRIX_AUTHENTICATION_SERVICE_SHARED_SECRET || [ -z "$(render_get MATRIX_AUTHENTICATION_SERVICE_SHARED_SECRET)" ]; then
+    render_set MATRIX_AUTHENTICATION_SERVICE_SHARED_SECRET "$(derive_stack_secret matrix-authentication-service-shared 64)"
+  fi
+  if ! render_has MATRIX_AUTHENTICATION_SERVICE_ENCRYPTION_SECRET || [ -z "$(render_get MATRIX_AUTHENTICATION_SERVICE_ENCRYPTION_SECRET)" ]; then
+    render_set MATRIX_AUTHENTICATION_SERVICE_ENCRYPTION_SECRET "$(derive_stack_secret matrix-authentication-service-encryption 64)"
+  fi
+  if ! render_has MATRIX_AUTHENTICATION_SERVICE_OAUTH_SECRET || [ -z "$(render_get MATRIX_AUTHENTICATION_SERVICE_OAUTH_SECRET)" ]; then
+    render_set MATRIX_AUTHENTICATION_SERVICE_OAUTH_SECRET "$(derive_stack_secret matrix-authentication-service-oauth 48)"
+  fi
+  if [ "$(render_get MATRIX_AUTHENTICATION_SERVICE_ACTIVE)" = "true" ]; then
+    render_set SYNAPSE_LEGACY_SSO_CONFIG ""
+    local domain
+    domain="$(render_get DOMAIN)"
+    render_set MATRIX_CADDY_AUTH_ROUTES "$(cat <<EOF
+	@matrix_client_well_known path /.well-known/matrix/client
+	handle @matrix_client_well_known {
+		header Content-Type application/json
+		header Access-Control-Allow-Origin "*"
+		header Access-Control-Allow-Methods "GET, OPTIONS"
+		header Access-Control-Allow-Headers "X-Requested-With, Content-Type, Authorization"
+		respond "{\"m.homeserver\":{\"base_url\":\"https://matrix.${domain}/\"},\"org.matrix.msc2965.authentication\":{\"issuer\":\"https://matrix-auth.${domain}/\",\"account\":\"https://matrix-auth.${domain}/account\"},\"io.element.e2ee\":{\"default\":true},\"org.matrix.msc4143.rtc_foci\":[{\"type\":\"livekit\",\"livekit_service_url\":\"https://matrix-rtc.${domain}/livekit/jwt\"}]}" 200
+	}
+
+	@matrix_mas_auth_metadata path /_matrix/client/v1/auth_metadata /_matrix/client/unstable/org.matrix.msc2965/auth_metadata
+	handle @matrix_mas_auth_metadata {
+		rewrite * /.well-known/openid-configuration
+		reverse_proxy matrix-authentication-service:8080
+	}
+
+	@matrix_mas_compat path /_matrix/client/v3/login /_matrix/client/v3/login/* /_matrix/client/v3/logout /_matrix/client/v3/refresh /_matrix/client/r0/login /_matrix/client/r0/login/* /_matrix/client/r0/logout /_matrix/client/r0/refresh
+	handle @matrix_mas_compat {
+		reverse_proxy matrix-authentication-service:8080
+	}
+EOF
+)"
+  else
+    local domain matrix_oauth_secret
+    domain="$(render_get DOMAIN)"
+    matrix_oauth_secret="$(render_get MATRIX_OAUTH_SECRET)"
+    render_set MATRIX_CADDY_AUTH_ROUTES "$(cat <<EOF
+	@matrix_client_well_known path /.well-known/matrix/client
+	handle @matrix_client_well_known {
+		header Content-Type application/json
+		header Access-Control-Allow-Origin "*"
+		header Access-Control-Allow-Methods "GET, OPTIONS"
+		header Access-Control-Allow-Headers "X-Requested-With, Content-Type, Authorization"
+		respond "{\"m.homeserver\":{\"base_url\":\"https://matrix.${domain}/\"},\"io.element.e2ee\":{\"default\":true},\"org.matrix.msc4143.rtc_foci\":[{\"type\":\"livekit\",\"livekit_service_url\":\"https://matrix-rtc.${domain}/livekit/jwt\"}]}" 200
+	}
+EOF
+)"
+    render_set SYNAPSE_LEGACY_SSO_CONFIG "$(cat <<EOF
+oidc_providers:
+  - idp_id: keycloak
+    idp_name: "Keycloak SSO"
+    idp_brand: "keycloak"
+    discover: false
+    skip_verification: true
+    issuer: "https://keycloak.${domain}/realms/webservices"
+    client_id: "matrix"
+    client_secret: "${matrix_oauth_secret}"
+    client_auth_method: "client_secret_post"
+    scopes:
+      - "openid"
+      - "profile"
+      - "email"
+    authorization_endpoint: "https://keycloak.${domain}/realms/webservices/protocol/openid-connect/auth"
+    token_endpoint: "http://keycloak:8080/realms/webservices/protocol/openid-connect/token"
+    userinfo_endpoint: "http://keycloak:8080/realms/webservices/protocol/openid-connect/userinfo"
+    user_profile_method: "userinfo_endpoint"
+    jwks_uri: "http://keycloak:8080/realms/webservices/protocol/openid-connect/certs"
+    user_mapping_provider:
+      config:
+        localpart_template: '{{ user.preferred_username|default(user.sub, true)|lower }}'
+        display_name_template: '{{ user.name }}'
+        email_template: '{{ user.email }}'
+    allow_existing_users: true
+    backchannel_logout_enabled: false
+
+sso:
+  client_whitelist:
+    - "https://element.${domain}"
+    - "https://element.${domain}/"
+  update_profile_information: true
+EOF
+)"
+  fi
+}
+
+write_env_file() {
+  local output_path="$1"
+  shift
+  local keys=("$@")
+  if [ "${#keys[@]}" -eq 0 ]; then
+    mapfile -t keys < <(printf '%s\n' "${!RENDER_VALUES[@]}" | sort)
+  fi
+
+  {
+    printf '# Stack Environment Variables\n'
+    printf '# Generated: %s\n' "$(iso_timestamp_utc)"
+    printf '# DO NOT COMMIT THIS FILE\n'
+    printf '# Generated from site manifest SOPS runtime store\n\n'
+
+    local key value
+    for key in "${keys[@]}"; do
+      render_validate_key "$key"
+      render_has "$key" || continue
+      value="${RENDER_VALUES[$key]}"
+      if [[ "$value" == *$'\n'* ]]; then
+        printf '# %s: (multiline value rendered into runtime/configs/)\n' "$key"
+        continue
+      fi
+      value="${value//\$/\$\$}"
+      printf '%s=%s\n' "$key" "$value"
+    done
+  } > "$output_path"
+  chmod 600 "$output_path"
+}
+
+collect_runtime_env_keys() {
+  local runtime_configs_root="$1"
+  shift
+  local search_root
+  {
+    for search_root in "$@"; do
+      if [ -d "$search_root" ]; then
+        find "$search_root" -type f -print0 | xargs -0 -r grep -hoE '\$\{[A-Z_][A-Z0-9_]*([^}]*)\}' || true
+      fi
+    done
+    if [ -d "$runtime_configs_root" ]; then
+      find "$runtime_configs_root" -type f -print0 | xargs -0 -r grep -hoE '\$\{[A-Z_][A-Z0-9_]*([^}]*)\}' || true
+    fi
+  } | sed -E 's/^\$\{([A-Z_][A-Z0-9_]*).*$/\1/' | sort -u
+}
+
+write_build_info() {
+  local build_info_source="$1"
+  local output_path="$2"
+  local source_json site_name domain tls_mode rendered_at rendered_by
+
+  source_json="$(cat "$build_info_source")"
+  site_name="$(render_get SITE_NAME)"
+  domain="$(render_get DOMAIN)"
+  tls_mode="$(render_get CADDY_TLS_MODE)"
+  rendered_at="$(iso_timestamp_utc)"
+  rendered_by="${USER:-unknown}"
+
+  jq \
+    --arg renderedAt "$rendered_at" \
+    --arg renderedBy "$rendered_by" \
+    --arg siteName "$site_name" \
+    --arg domain "$domain" \
+    --arg publicUrl "https://$domain" \
+    --arg tlsMode "$tls_mode" \
+    '. + {
+      renderedAt: $renderedAt,
+      renderedBy: $renderedBy,
+      siteName: $siteName,
+      domain: $domain,
+      publicUrl: $publicUrl,
+      tlsMode: $tlsMode
+    }' < "$build_info_source" > "$output_path"
+}

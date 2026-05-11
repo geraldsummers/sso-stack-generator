@@ -1,0 +1,22 @@
+services:
+  autoheal:
+    image: willfarrell/autoheal@sha256:47d3323895a3a21e507bb4eeba912d0362b4532bb434ff40b3ae200d651aa0a5
+    container_name: autoheal
+    restart: unless-stopped
+    networks:
+      - monitoring
+      - docker-controller
+    depends_on:
+      docker-socket-controller-proxy:
+        condition: service_healthy
+      prometheus:
+        condition: service_started
+      ntfy:
+        condition: service_started
+    environment:
+      DOCKER_SOCK: tcp://docker-socket-controller-proxy:2375
+      AUTOHEAL_CONTAINER_LABEL: "autoheal"
+      AUTOHEAL_INTERVAL: 30
+      AUTOHEAL_START_PERIOD: 0
+      AUTOHEAL_DEFAULT_STOP_TIMEOUT: 10
+      WEBHOOK_URL: "http://ntfy:80/webservices-autoheal"

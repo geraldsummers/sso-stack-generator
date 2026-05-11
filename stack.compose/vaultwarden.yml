@@ -1,0 +1,51 @@
+services:
+  vaultwarden:
+    image: vaultwarden/server@sha256:9a8eec71f4a52411cc43edc7a50f33e9b6f62b5baca0dd95f0c6e7fd60f1a341
+    container_name: vaultwarden
+    restart: unless-stopped
+    networks:
+      caddy:
+      postgres:
+      mailserver:
+    depends_on:
+      caddy:
+        condition: service_started
+      postgres:
+        condition: service_started
+      mailserver:
+        condition: service_started
+    environment:
+      DOMAIN: https://vaultwarden.${DOMAIN}
+      SIGNUPS_ALLOWED: ${VAULTWARDEN_SIGNUPS_ALLOWED:-false}
+      SIGNUPS_VERIFY: ${VAULTWARDEN_SIGNUPS_VERIFY:-true}
+      SIGNUPS_DOMAINS_WHITELIST: ${MAIL_DOMAIN},webservices.test
+      INVITATIONS_ALLOWED: ${VAULTWARDEN_INVITATIONS_ALLOWED:-false}
+      SHOW_PASSWORD_HINT: false
+      SSO_ENABLED: true
+      SSO_ONLY: true
+      SSO_AUTHORITY: https://keycloak.${DOMAIN}/realms/webservices
+      SSO_CLIENT_ID: vaultwarden
+      SSO_CLIENT_SECRET: ${VAULTWARDEN_OAUTH_SECRET}
+      SSO_SCOPES: openid email profile
+      SSO_CALLBACK_PATH: /identity/connect/oidc-signin
+      SSO_SIGNUPS_MATCH_EMAIL: true
+      SSO_ALLOW_UNKNOWN_EMAIL_VERIFICATION: false
+      SMTP_HOST: mail.${DOMAIN}
+      SMTP_FROM: vaultwarden@${MAIL_DOMAIN}
+      SMTP_PORT: 587
+      SMTP_SECURITY: starttls
+      SMTP_USERNAME: vaultwarden@${MAIL_DOMAIN}
+      SMTP_PASSWORD: ${VAULTWARDEN_SMTP_PASSWORD}
+      SSL_CERT_FILE: /ca/caddy-ca.crt
+      CURL_CA_BUNDLE: /ca/caddy-ca.crt
+      ROCKET_TLS_INSECURE_SKIP_VERIFICATION: ${VAULTWARDEN_TLS_INSECURE_SKIP_VERIFY:-false}
+    volumes:
+      - vaultwarden_data:/data
+      - caddy_certs:/certs:ro
+      - caddy_ca:/ca:ro
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:80/alive || exit 1"]
+      interval: 60s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
