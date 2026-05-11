@@ -13,5 +13,5 @@ sed -e "s/\${NTFY_USERNAME}/$NTFY_USERNAME_ESCAPED/g" \
     "$CONFIG_TEMPLATE" > "$CONFIG_OUTPUT"
 echo "[alertmanager-entrypoint] Configuration processed with env vars"
 echo "[alertmanager-entrypoint] NTFY_USERNAME: ${NTFY_USERNAME:-<not set>}"
-echo "[alertmanager-entrypoint] NTFY_PASSWORD: ${NTFY_PASSWORD:+<set>}${NTFY_PASSWORD:-<not set>}"
+echo "[alertmanager-entrypoint] NTFY_PASSWORD: $(if [ -n "$NTFY_PASSWORD" ]; then printf '<set>'; else printf '<not set>'; fi)"
 exec /bin/alertmanager --config.file="$CONFIG_OUTPUT" "$@"

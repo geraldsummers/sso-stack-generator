@@ -313,6 +313,5 @@ ensure_confidential_client "matrix" "Matrix Synapse" "${MATRIX_OAUTH_SECRET:-}" 
 ensure_confidential_client "matrix-authentication-service" "Matrix Authentication Service" "${MATRIX_AUTHENTICATION_SERVICE_OAUTH_SECRET:-}" "[\"https://matrix-auth.$DOMAIN/upstream/callback/${MATRIX_AUTHENTICATION_SERVICE_UPSTREAM_PROVIDER_ID:-01JY9K7VKQ23V93TP9FB9VYQVM}\"]" "[\"https://matrix-auth.$DOMAIN\",\"https://matrix.$DOMAIN\",\"https://element.$DOMAIN\"]"
 ensure_confidential_client "planka" "Planka" "${PLANKA_OAUTH_SECRET:-}" "[\"https://planka.$DOMAIN/oidc-callback\"]" "[\"https://planka.$DOMAIN\"]"
 ensure_confidential_client "vaultwarden" "Vaultwarden" "${VAULTWARDEN_OAUTH_SECRET:-}" "[\"https://vaultwarden.$DOMAIN/identity/connect/oidc-signin\"]" "[\"https://vaultwarden.$DOMAIN\"]" "S256"
-ensure_hardcoded_claim_mapper "vaultwarden" "vaultwarden-email-verified" "email_verified" "true" "boolean"
 
 echo "[keycloak-configure] runtime Keycloak clients are ready"

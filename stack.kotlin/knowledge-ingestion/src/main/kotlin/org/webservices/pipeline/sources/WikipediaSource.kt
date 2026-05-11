@@ -91,7 +91,7 @@ class WikipediaSource(
             }
 
             reader.use { br ->
-                val xmlFactory = XMLInputFactory.newInstance()
+                val xmlFactory = hardenedXmlInputFactory()
                 val xmlReader = xmlFactory.createXMLStreamReader(br)
 
                 var currentTitle = ""

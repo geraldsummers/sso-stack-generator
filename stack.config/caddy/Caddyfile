@@ -433,6 +433,15 @@ matrix.{$DOMAIN} {
 		respond 404
 	}
 
+	@matrix_client_well_known path /.well-known/matrix/client
+	handle @matrix_client_well_known {
+		header Content-Type application/json
+		header Access-Control-Allow-Origin "*"
+		header Access-Control-Allow-Methods "GET, OPTIONS"
+		header Access-Control-Allow-Headers "X-Requested-With, Content-Type, Authorization"
+		respond "{\"m.homeserver\":{\"base_url\":\"https://matrix.{$DOMAIN}/\"},\"io.element.e2ee\":{\"default\":true},\"org.matrix.msc4143.rtc_foci\":[{\"type\":\"livekit\",\"livekit_service_url\":\"https://matrix-rtc.{$DOMAIN}/livekit/jwt\"}]}" 200
+	}
+
 	handle {
 		reverse_proxy synapse:8008
 	}

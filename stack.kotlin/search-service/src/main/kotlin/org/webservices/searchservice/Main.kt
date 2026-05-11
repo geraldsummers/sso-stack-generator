@@ -34,6 +34,23 @@ private fun isValidCollectionName(collection: String): Boolean =
 private fun isValidDocumentId(documentId: String): Boolean =
     documentId.length <= 512 && documentId.none { it.isISOControl() }
 
+private fun internalToken(): String? =
+    System.getenv("SEARCH_SERVICE_INTERNAL_TOKEN")?.takeIf { it.isNotBlank() }
+
+private suspend fun ApplicationCall.requireInternalToken(configuredToken: String?): Boolean {
+    if (configuredToken == null) {
+        respond(HttpStatusCode.ServiceUnavailable, mapOf("error" to "search service internal token is not configured"))
+        return false
+    }
+    val provided = request.headers["X-Internal-Token"]
+        ?: request.headers[HttpHeaders.Authorization]?.removePrefix("Bearer ")?.trim()
+    if (provided != configuredToken) {
+        respond(HttpStatusCode.Unauthorized, mapOf("error" to "unauthorized"))
+        return false
+    }
+    return true
+}
+
 /**
  * Search Gateway Service - Unified hybrid search entry point for the webservices stack.
  *
@@ -211,7 +228,7 @@ fun validateSearchRequest(request: SearchRequest): SearchError.ValidationError? 
  *
  * @param gateway The SearchGateway instance that handles Qdrant, PostgreSQL, and Embedding Service integration
  */
-fun Application.configureServer(gateway: SearchGateway) {
+fun Application.configureServer(gateway: SearchGateway, configuredInternalToken: String? = internalToken()) {
     install(ContentNegotiation) {
         json(Json {
             prettyPrint = true
@@ -240,6 +257,7 @@ fun Application.configureServer(gateway: SearchGateway) {
         }
 
         get("/tools") {
+            if (!call.requireInternalToken(configuredInternalToken)) return@get
             call.respond(
                 buildJsonObject {
                     put("service", "search-service")
@@ -286,6 +304,7 @@ fun Application.configureServer(gateway: SearchGateway) {
         }
 
         get("/documents/{id}") {
+            if (!call.requireInternalToken(configuredInternalToken)) return@get
             val documentId = call.parameters["id"]?.trim().orEmpty()
             if (documentId.isBlank()) {
                 call.respond(HttpStatusCode.BadRequest, mapOf("error" to "document id is required"))
@@ -322,6 +341,7 @@ fun Application.configureServer(gateway: SearchGateway) {
         }
 
         post("/search") {
+            if (!call.requireInternalToken(configuredInternalToken)) return@post
             val request = try {
                 requestJson.decodeFromString<SearchRequest>(call.receiveText())
             } catch (e: SerializationException) {
@@ -430,6 +450,7 @@ fun Application.configureServer(gateway: SearchGateway) {
         }
 
         get("/collections") {
+            if (!call.requireInternalToken(configuredInternalToken)) return@get
             try {
                 val collections = gateway.getCollections()
                 call.respond(mapOf("collections" to collections))

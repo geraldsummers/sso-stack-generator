@@ -56,7 +56,7 @@ class MediaWikiXmlDumpParser(
     }
 
     private fun parseXmlDump(inputStream: InputStream): Sequence<WikiPage> = sequence {
-        val factory = XMLInputFactory.newInstance()
+        val factory = hardenedXmlInputFactory()
         val reader = factory.createXMLStreamReader(inputStream)
 
         var currentPage: PageBuilder? = null
@@ -66,15 +66,15 @@ class MediaWikiXmlDumpParser(
         try {
             while (reader.hasNext()) {
                 when (reader.next()) {
-                    XMLStreamReader.START_ELEMENT -> {
-                        currentElement = reader.localName
-                        when (currentElement) {
-                            "page" -> currentPage = PageBuilder()
-                            "revision" -> currentRevision = RevisionBuilder()
-                        }
-                    }
+	                    XMLStreamReader.START_ELEMENT -> {
+	                        currentElement = reader.localName
+	                        when (currentElement) {
+	                            "page" -> currentPage = PageBuilder()
+	                            "revision" -> currentRevision = RevisionBuilder()
+	                        }
+	                    }
 
-                    XMLStreamReader.CHARACTERS -> {
+	                    XMLStreamReader.CHARACTERS -> {
                         val text = reader.text
                         when (currentElement) {
                             "title" -> currentPage?.title = text
@@ -173,3 +173,10 @@ class MediaWikiXmlDumpParser(
         var text: String? = null
     )
 }
+
+internal fun hardenedXmlInputFactory(): XMLInputFactory =
+    XMLInputFactory.newInstance().apply {
+        setProperty(XMLInputFactory.SUPPORT_DTD, false)
+        setProperty("javax.xml.stream.isSupportingExternalEntities", false)
+        setProperty(XMLInputFactory.IS_REPLACING_ENTITY_REFERENCES, false)
+    }

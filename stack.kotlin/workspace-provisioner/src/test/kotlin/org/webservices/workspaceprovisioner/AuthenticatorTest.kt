@@ -29,6 +29,7 @@ class AuthenticatorTest {
         oidcPublicUrl = "https://keycloak.example.test/realms/webservices",
         publicBaseUrl = "https://workspaces.example.test",
         searchServiceBaseUrl = "http://search-service:8098",
+        searchServiceToken = "search-token",
         trustedProxySecret = "proxy-secret",
         agentTokenSecret = "test-agent-secret",
         agentTokenTtlSeconds = 86_400L,

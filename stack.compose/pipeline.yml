@@ -145,9 +145,12 @@ services:
       - postgres
       - mariadb
       - internet
+      - caddy
     depends_on:
       postgres-ssd-bootstrap:
         condition: service_completed_successfully
+      bookstack:
+        condition: service_healthy
     environment:
       BOOKSTACK_ENABLED: "true"
       BOOKSTACK_URL: "http://bookstack:80"

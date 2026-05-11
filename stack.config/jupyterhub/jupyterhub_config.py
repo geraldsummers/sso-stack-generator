@@ -166,15 +166,12 @@ async def ensure_singleuser_volume_permissions(spawner):
 
 c.Spawner.pre_spawn_hook = ensure_singleuser_volume_permissions
 
-openai_api_key = os.environ.get('OPENAI_API_KEY', 'unused')
-
 c.Spawner.environment = {
     'OPENAI_API_BASE': os.environ.get('OPENAI_API_BASE', 'https://api.openai.com/v1'),
-    'OPENAI_API_KEY': openai_api_key,
     'POSTGRES_HOST': os.environ.get('POSTGRES_HOST', 'postgres'),
     'POSTGRES_PORT': os.environ.get('POSTGRES_PORT', '5432'),
     'POSTGRES_DB': os.environ.get('POSTGRES_DB', 'webservices'),
-    'POSTGRES_USER': os.environ.get('POSTGRES_USER', 'pipeline_user'),
+    'POSTGRES_USER': os.environ.get('POSTGRES_USER', ''),
     'POSTGRES_PASSWORD': os.environ.get('POSTGRES_PASSWORD', ''),
 }
 

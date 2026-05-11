@@ -92,7 +92,7 @@ if [ -z "$output_file" ]; then
     output_file="$HOME/outputs/codex/last-message-${run_stamp}.txt"
 fi
 
-cmd=(codex exec --cd "$cwd" --model "$CODEX_MODEL" --sandbox danger-full-access --config 'approval_policy="never"' --output-last-message "$output_file")
+cmd=(codex exec --cd "$cwd" --model "$CODEX_MODEL" --sandbox workspace-write --config 'approval_policy="never"' --output-last-message "$output_file")
 cmd+=(--disable apps --disable plugins --disable multi_agent --disable tool_suggest)
 if [ -n "${CODEX_BASE_URL:-}" ]; then
     provider_id="${CODEX_PROVIDER_ID:-local_openai}"

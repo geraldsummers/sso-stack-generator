@@ -24,7 +24,7 @@ class HomeAssistantAuthConfigTest {
         assertFalse(configuration.contains("${retiredDirectoryId}_"))
         assertFalse(compose.contains(retiredDirectoryEnvPrefix))
         assertFalse(compose.contains("$retiredDirectoryId:"))
-        assertFalse(compose.contains("HOMEASSISTANT_TRUSTED_NETWORKS"))
+        assertTrue(compose.contains("TRUSTED_PROXY_NETWORKS: \${CADDY_IP}/32"))
     }
 
     @Test
@@ -37,7 +37,8 @@ class HomeAssistantAuthConfigTest {
         assertTrue(provider.contains("trusted_remote_user_header"))
         assertTrue(provider.contains("async_validate_trusted_header_login"))
         assertTrue(provider.contains("@AUTH_PROVIDERS.register(\"trusted_networks\")"))
-        assertTrue(provider.contains("TRUSTED_PROXY_NETWORKS = [ip_network(\"172.16.0.0/12\")]"))
+        assertTrue(provider.contains("os.getenv(\"TRUSTED_PROXY_NETWORKS\", \"192.168.16.20/32\")"))
+        assertFalse(provider.contains("172.16.0.0/12"))
         assertTrue(provider.contains("if \"user\" in flow_result:"))
         assertTrue(provider.contains("await self.store.async_link_user(selected_user, credential)"))
         assertTrue(provider.contains("user is not None and user.is_active"))

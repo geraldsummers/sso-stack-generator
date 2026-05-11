@@ -50,7 +50,7 @@ fun main() {
     runtime.ensureWorkspaceImage()
     runtime.ensureNotebookImage()
     println("[workspace-provisioner] workspace runtime images ready")
-    val knowledgeGateway = WorkspaceKnowledgeGateway(config.searchServiceBaseUrl, httpClient)
+    val knowledgeGateway = WorkspaceKnowledgeGateway(config.searchServiceBaseUrl, config.searchServiceToken, httpClient)
     val service = WorkspaceProvisionerService(config, store, runtime, sshCa, knowledgeGateway)
     val authenticator = Authenticator(config, httpClient)
     service.start()

@@ -163,12 +163,6 @@
   "excludedServices": [
     "jupyter-notebook-build"
   ],
-  "onDemandServices": [
-    "embedding-gpu",
-    "knowledge-ingestion",
-    "embedding-worker",
-    "search-service",
-    "content-publisher"
-  ],
+  "onDemandServices": [],
   "onDemandDomains": []
 }

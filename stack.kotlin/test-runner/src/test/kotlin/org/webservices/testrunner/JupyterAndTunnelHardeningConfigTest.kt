@@ -47,6 +47,20 @@ class JupyterAndTunnelHardeningConfigTest {
         assertTrue(entrypoint.contains("ssh ${'$'}{SSH_ARGS} \"${'$'}{ISOLATED_DOCKER_VM_HOST}\""))
     }
 
+    @Test
+    fun `jupyterhub does not inject shared production secrets into user notebooks`() {
+        val compose = repoFileText("stack.compose/jupyterhub.yml")
+        val config = repoFileText("stack.config/jupyterhub/jupyterhub_config.py")
+        val startup = repoFileText("stack.containers/jupyter-notebook/startup-config.sh")
+
+        assertFalse(compose.contains("OPENAI_API_KEY:"))
+        assertFalse(compose.contains("POSTGRES_PASSWORD: ${'$'}{POSTGRES_PIPELINE_PASSWORD}"))
+        assertFalse(config.contains("'OPENAI_API_KEY':"))
+        assertFalse(config.contains("'POSTGRES_USER': os.environ.get('POSTGRES_USER', 'pipeline_user')"))
+        assertFalse(startup.contains("'OPENAI_API_KEY':"))
+        assertFalse(startup.contains("print(env_path.read_text()"))
+    }
+
     private fun repoFileText(relativePath: String): String =
         Files.readString(repoRoot().resolve(relativePath))
 

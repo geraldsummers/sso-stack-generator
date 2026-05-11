@@ -47,13 +47,8 @@ subprojects {
     }
 }
 
-val rootTestProjects = listOf(
-    "model-context-server",
-    "search-service"
-).filter { findProject(":$it") != null }
-
 tasks.register("test") {
-    dependsOn(rootTestProjects.map { ":$it:test" })
+    dependsOn(subprojects.map { it.tasks.named("test") })
 }
 
 tasks.register("coverageAll") {

@@ -31,7 +31,11 @@ _LOGGER = logging.getLogger(__name__)
 CONF_TRUSTED_REMOTE_USER_HEADER = "trusted_remote_user_header"
 CONF_TRUSTED_REMOTE_NAME_HEADER = "trusted_remote_name_header"
 CONF_TRUSTED_REMOTE_EMAIL_HEADER = "trusted_remote_email_header"
-TRUSTED_PROXY_NETWORKS = [ip_network("172.16.0.0/12")]
+TRUSTED_PROXY_NETWORKS = [
+    ip_network(value.strip())
+    for value in os.getenv("TRUSTED_PROXY_NETWORKS", "192.168.16.20/32").split(",")
+    if value.strip()
+]
 USERNAME_PATTERN = re.compile(r"^[a-z0-9][a-z0-9._-]{0,63}$")
 
 CONFIG_SCHEMA = AUTH_PROVIDER_SCHEMA.extend(

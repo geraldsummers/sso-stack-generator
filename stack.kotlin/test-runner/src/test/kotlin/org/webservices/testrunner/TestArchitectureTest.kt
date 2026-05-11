@@ -232,6 +232,7 @@ class TestArchitectureTest {
         val searchService = Files.readString(repoRoot.resolve("stack.compose/search-service.yml"))
         val bookstack = Files.readString(repoRoot.resolve("stack.compose/bookstack.yml"))
         val caddyfile = Files.readString(repoRoot.resolve("stack.config/caddy/Caddyfile"))
+        val graph = Files.readString(repoRoot.resolve("stack.systemd/graph.json"))
 
         assertTrue(embedding.contains("image: webservices/embedding-bge:local-build"))
         assertTrue(embedding.contains("BAAI/bge-m3"))
@@ -252,7 +253,9 @@ class TestArchitectureTest {
         assertFalse(caddyfile.contains("open-webui.{\$DOMAIN}"))
         assertFalse(caddyfile.contains("reverse_proxy inference-gateway:8111"))
         assertFalse(searchService.contains("embedding-gpu:\n        condition: service_healthy"))
+        assertTrue(pipeline.contains("embedding-worker:"))
         assertFalse(pipeline.contains("inference-gateway"))
+        assertTrue(graph.contains(""""onDemandServices": []"""))
     }
 
     private fun repoRoot(): Path {

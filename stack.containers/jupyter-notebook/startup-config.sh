@@ -20,16 +20,14 @@ lab_theme_settings.mkdir(parents=True, exist_ok=True)
 )
 (lab_theme_settings / 'themes.jupyterlab-settings').chmod(0o600)
 
-openai_api_key = os.getenv('OPENAI_API_KEY', 'unused')
-
 (jupyter_config_dir / 'jupyter_jupyter_ai_config.json').write_text(
     json.dumps(
         {
             'AiExtension': {
                 'model_parameters': {
                     'openai-chat:qwen2.5-0.5b': {
-                        'api_base': 'http://inference-gateway:8111/llm/v1',
-                        'api_key': openai_api_key,
+                        'api_base': os.getenv('OPENAI_API_BASE', 'https://api.openai.com/v1'),
+                        'api_key': os.getenv('OPENAI_API_KEY', 'unused'),
                     }
                 }
             }
@@ -41,8 +39,7 @@ openai_api_key = os.getenv('OPENAI_API_KEY', 'unused')
 (jupyter_config_dir / 'jupyter_jupyter_ai_config.json').chmod(0o600)
 
 env_values = {
-    'OPENAI_API_BASE': 'http://inference-gateway:8111/llm/v1',
-    'OPENAI_API_KEY': openai_api_key,
+    'OPENAI_API_BASE': os.getenv('OPENAI_API_BASE', 'https://api.openai.com/v1'),
     'VLLM_API_BASE': 'http://vllm:8000/v1',
     'VLLM_API_KEY': 'unused',
     'DEFAULT_LLM_MODEL': 'qwen2.5-0.5b',
@@ -51,7 +48,7 @@ env_values = {
     'POSTGRES_HOST': os.getenv('POSTGRES_HOST', 'postgres'),
     'POSTGRES_PORT': os.getenv('POSTGRES_PORT', '5432'),
     'POSTGRES_DB': os.getenv('POSTGRES_DB', 'webservices'),
-    'POSTGRES_USER': os.getenv('POSTGRES_USER', 'pipeline_user'),
+    'POSTGRES_USER': os.getenv('POSTGRES_USER', ''),
     'POSTGRES_PASSWORD': os.getenv('POSTGRES_PASSWORD', ''),
 }
 env_file = home_dir / '.env'
@@ -93,7 +90,7 @@ write_notebook(
             '# Platform Notebook Bootstrap\n\n'
             'This notebook image belongs to `webservices`, so it only seeds generic platform workflows.\n\n'
             'Included defaults:\n'
-            '- inference-gateway / vLLM client configuration\n'
+            '- optional OpenAI-compatible client configuration\n'
             '- optional PostgreSQL access for generic operational queries\n'
             '- no downstream domain-specific helpers\n'
         ),
@@ -102,12 +99,16 @@ write_notebook(
             'from pathlib import Path\n\n'
             'env_path = Path.home() / ".env"\n'
             'print(f"Notebook env file: {env_path}")\n'
-            'print(env_path.read_text() if env_path.exists() else "No .env file found")\n'
+            'if env_path.exists():\n'
+            '    keys = [line.split("=", 1)[0] for line in env_path.read_text().splitlines() if "=" in line]\n'
+            '    print("Configured keys:", ", ".join(keys))\n'
+            'else:\n'
+            '    print("No .env file found")\n'
         ),
         code_cell(
             'import os\n'
             'from openai import OpenAI\n\n'
-            'client = OpenAI(base_url=os.getenv("OPENAI_API_BASE", "http://inference-gateway:8111/llm/v1"), api_key=os.getenv("OPENAI_API_KEY", "unused"))\n'
+            'client = OpenAI(base_url=os.getenv("OPENAI_API_BASE", "https://api.openai.com/v1"), api_key=os.getenv("OPENAI_API_KEY", "unused"))\n'
             'response = client.chat.completions.create(\n'
             '    model=os.getenv("DEFAULT_LLM_MODEL", "qwen2.5-0.5b"),\n'
             '    messages=[{"role": "user", "content": "Return exactly: platform notebook ready"}],\n'

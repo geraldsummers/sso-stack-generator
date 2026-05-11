@@ -28,12 +28,11 @@ services:
       JUPYTER_NOTEBOOK_GID: "100"
       DOCKER_HOST: tcp://docker-socket-controller-proxy:2375
       JUPYTERHUB_ALLOWED_REMOTE_GROUPS: ${JUPYTERHUB_ALLOWED_REMOTE_GROUPS:-users,admins}
-      OPENAI_API_KEY: ${OPENAI_API_KEY:-unused}
       POSTGRES_HOST: postgres-ssd
       POSTGRES_PORT: "5432"
       POSTGRES_DB: webservices
-      POSTGRES_USER: ${POSTGRES_PIPELINE_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PIPELINE_PASSWORD}
+      POSTGRES_USER: ${JUPYTERHUB_POSTGRES_USER:-}
+      POSTGRES_PASSWORD: ${JUPYTERHUB_POSTGRES_PASSWORD:-}
     volumes:
       - jupyterhub_data:/srv/jupyterhub
       - ./configs/jupyterhub/jupyterhub_config.py:/config/jupyterhub_config.py:ro

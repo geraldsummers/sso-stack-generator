@@ -2,6 +2,7 @@ package org.webservices.workspaceprovisioner
 
 import io.ktor.client.HttpClient
 import io.ktor.client.request.get
+import io.ktor.client.request.header
 import io.ktor.client.request.parameter
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
@@ -26,10 +27,12 @@ data class JsonProxyResponse(
 
 class WorkspaceKnowledgeGateway(
     private val baseUrl: String,
+    private val token: String?,
     private val httpClient: HttpClient
 ) {
     suspend fun search(request: WorkspaceKnowledgeSearchRequest): JsonProxyResponse {
         val response = httpClient.post("$baseUrl/search") {
+            token?.let { header("X-Internal-Token", it) }
             contentType(ContentType.Application.Json)
             setBody(request)
         }
@@ -38,6 +41,7 @@ class WorkspaceKnowledgeGateway(
 
     suspend fun document(documentId: String, collection: String?): JsonProxyResponse {
         val response = httpClient.get("$baseUrl/documents/$documentId") {
+            token?.let { header("X-Internal-Token", it) }
             if (!collection.isNullOrBlank()) {
                 parameter("collection", collection)
             }

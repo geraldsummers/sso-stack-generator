@@ -7,7 +7,7 @@
   SOGoLanguage = "${SOGO_LANGUAGE}";
   SOGoMemcachedHost = "${SOGO_MEMCACHED_HOST}";
   SOGoTrustProxyAuthentication = NO;
-  SOGoXSRFValidationEnabled = NO;
+  SOGoXSRFValidationEnabled = YES;
   OCSOpenIdURL = "mysql://${SOGO_DB_USER}:${SOGO_DB_PASSWORD}@${SOGO_DB_HOST}:${SOGO_DB_PORT}/${SOGO_DB_NAME}/sogo_openid";
   SOGoOpenIdConfigUrl = "${SOGO_OPENID_CONFIG_URL}";
   SOGoOpenIdClient = "${SOGO_OPENID_CLIENT}";

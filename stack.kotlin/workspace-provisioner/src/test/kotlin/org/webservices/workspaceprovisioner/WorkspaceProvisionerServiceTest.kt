@@ -219,6 +219,7 @@ class WorkspaceProvisionerServiceTest {
             oidcPublicUrl = "https://keycloak.example.test/realms/webservices",
             publicBaseUrl = "https://workspaces.example.test",
             searchServiceBaseUrl = "http://search-service:8098",
+        searchServiceToken = "search-token",
             trustedProxySecret = "test-secret",
             agentTokenSecret = "test-agent-secret",
             agentTokenTtlSeconds = 86_400L,

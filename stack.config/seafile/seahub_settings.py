@@ -18,7 +18,7 @@ REMOTE_USER_CREATE_UNKNOWN_USER = True
 REMOTE_USER_PROTECTED_PATH = ['/accounts/login/']
 
 ENABLE_ONLYOFFICE = True
-VERIFY_ONLYOFFICE_CERTIFICATE = False
+VERIFY_ONLYOFFICE_CERTIFICATE = True
 ONLYOFFICE_APIJS_URL = 'https://onlyoffice.{{DOMAIN}}/web-apps/apps/api/documents/api.js'
 ONLYOFFICE_FILE_EXTENSION = ('doc', 'docx', 'ppt', 'pptx', 'xls', 'xlsx', 'odt', 'fodt', 'odp', 'fodp', 'ods', 'fods', 'csv', 'ppsx', 'pps')
 ONLYOFFICE_EDIT_FILE_EXTENSION = ('docx', 'pptx', 'xlsx')

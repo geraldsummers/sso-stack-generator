@@ -27,7 +27,8 @@ class VaultwardenSsoEntryConfigTest {
         assertTrue(compose.contains("SSO_SCOPES: openid email profile"))
         assertTrue(compose.contains("SSO_SIGNUPS_MATCH_EMAIL: true"))
         assertTrue(compose.contains("SSO_ALLOW_UNKNOWN_EMAIL_VERIFICATION: false"))
-        assertTrue(keycloakConfigure.contains("ensure_hardcoded_claim_mapper \"vaultwarden\" \"vaultwarden-email-verified\" \"email_verified\" \"true\" \"boolean\""))
+        assertFalse(keycloakConfigure.contains("vaultwarden-email-verified"))
+        assertFalse(keycloakConfigure.contains("\"email_verified\" \"true\""))
     }
 
     @Test

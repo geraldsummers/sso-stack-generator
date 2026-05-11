@@ -26,11 +26,16 @@ class RssSource(
             try {
                 logger.info { "Fetching RSS feed: $feedUrl" }
                 val feedInput = SyndFeedInput().apply {
-                    isAllowDoctypes = true  
+                    isAllowDoctypes = false
                 }
 
-                
-                val feed = URI(feedUrl).toURL().openStream().use { stream ->
+                val uri = URI(feedUrl)
+                require(uri.scheme == "https" || uri.scheme == "http") { "RSS feed URL must use http or https" }
+                val connection = uri.toURL().openConnection().apply {
+                    connectTimeout = 10_000
+                    readTimeout = 30_000
+                }
+                val feed = connection.getInputStream().use { stream ->
                     XmlReader(stream).use { reader ->
                         feedsFetched.incrementAndGet()
                         feedInput.build(reader)

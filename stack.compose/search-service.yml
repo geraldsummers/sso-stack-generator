@@ -21,6 +21,7 @@ services:
         condition: service_started
     environment:
       SEARCH_SERVICE_PORT: 8098
+      SEARCH_SERVICE_INTERNAL_TOKEN: ${MODEL_CONTEXT_PROXY_AUTH_SECRET:?MODEL_CONTEXT_PROXY_AUTH_SECRET is required}
       QDRANT_URL: qdrant:6334
       QDRANT_HTTP_URL: http://qdrant:6333
       QDRANT_API_KEY: ${QDRANT_ADMIN_API_KEY}

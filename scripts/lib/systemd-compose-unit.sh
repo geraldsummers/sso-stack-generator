@@ -441,10 +441,10 @@ job_run() {
   [ -n "$SERVICE_NAME" ] || die "--service-name is required for job-run"
   printf '[webservices-unit] compose build/run oneshot %s via %s\n' "$SERVICE_NAME" "$COMPOSE_FILE" >&2
   compose rm -f -s "$SERVICE_NAME" >/dev/null 2>&1 || true
-  rc=0
-  if ! compose up --build --force-recreate --abort-on-container-exit --exit-code-from "$SERVICE_NAME" "$SERVICE_NAME"; then
-    rc=$?
-  fi
+  set +e
+  compose up --build --force-recreate --abort-on-container-exit --exit-code-from "$SERVICE_NAME" "$SERVICE_NAME"
+  rc=$?
+  set -e
   exit "$rc"
 }
 

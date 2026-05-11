@@ -12,6 +12,7 @@ data class WorkspaceProvisionerConfig(
     val oidcPublicUrl: String,
     val publicBaseUrl: String,
     val searchServiceBaseUrl: String,
+    val searchServiceToken: String?,
     val trustedProxySecret: String?,
     val agentTokenSecret: String,
     val agentTokenTtlSeconds: Long,
@@ -52,6 +53,7 @@ fun loadConfig(): WorkspaceProvisionerConfig = WorkspaceProvisionerConfig(
     searchServiceBaseUrl = validateSearchServiceBaseUrl(
         env("WORKSPACE_PROVISIONER_SEARCH_SERVICE_BASE_URL", "http://search-service:8098")
     ),
+    searchServiceToken = System.getenv("WORKSPACE_PROVISIONER_SEARCH_SERVICE_TOKEN")?.takeIf { it.isNotBlank() },
     trustedProxySecret = System.getenv("WORKSPACE_PROVISIONER_TRUSTED_PROXY_SECRET")?.takeIf { it.isNotBlank() },
     agentTokenSecret = envRequired("WORKSPACE_PROVISIONER_AGENT_TOKEN_SECRET"),
     agentTokenTtlSeconds = envLong("WORKSPACE_PROVISIONER_AGENT_TOKEN_TTL_SECONDS", 86_400L),
