@@ -78,9 +78,9 @@ suspend fun TestRunner.recoveryTests() = suite("Recovery Drill Tests") {
             image="$(docker inspect "${'$'}source" --format '{{.Config.Image}}')"
             docker exec "${'$'}source" sh -lc '
               set -eu
-              mariadb -uroot -p"${'$'}MYSQL_ROOT_PASSWORD" -e "CREATE DATABASE IF NOT EXISTS recovery_drill"
-              mariadb -uroot -p"${'$'}MYSQL_ROOT_PASSWORD" recovery_drill -e "CREATE TABLE IF NOT EXISTS sentinel (id INT PRIMARY KEY, value VARCHAR(128) NOT NULL)"
-              mariadb -uroot -p"${'$'}MYSQL_ROOT_PASSWORD" recovery_drill -e "REPLACE INTO sentinel (id, value) VALUES (1, '\''mariadb-recovery-ok'\'')"
+              mariadb --protocol=TCP -h 127.0.0.1 -uroot -p"${'$'}MYSQL_ROOT_PASSWORD" -e "CREATE DATABASE IF NOT EXISTS recovery_drill"
+              mariadb --protocol=TCP -h 127.0.0.1 -uroot -p"${'$'}MYSQL_ROOT_PASSWORD" recovery_drill -e "CREATE TABLE IF NOT EXISTS sentinel (id INT PRIMARY KEY, value VARCHAR(128) NOT NULL)"
+              mariadb --protocol=TCP -h 127.0.0.1 -uroot -p"${'$'}MYSQL_ROOT_PASSWORD" recovery_drill -e "REPLACE INTO sentinel (id, value) VALUES (1, '\''mariadb-recovery-ok'\'')"
             '
             docker volume create "${'$'}volume" >/dev/null
             docker run -d \
@@ -92,14 +92,14 @@ suspend fun TestRunner.recoveryTests() = suite("Recovery Drill Tests") {
               -v "${'$'}volume:/var/lib/mysql" \
               "${'$'}image" >/dev/null
             for i in $(seq 1 120); do
-              docker exec "${'$'}target" mariadb -uroot -precovery -e 'SELECT 1' >/dev/null 2>&1 && break
+              docker exec "${'$'}target" mariadb --protocol=TCP -h 127.0.0.1 -uroot -precovery -e 'SELECT 1' >/dev/null 2>&1 && break
               sleep 1
             done
-            docker exec "${'$'}target" mariadb -uroot -precovery -e 'SELECT 1' >/dev/null
-            docker exec "${'$'}target" mariadb -uroot -precovery -e 'CREATE DATABASE recovery_drill'
-            docker exec "${'$'}source" sh -lc 'mariadb-dump -uroot -p"${'$'}MYSQL_ROOT_PASSWORD" --single-transaction --routines --events --triggers recovery_drill' |
-              docker exec -i "${'$'}target" mariadb -uroot -precovery recovery_drill
-            restored="$(docker exec "${'$'}target" mariadb -N -uroot -precovery recovery_drill -e 'SELECT value FROM sentinel WHERE id = 1')"
+            docker exec "${'$'}target" mariadb --protocol=TCP -h 127.0.0.1 -uroot -precovery -e 'SELECT 1' >/dev/null
+            docker exec "${'$'}target" mariadb --protocol=TCP -h 127.0.0.1 -uroot -precovery -e 'CREATE DATABASE recovery_drill'
+            docker exec "${'$'}source" sh -lc 'mariadb-dump --protocol=TCP -h 127.0.0.1 -uroot -p"${'$'}MYSQL_ROOT_PASSWORD" --single-transaction --routines --events --triggers recovery_drill' |
+              docker exec -i "${'$'}target" mariadb --protocol=TCP -h 127.0.0.1 -uroot -precovery recovery_drill
+            restored="$(docker exec "${'$'}target" mariadb --protocol=TCP -h 127.0.0.1 -N -uroot -precovery recovery_drill -e 'SELECT value FROM sentinel WHERE id = 1')"
             test "${'$'}restored" = mariadb-recovery-ok
         """.trimIndent()
         runRecoveryShell(script)
