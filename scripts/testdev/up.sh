@@ -13,14 +13,12 @@ testdev_require_docker
 testdev_require_local_docker_context
 testdev_require_virtualized_host
 
-if [ ! -f "$deploy_root/runtime/stack.env" ]; then
-  echo "[testdev] rendering runtime material"
-  SKIP_COMPOSE_VALIDATE=1 COMPOSE_PROJECT_NAME="$project_name" \
-    "$bundle_root/scripts/deploy/render-runtime.sh" \
-      --bundle-root "$bundle_root" \
-      --deploy-root "$deploy_root" \
-      --site-manifest "$bundle_root/site/manifest.json"
-fi
+echo "[testdev] rendering runtime material"
+SKIP_COMPOSE_VALIDATE=1 COMPOSE_PROJECT_NAME="$project_name" \
+  "$bundle_root/scripts/deploy/render-runtime.sh" \
+    --bundle-root "$bundle_root" \
+    --deploy-root "$deploy_root" \
+    --site-manifest "$bundle_root/site/manifest.json"
 
 testdev_ensure_dind
 testdev_seed_host_images

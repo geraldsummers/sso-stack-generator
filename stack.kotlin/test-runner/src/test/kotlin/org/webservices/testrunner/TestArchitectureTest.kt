@@ -114,6 +114,8 @@ class TestArchitectureTest {
         assertFalse(commonText.contains("TESTDEV_ALLOW_NON_VM_HOST"))
         assertTrue(upText.contains("testdev_require_local_docker_context"))
         assertTrue(upText.contains("testdev_pull_workspace_base_images"))
+        assertTrue(upText.contains("[testdev] rendering runtime material"))
+        assertFalse(upText.contains("if [ ! -f \"\$deploy_root/runtime/stack.env\" ]"))
         assertTrue(verifyText.contains("testdev_require_local_docker_context"))
         assertTrue(downText.contains("testdev_require_local_docker_context"))
         assertTrue(downText.contains("testdev_require_virtualized_host"))
