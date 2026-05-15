@@ -25,6 +25,7 @@ fi
 testdev_ensure_dind
 testdev_seed_host_images
 testdev_copy_bundle_to_volume
+testdev_pull_workspace_base_images
 
 echo "[testdev] starting compose project $project_name inside $(testdev_dind_name)"
 testdev_run_cli sh -lc '

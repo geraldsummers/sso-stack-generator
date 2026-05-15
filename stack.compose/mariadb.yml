@@ -22,8 +22,7 @@ services:
       test:
         - CMD-SHELL
         - |
-          healthcheck.sh --connect --innodb_initialized && \
-          mariadb -u root -p"$$MYSQL_ROOT_PASSWORD" -e "SELECT 1" >/dev/null
+          mariadb --protocol=TCP -h 127.0.0.1 -u root -p"$$MYSQL_ROOT_PASSWORD" -e "SELECT 1" >/dev/null
       interval: 60s
       timeout: 10s
       retries: 20

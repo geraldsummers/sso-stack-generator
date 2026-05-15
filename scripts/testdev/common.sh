@@ -215,6 +215,27 @@ PY
   echo "[testdev] seeded $seeded host image(s) into $dind_name"
 }
 
+testdev_pull_workspace_base_images() {
+  [ "${TESTDEV_PULL_WORKSPACE_BASE_IMAGES:-1}" = "1" ] || return 0
+
+  testdev_run_cli sh -lc '
+    set -eu
+    cd /workspace-home/deploy/bundle
+    sed -n "s/^FROM[[:space:]][[:space:]]*\([^[:space:]][^[:space:]]*\).*/\1/p" \
+      stack.containers/agent-workspace/Dockerfile \
+      stack.containers/agent-workspace-notebook/Dockerfile 2>/dev/null |
+      sort -u |
+      while IFS= read -r image_ref; do
+        [ -n "$image_ref" ] || continue
+        case "$image_ref" in
+          scratch|*\$*) continue ;;
+        esac
+        echo "[testdev] pre-pulling workspace base image: $image_ref"
+        docker pull "$image_ref" >/dev/null
+      done
+  '
+}
+
 testdev_run_cli() {
   local network_name volume_name dind_name docker_config_dir
   local -a command_args docker_config_args
