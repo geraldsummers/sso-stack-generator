@@ -116,7 +116,8 @@ EOF_VERIFY
 #!/usr/bin/env bash
 set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
-exec "$SCRIPT_DIR/testdev-verify.sh" "$@"
+export DIST_DIR="$SCRIPT_DIR/build"
+exec "$SCRIPT_DIR/build/stack.containers/test-runner/run-tests.sh" "$@"
 EOF_RUN_TESTS
 else
   cat > "$DIST_DIR/deploy.sh" <<'EOF_DEPLOY'

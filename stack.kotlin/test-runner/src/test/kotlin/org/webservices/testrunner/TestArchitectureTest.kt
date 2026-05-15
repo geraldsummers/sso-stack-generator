@@ -122,6 +122,7 @@ class TestArchitectureTest {
         assertTrue(readmeText.contains("latium: runs the real stack deployment"))
         assertTrue(buildText.contains("exec \"\$SCRIPT_DIR/testdev-verify.sh\" \"\$@\""))
         assertTrue(buildText.contains("export DIST_DIR=\"\$SCRIPT_DIR/build\""))
+        assertTrue(buildText.contains("exec \"\$SCRIPT_DIR/build/stack.containers/test-runner/run-tests.sh\" \"\$@\""))
     }
 
     @Test
