@@ -162,6 +162,14 @@ class TestArchitectureTest {
     }
 
     @Test
+    fun `mariadb supports internal bootstrap root connections`() {
+        val mariadbText = Files.readString(repoRoot().resolve("stack.compose/mariadb.yml"))
+
+        assertTrue(mariadbText.contains("MARIADB_ROOT_HOST: \"%\""))
+        assertTrue(mariadbText.contains("MARIADB_ROOT_PASSWORD: \${MARIADB_ADMIN_PASSWORD}"))
+    }
+
+    @Test
     fun `shipped deploy script is bundle local and renders runtime in user tmpfs`() {
         val text = Files.readString(repoRoot().resolve("scripts/deploy.sh"))
         val buildText = Files.readString(repoRoot().resolve("build.sh"))
