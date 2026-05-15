@@ -352,6 +352,31 @@ run_seahub_migrations() {
   "$SEAHUB_SCRIPT" python-env python3 "$SEAHUB_MANAGE_PY" migrate --noinput
 }
 
+reconcile_admin_user() {
+  ensure_shared_links
+  log "Reconciling Seafile admin user"
+  "$SEAHUB_SCRIPT" python-env python3 "$SEAHUB_MANAGE_PY" shell <<'PY'
+import os
+
+from seahub.base.accounts import User
+from seahub.profile.models import Profile
+
+admin_email = os.environ["INIT_SEAFILE_ADMIN_EMAIL"].strip().lower()
+admin_password = os.environ["INIT_SEAFILE_ADMIN_PASSWORD"]
+
+profile = Profile.objects.filter(contact_email=admin_email).first()
+if profile is None:
+    user = User.objects.create_superuser(admin_email, admin_password)
+else:
+    user = User.objects.get(email=profile.user)
+
+user.set_password(admin_password)
+user.is_staff = True
+user.is_active = True
+user.save()
+PY
+}
+
 bootstrap_fresh_state() {
   log "Bootstrapping fresh Seafile state via upstream init"
   (
@@ -383,6 +408,7 @@ adopt_complete_unmarked_state_if_present() {
   log "Found complete Seafile state without init marker; adopting it"
   sync_overlay_into_settings
   run_seahub_migrations
+  reconcile_admin_user
   verify_database_schema
   touch "$MARKER_FILE"
   log "Seafile state adoption complete"
@@ -440,6 +466,7 @@ ensure_initialized_state() {
     if required_paths_are_complete && database_schema_is_complete; then
       sync_overlay_into_settings
       run_seahub_migrations
+      reconcile_admin_user
       verify_database_schema
       log "Seafile state validation complete"
       return 0
@@ -457,6 +484,7 @@ ensure_initialized_state() {
   verify_required_paths
   sync_overlay_into_settings
   run_seahub_migrations
+  reconcile_admin_user
   verify_database_schema
   touch "$MARKER_FILE"
   log "Seafile initialization complete"

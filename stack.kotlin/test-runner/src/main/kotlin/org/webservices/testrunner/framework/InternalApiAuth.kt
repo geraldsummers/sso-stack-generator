@@ -6,6 +6,7 @@ import io.ktor.http.HttpHeaders
 
 private val internalApiToken: String? by lazy {
     sequenceOf(
+        "SEARCH_SERVICE_INTERNAL_TOKEN",
         "INFERENCE_CONTROLLER_API_TOKEN",
         "INFERENCE_GATEWAY_INTERNAL_API_TOKEN",
         "GPU_ARBITER_API_TOKEN",

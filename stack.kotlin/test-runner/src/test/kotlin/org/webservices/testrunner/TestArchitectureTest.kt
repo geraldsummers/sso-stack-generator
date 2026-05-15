@@ -108,6 +108,7 @@ class TestArchitectureTest {
         assertTrue(commonText.contains("TESTDEV_PULL_WORKSPACE_BASE_IMAGES:-1"))
         assertTrue(commonText.contains("build/stack.containers/agent-workspace/Dockerfile"))
         assertTrue(commonText.contains("docker pull \"\$image_ref\""))
+        assertTrue(Files.readString(repoRoot.resolve("stack.kotlin/test-runner/src/main/kotlin/org/webservices/testrunner/framework/InternalApiAuth.kt")).contains("SEARCH_SERVICE_INTERNAL_TOKEN"))
         assertTrue(commonText.contains("I_UNDERSTAND_THIS_TOUCHES_LOCAL_DOCKER"))
         assertTrue(commonText.contains("Refusing because DOCKER_HOST is set"))
         assertFalse(commonText.contains("TESTDEV_ALLOW_NON_VM_HOST"))
