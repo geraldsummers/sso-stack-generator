@@ -168,6 +168,17 @@ load_site_values() {
   [ -n "$workspace_runtime_public_address" ] || workspace_runtime_public_address="host-gateway"
   render_set WORKSPACE_RUNTIME_PUBLIC_ADDRESS "$workspace_runtime_public_address"
 
+  local workspace_runtime_http_bind_address
+  workspace_runtime_http_bind_address="$(yaml_get_scalar "$site_config_file" 'runtime.workspace_runtime_http_bind_address')"
+  if [ -z "$workspace_runtime_http_bind_address" ]; then
+    if printf '%s\n' "$workspace_runtime_public_address" | grep -Eq '^[0-9]+(\.[0-9]+){3}$'; then
+      workspace_runtime_http_bind_address="$workspace_runtime_public_address"
+    else
+      workspace_runtime_http_bind_address="127.0.0.1"
+    fi
+  fi
+  render_set WORKSPACE_RUNTIME_HTTP_BIND_ADDRESS "$workspace_runtime_http_bind_address"
+
   render_set WORKSPACE_RUNTIME_SSH_PORT_START "$(yaml_get_scalar "$site_config_file" 'runtime.workspace_runtime_ssh_port_start')"
   [ -n "$(render_get WORKSPACE_RUNTIME_SSH_PORT_START)" ] || render_set WORKSPACE_RUNTIME_SSH_PORT_START "47000"
 
@@ -266,6 +277,33 @@ build_derived_render_values() {
   fi
   if ! render_has DONETICK_OAUTH_SECRET || [ -z "$(render_get DONETICK_OAUTH_SECRET)" ]; then
     render_set DONETICK_OAUTH_SECRET "$(derive_stack_secret donetick-oauth 48)"
+  fi
+  if ! render_has WORKSPACE_PROXY_AUTH_SECRET || [ -z "$(render_get WORKSPACE_PROXY_AUTH_SECRET)" ]; then
+    render_set WORKSPACE_PROXY_AUTH_SECRET "$(derive_stack_secret workspace-proxy-auth 64)"
+  fi
+  if ! render_has SEARCH_SERVICE_INTERNAL_TOKEN || [ -z "$(render_get SEARCH_SERVICE_INTERNAL_TOKEN)" ]; then
+    render_set SEARCH_SERVICE_INTERNAL_TOKEN "$(derive_stack_secret search-service-internal 64)"
+  fi
+  if ! render_has WORKSPACE_AGENT_TOKEN_SECRET || [ -z "$(render_get WORKSPACE_AGENT_TOKEN_SECRET)" ]; then
+    render_set WORKSPACE_AGENT_TOKEN_SECRET "$(derive_stack_secret workspace-agent-token 64)"
+  fi
+  if ! render_has CHATGPT_CONNECTOR_TRUSTED_PROXY_SECRET || [ -z "$(render_get CHATGPT_CONNECTOR_TRUSTED_PROXY_SECRET)" ]; then
+    render_set CHATGPT_CONNECTOR_TRUSTED_PROXY_SECRET "$(derive_stack_secret chatgpt-connector-trusted-proxy 64)"
+  fi
+  if ! render_has ONBOARDING_TRUSTED_PROXY_SECRET || [ -z "$(render_get ONBOARDING_TRUSTED_PROXY_SECRET)" ]; then
+    render_set ONBOARDING_TRUSTED_PROXY_SECRET "$(derive_stack_secret onboarding-trusted-proxy 64)"
+  fi
+  if ! render_has BOOKSTACK_INTERNAL_API_TOKEN || [ -z "$(render_get BOOKSTACK_INTERNAL_API_TOKEN)" ]; then
+    render_set BOOKSTACK_INTERNAL_API_TOKEN "$(derive_stack_secret bookstack-internal-api 64)"
+  fi
+  if ! render_has INFERENCE_CONTROLLER_API_TOKEN || [ -z "$(render_get INFERENCE_CONTROLLER_API_TOKEN)" ]; then
+    render_set INFERENCE_CONTROLLER_API_TOKEN "$(derive_stack_secret inference-controller-api 64)"
+  fi
+  if ! render_has INFERENCE_GATEWAY_INTERNAL_API_TOKEN || [ -z "$(render_get INFERENCE_GATEWAY_INTERNAL_API_TOKEN)" ]; then
+    render_set INFERENCE_GATEWAY_INTERNAL_API_TOKEN "$(derive_stack_secret inference-gateway-internal 64)"
+  fi
+  if ! render_has GPU_ARBITER_API_TOKEN || [ -z "$(render_get GPU_ARBITER_API_TOKEN)" ]; then
+    render_set GPU_ARBITER_API_TOKEN "$(derive_stack_secret gpu-arbiter-api 64)"
   fi
   if ! render_has ERPNEXT_OAUTH_SECRET || [ -z "$(render_get ERPNEXT_OAUTH_SECRET)" ]; then
     render_set ERPNEXT_OAUTH_SECRET "$(derive_stack_secret erpnext-oauth 48)"

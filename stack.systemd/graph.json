@@ -19,6 +19,7 @@
       "description": "Core platform services, edge, identity, and stateful backends",
       "services": [
         "caddy",
+        "docker-socket-lifecycle-proxy",
         "docker-socket-controller-proxy",
         "docker-socket-proxy",
         "docker-vm-controller-proxy",

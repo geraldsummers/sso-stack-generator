@@ -964,7 +964,7 @@ private data class WorkspaceProvisionerAuth(
         }
 
         require(!trustedProxySecret.isNullOrBlank()) {
-            "workspace-provisioner API tests require MODEL_CONTEXT_BEARER_TOKEN or MODEL_CONTEXT_PROXY_AUTH_SECRET"
+            "workspace-provisioner API tests require MODEL_CONTEXT_BEARER_TOKEN or WORKSPACE_PROXY_AUTH_SECRET"
         }
         builder.header("X-Trusted-Proxy-Secret", trustedProxySecret)
         builder.header("Remote-User", user.username)
@@ -978,9 +978,9 @@ private suspend fun TestRunner.workspaceProvisionerAuth(user: TestUser): Workspa
         return WorkspaceProvisionerAuth(user = user, bearerToken = token)
     }
 
-    val trustedProxySecret = System.getenv("MODEL_CONTEXT_PROXY_AUTH_SECRET")
+    val trustedProxySecret = System.getenv("WORKSPACE_PROXY_AUTH_SECRET")
         ?.takeIf { it.isNotBlank() }
-        ?: System.getenv("WORKSPACE_PROXY_AUTH_SECRET")?.takeIf { it.isNotBlank() }
+        ?: System.getenv("MODEL_CONTEXT_PROXY_AUTH_SECRET")?.takeIf { it.isNotBlank() }
 
     return WorkspaceProvisionerAuth(user = user, trustedProxySecret = trustedProxySecret)
 }

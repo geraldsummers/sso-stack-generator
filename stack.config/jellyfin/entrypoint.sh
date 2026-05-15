@@ -45,6 +45,19 @@ install_sso_plugin() {
     fi
 }
 
+jellyfin_permissions_table_ready() {
+    local database="$1"
+
+    [ -s "$database" ] || return 1
+
+    if ! command -v sqlite3 >/dev/null 2>&1; then
+        echo "sqlite3 is unavailable; cannot inspect Jellyfin permissions schema" >&2
+        return 1
+    fi
+
+    [ "$(sqlite3 "$database" "SELECT count(*) FROM sqlite_master WHERE type = 'table' AND name = 'Permissions';")" = "1" ]
+}
+
 mark_startup_wizard_completed() {
     local system_config="/config/config/system.xml"
 
@@ -61,12 +74,12 @@ promote_configured_admin_users() {
     local database="/config/data/jellyfin.db"
     local admin_users="${JELLYFIN_ADMIN_USERS:-${STACK_ADMIN_USER:-}}"
 
-    if [ -z "$admin_users" ] || [ ! -s "$database" ]; then
+    if [ -z "$admin_users" ]; then
         return 0
     fi
 
-    if ! command -v sqlite3 >/dev/null 2>&1; then
-        echo "sqlite3 is unavailable; cannot reconcile Jellyfin admin users" >&2
+    if ! jellyfin_permissions_table_ready "$database"; then
+        echo "Jellyfin permissions schema is not ready yet; skipping admin reconciliation"
         return 0
     fi
 
@@ -99,12 +112,8 @@ configure_playback_policy() {
     local enable_remuxing="${JELLYFIN_ENABLE_PLAYBACK_REMUXING:-false}"
     local remuxing_value="0"
 
-    if [ ! -s "$database" ]; then
-        return 0
-    fi
-
-    if ! command -v sqlite3 >/dev/null 2>&1; then
-        echo "sqlite3 is unavailable; cannot reconcile Jellyfin playback policy" >&2
+    if ! jellyfin_permissions_table_ready "$database"; then
+        echo "Jellyfin permissions schema is not ready yet; skipping playback policy reconciliation"
         return 0
     fi
 

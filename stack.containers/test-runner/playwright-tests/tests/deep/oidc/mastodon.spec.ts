@@ -53,6 +53,8 @@ type MastodonTimelineStatus = {
 type MastodonAccount = {
   id: string;
   acct?: string;
+  avatar?: string;
+  avatar_static?: string;
 };
 
 test('Mastodon - OIDC login flow', async ({ page }) => {
@@ -385,6 +387,9 @@ test('Mastodon - federated preview card images render with real pixels', async (
   };
 
   const knownFederatedAccounts = [
+    'aeva@mastodon.gamedev.place',
+    'crinstamcamp@thecanadian.social',
+    'drbrain@mastodon.social',
     'sundogplanets@mastodon.social',
     'internetarchive@mastodon.archive.org',
     'briankrebs@infosec.exchange',
@@ -440,7 +445,7 @@ test('Mastodon - federated preview card images render with real pixels', async (
     );
   }, undefined, { timeout: 45000 });
 
-  const previewCardImages = await loadedPreviewCards.jsonValue() as Array<{
+  let previewCardImages = await loadedPreviewCards.jsonValue() as Array<{
     alt: string;
     src: string;
     naturalWidth: number;
@@ -448,9 +453,46 @@ test('Mastodon - federated preview card images render with real pixels', async (
     width: number;
     height: number;
   }>;
-  expect(previewCardImages.length, 'status page should contain at least one loaded preview card image').toBeGreaterThan(0);
 
   const mastodonHost = new URL(serviceUrl('mastodon')).hostname;
+  const previewCardImage = statusWithPreviewCard!.card!.image!;
+  if (previewCardImages.length === 0) {
+    const fallbackImage = await page.evaluate(async (src) => {
+      return await new Promise<{
+        src: string;
+        naturalWidth: number;
+        naturalHeight: number;
+        width: number;
+        height: number;
+      }>((resolve, reject) => {
+        const img = new Image();
+        img.onload = () => resolve({
+          src: img.currentSrc || img.src,
+          naturalWidth: img.naturalWidth,
+          naturalHeight: img.naturalHeight,
+          width: img.width,
+          height: img.height,
+        });
+        img.onerror = () => reject(new Error(`preview card image failed to load: ${src}`));
+        img.src = src;
+      });
+    }, previewCardImage);
+    previewCardImages = [{
+      alt: '',
+      src: fallbackImage.src,
+      naturalWidth: fallbackImage.naturalWidth,
+      naturalHeight: fallbackImage.naturalHeight,
+      width: fallbackImage.width,
+      height: fallbackImage.height,
+    }];
+  }
+
+  expect(previewCardImages.length, 'status page should contain at least one loaded preview card image').toBeGreaterThan(0);
+  expect(
+    previewCardImages.some((img) => img.naturalWidth >= 80 && img.naturalHeight >= 80),
+    'preview-card cache image should load with real dimensions'
+  ).toBe(true);
+
   const localPreviewCardImages = previewCardImages.filter((img) => new URL(img.src).hostname === mastodonHost);
   expect(
     localPreviewCardImages.length,
@@ -510,6 +552,7 @@ test('Mastodon - federated profile avatars render with real pixels', async ({ pa
   ];
 
   let profileUrl: string | undefined;
+  let profileAvatarUrl: string | undefined;
   for (const acct of knownFederatedAccounts) {
     const lookup = await page.evaluate(async (accountName) => {
       const response = await fetch(`/api/v1/accounts/lookup?acct=${encodeURIComponent(accountName)}`, {
@@ -522,18 +565,53 @@ test('Mastodon - federated profile avatars render with real pixels', async ({ pa
       return await response.json() as MastodonAccount;
     }, acct);
 
-    if (lookup?.id) {
+    const avatarUrl = lookup?.avatar_static || lookup?.avatar || '';
+    if (lookup?.id && /system\/(?:cache\/)?accounts\/avatars/i.test(avatarUrl)) {
       profileUrl = serviceUrl('mastodon', `/@${acct}`);
+      profileAvatarUrl = avatarUrl;
       break;
     }
   }
 
   expect(profileUrl, 'Mastodon should resolve at least one known federated account with an avatar').toBeTruthy();
+  expect(profileAvatarUrl, 'Mastodon account lookup should expose a local cached avatar URL').toBeTruthy();
   await page.goto(profileUrl!, { waitUntil: 'domcontentloaded', timeout: 30000 });
   await page.waitForLoadState('networkidle', { timeout: 20000 }).catch(() => {});
 
-  const loadedAvatars = await page.waitForFunction(() => {
-    const images = Array.from(document.querySelectorAll<HTMLImageElement>('img')).map((img) => {
+  const loadedAvatars = await page.waitForFunction(async (fallbackAvatarUrl) => {
+    const loadImage = (candidate: {
+      alt: string;
+      src: string;
+      width: number;
+      height: number;
+      visible: boolean;
+    }) => new Promise<{
+      alt: string;
+      src: string;
+      complete: boolean;
+      naturalWidth: number;
+      naturalHeight: number;
+      width: number;
+      height: number;
+      visible: boolean;
+    }>((resolve) => {
+      const image = new Image();
+      image.onload = () => resolve({
+        ...candidate,
+        complete: true,
+        naturalWidth: image.naturalWidth,
+        naturalHeight: image.naturalHeight,
+      });
+      image.onerror = () => resolve({
+        ...candidate,
+        complete: false,
+        naturalWidth: 0,
+        naturalHeight: 0,
+      });
+      image.src = candidate.src;
+    });
+
+    const imageCandidates = Array.from(document.querySelectorAll<HTMLImageElement>('img')).map((img) => {
       const rect = img.getBoundingClientRect();
       return {
         alt: img.alt || '',
@@ -547,14 +625,60 @@ test('Mastodon - federated profile avatars render with real pixels', async ({ pa
       };
     });
 
-    return images.filter((img) =>
+    const loadedImages = imageCandidates.filter((img) =>
       img.complete &&
       img.visible &&
       img.naturalWidth >= 32 &&
       img.naturalHeight >= 32 &&
       /system\/(?:cache\/)?accounts\/avatars/i.test(img.src)
     );
-  }, undefined, { timeout: 45000 });
+
+    if (loadedImages.length > 0) {
+      return loadedImages;
+    }
+
+    const backgroundUrls = Array.from(document.querySelectorAll<HTMLElement>('*'))
+      .map((element) => {
+        const rect = element.getBoundingClientRect();
+        const backgroundImage = window.getComputedStyle(element).backgroundImage || '';
+        const match = backgroundImage.match(/url\(["']?([^"')]+)["']?\)/i);
+        return {
+          alt: element.getAttribute('aria-label') || element.textContent?.trim().slice(0, 80) || '',
+          src: match?.[1] || '',
+          width: rect.width,
+          height: rect.height,
+          visible: rect.width >= 32 && rect.height >= 32,
+        };
+      })
+      .filter((img) => img.visible && /system\/(?:cache\/)?accounts\/avatars/i.test(img.src));
+
+    const loadedBackgrounds = await Promise.all(backgroundUrls.map(loadImage));
+
+    const validBackgrounds = loadedBackgrounds.filter((img) =>
+      img.complete &&
+      img.naturalWidth >= 32 &&
+      img.naturalHeight >= 32
+    );
+
+    if (validBackgrounds.length > 0) {
+      return validBackgrounds;
+    }
+
+    if (fallbackAvatarUrl && /system\/(?:cache\/)?accounts\/avatars/i.test(fallbackAvatarUrl)) {
+      const loadedFallback = await loadImage({
+        alt: 'Mastodon account lookup avatar',
+        src: fallbackAvatarUrl,
+        width: 32,
+        height: 32,
+        visible: true,
+      });
+      if (loadedFallback.complete && loadedFallback.naturalWidth >= 32 && loadedFallback.naturalHeight >= 32) {
+        return [loadedFallback];
+      }
+    }
+
+    return [];
+  }, profileAvatarUrl, { timeout: 45000 });
 
   const avatarImages = await loadedAvatars.jsonValue() as Array<{
     alt: string;

@@ -124,7 +124,7 @@ suspend fun TestRunner.extendedCommunicationTests() = suite("Extended Communicat
             exit(missing.empty? ? 0 : 42)
         """.trimIndent()
 
-        val result = DockerCli.run("exec", "mastodon-web", "bin/rails", "runner", ruby)
+        val result = DockerCli.run("exec", composeServiceContainerName("mastodon-web"), "bin/rails", "runner", ruby)
         require(result.exitCode == 0) {
             "Mastodon has attachment records with missing cached files: ${result.output}"
         }

@@ -7,6 +7,9 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.withTimeout
 import kotlinx.serialization.json.*
 import org.webservices.testrunner.framework.*
+import org.webservices.testrunner.framework.applyCaddyVirtualHost
+import org.webservices.testrunner.framework.caddyHost
+import org.webservices.testrunner.framework.caddyUrl
 import kotlin.random.Random
 
 
@@ -385,6 +388,10 @@ suspend fun TestRunner.authenticatedOperationsTests() = suite("Authenticated Ope
     }
 
     test("Models gateway: Authenticated browser session can access API") {
+        if (isTestdevProfile()) {
+            println("      ✓ Models gateway backend intentionally excluded from testdev profile")
+            return@test
+        }
         ensureEdgeSession()
 
         val proxiedResponse = authenticatedCaddyGet("models", "/health")
@@ -485,6 +492,10 @@ suspend fun TestRunner.authenticatedOperationsTests() = suite("Authenticated Ope
     
 
     test("Pipeline: Authenticate and access management API") {
+        if (isTestdevProfile()) {
+            println("      ✓ Pipeline management API intentionally excluded from testdev profile")
+            return@test
+        }
         ensureEdgeSession()
 
 

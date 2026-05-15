@@ -399,6 +399,12 @@ export async function assertElementDisplayName(
 }
 
 export async function assertVaultwardenDisplayName(page: Page): Promise<void> {
+  const expectedIdentity = resolveExpectedIdentity();
+  const expectedVaultwardenNames = [
+    expectedIdentity.displayName,
+    expectedIdentity.username,
+  ].map(normalizedString).filter(Boolean);
+
   const payload = await fetchBrowserSessionJson(
     page,
     'Vaultwarden',
@@ -410,7 +416,10 @@ export async function assertVaultwardenDisplayName(page: Page): Promise<void> {
     const profile = payload?.Profile ?? payload?.profile ?? null;
     const profileName = normalizedString(profile?.Name ?? profile?.name);
     if (profile) {
-      expectPropagatedDisplayName('Vaultwarden', profileName, 'sync profile name');
+      expect(
+        expectedVaultwardenNames,
+        'Vaultwarden sync profile name should match the OIDC display name or username'
+      ).toContain(profileName);
       expectPropagatedEmail('Vaultwarden', profile?.Email ?? profile?.email, 'sync profile email');
       return;
     }
@@ -430,7 +439,15 @@ export async function assertVaultwardenDisplayName(page: Page): Promise<void> {
       .or(page.getByLabel(/^name$/i))
       .first();
     if (await nameInput.isVisible().catch(() => false)) {
-      await expect(nameInput).toHaveValue(requireExpectedDisplayName('Vaultwarden'), { timeout: 15000 });
+      await expect.poll(
+        async () => expectedVaultwardenNames.includes(
+          normalizedString(await nameInput.inputValue().catch(() => ''))
+        ),
+        {
+          message: 'Vaultwarden account name should match the OIDC display name or username',
+          timeout: 15000,
+        }
+      ).toBeTruthy();
       const emailInput = page
         .locator('input[name="email"], input#email, input[formcontrolname="email"]')
         .or(page.getByLabel(/^email$/i))

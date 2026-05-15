@@ -3,6 +3,7 @@ package org.webservices.chatgptconnector
 import java.nio.charset.StandardCharsets
 import java.nio.file.Path
 import java.security.MessageDigest
+import java.security.SecureRandom
 import java.sql.Connection
 import java.sql.DriverManager
 import java.time.Instant
@@ -10,6 +11,18 @@ import java.util.Base64
 import java.util.UUID
 
 class ConnectorStore(databasePath: Path) : AutoCloseable {
+    companion object {
+        const val MIN_TOKEN_TTL_SECONDS: Long = 60
+        const val MAX_TOKEN_TTL_SECONDS: Long = 2_592_000
+        private val secureRandom = SecureRandom()
+
+        private fun generateRawToken(): String {
+            val bytes = ByteArray(32)
+            secureRandom.nextBytes(bytes)
+            return "mcp_${Base64.getUrlEncoder().withoutPadding().encodeToString(bytes)}"
+        }
+    }
+
     private val connection: Connection = DriverManager.getConnection("jdbc:sqlite:${databasePath.toAbsolutePath()}")
 
     init {
@@ -140,10 +153,10 @@ class ConnectorStore(databasePath: Path) : AutoCloseable {
 
     fun mintToken(accountId: String, scopes: List<String>, ttlSeconds: Long, actorUsername: String): MintedTokenResponse {
         val tokenId = UUID.randomUUID().toString()
-        val rawToken = "mcp_${Base64.getUrlEncoder().withoutPadding().encodeToString(UUID.randomUUID().toString().toByteArray())}"
+        val rawToken = generateRawToken()
         val tokenPrefix = rawToken.take(12)
         val now = Instant.now()
-        val expires = now.plusSeconds(ttlSeconds.coerceAtLeast(60))
+        val expires = now.plusSeconds(ttlSeconds.coerceIn(MIN_TOKEN_TTL_SECONDS, MAX_TOKEN_TTL_SECONDS))
         val hash = hashToken(rawToken)
         connection.prepareStatement(
             "INSERT INTO agent_tokens(id, account_id, token_hash, token_prefix, scopes, expires_at, created_at) VALUES (?,?,?,?,?,?,?)"

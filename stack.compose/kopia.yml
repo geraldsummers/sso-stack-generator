@@ -17,8 +17,8 @@ services:
       USER: kopia
     volumes:
       - kopia_data:/app
-      - postgres_data:/backup/postgres:ro
-      - mariadb_data:/backup/mariadb:ro
+      - ${NOCOW_DB_DIR}/postgres:/backup/postgres:ro
+      - ${NOCOW_DB_DIR}/mariadb:/backup/mariadb:ro
       - ./configs/kopia/init-kopia.sh:/init-kopia.sh:ro
     entrypoint:
       - sh

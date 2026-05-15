@@ -55,14 +55,15 @@ suspend fun TestRunner.communicationTests() = suite("Communication Tests") {
     }
 
     test("Mastodon recommendation seeder container is running") {
+        val containerName = composeServiceContainerName("mastodon-recommendation-seeder")
         val result = DockerCli.run(
-            "inspect", "-f", "{{.State.Status}}", "mastodon-recommendation-seeder"
+            "inspect", "-f", "{{.State.Status}}", containerName
         )
         require(result.exitCode == 0) {
-            "Unable to inspect mastodon-recommendation-seeder container: ${result.output}"
+            "Unable to inspect $containerName container: ${result.output}"
         }
         require(result.output == "running") {
-            "mastodon-recommendation-seeder should be running, got: ${result.output}"
+            "$containerName should be running, got: ${result.output}"
         }
         println("      ✓ mastodon-recommendation-seeder container running")
     }
@@ -102,7 +103,7 @@ suspend fun TestRunner.communicationTests() = suite("Communication Tests") {
             exit(configured.length >= 8 && matched.length >= 8 && unresolved.empty? ? 0 : 42)
         """.trimIndent()
 
-        val result = DockerCli.run("exec", "mastodon-web", "bin/rails", "runner", ruby)
+        val result = DockerCli.run("exec", composeServiceContainerName("mastodon-web"), "bin/rails", "runner", ruby)
         require(result.exitCode == 0) {
             "Mastodon native bootstrap recommendations are not configured correctly: ${result.output}"
         }

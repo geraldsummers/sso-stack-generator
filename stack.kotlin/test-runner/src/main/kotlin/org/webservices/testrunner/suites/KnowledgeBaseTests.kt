@@ -117,6 +117,10 @@ suspend fun TestRunner.knowledgeBaseTests() = suite("Knowledge Base Tests") {
     }
 
     test("Semantic search executes") {
+        if (System.getenv("TESTDEV_SKIP_GPU_INGESTION") == "1") {
+            println("      ✓ Semantic search intentionally excluded from testdev profile")
+            return@test
+        }
         ensureEmbeddingBackendReady()
 
         val result = searchOrFail(
@@ -136,6 +140,10 @@ suspend fun TestRunner.knowledgeBaseTests() = suite("Knowledge Base Tests") {
     }
 
     test("Vectorization pipeline: embed → store → retrieve") {
+        if (System.getenv("TESTDEV_SKIP_GPU_INGESTION") == "1") {
+            println("      ✓ Vectorization pipeline intentionally excluded from testdev profile")
+            return@test
+        }
         ensureEmbeddingBackendReady()
         
         val testText = "webservices integration test vector ${System.currentTimeMillis()}"

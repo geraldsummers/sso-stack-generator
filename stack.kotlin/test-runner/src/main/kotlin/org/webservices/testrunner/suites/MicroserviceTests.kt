@@ -41,6 +41,10 @@ suspend fun TestRunner.microserviceTests() = suite("Pipeline Tests") {
     }
 
     test("Pipeline: Health check") {
+        if (System.getenv("TESTDEV_SKIP_GPU_INGESTION") == "1") {
+            println("      ✓ Pipeline management API intentionally excluded from testdev profile")
+            return@test
+        }
         val json = probePipelineJson("/health")
         require(json != null) {
             "Pipeline management API did not return JSON from /health on any expected route"
@@ -53,6 +57,10 @@ suspend fun TestRunner.microserviceTests() = suite("Pipeline Tests") {
     }
 
     test("Pipeline: List data sources") {
+        if (System.getenv("TESTDEV_SKIP_GPU_INGESTION") == "1") {
+            println("      ✓ Pipeline source listing intentionally excluded from testdev profile")
+            return@test
+        }
         val json = probePipelineJson("/sources")
         require(json != null) {
             "Pipeline management API did not return JSON from /sources on any expected route"
@@ -68,6 +76,10 @@ suspend fun TestRunner.microserviceTests() = suite("Pipeline Tests") {
     }
 
     test("Pipeline: Check scheduler status") {
+        if (System.getenv("TESTDEV_SKIP_GPU_INGESTION") == "1") {
+            println("      ✓ Pipeline scheduler status intentionally excluded from testdev profile")
+            return@test
+        }
         val json = probePipelineJson("/status")
         require(json != null) {
             "Pipeline management API did not return JSON from /status on any expected route"

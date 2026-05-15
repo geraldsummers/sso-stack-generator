@@ -16,11 +16,15 @@ OAUTH_SECRET="${ERPNEXT_OAUTH_SECRET:-}"
 
 cd "$BENCH_DIR"
 mkdir -p /home/frappe/logs
-mkdir -p "$BENCH_DIR/$SITE_NAME/logs" "$BENCH_DIR/sites/$SITE_NAME/logs"
+mkdir -p "$BENCH_DIR/$SITE_NAME/logs"
 
 if [ -f "sites/${SITE_NAME}/site_config.json" ]; then
   log "site ${SITE_NAME} already exists"
 else
+  if [ -d "sites/${SITE_NAME}" ]; then
+    log "site directory sites/${SITE_NAME} exists without site_config.json; remove the partial site state before retrying"
+    exit 1
+  fi
   log "creating ${SITE_NAME}"
   bench new-site \
     --db-host "$DB_HOST" \

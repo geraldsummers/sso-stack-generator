@@ -4,12 +4,12 @@ services:
     container_name: watchtower
     restart: unless-stopped
     networks:
-      - docker-controller
+      - docker-host-lifecycle
       - internet
       - caddy
       - monitoring
     depends_on:
-      docker-socket-controller-proxy:
+      docker-socket-lifecycle-proxy:
         condition: service_healthy
       prometheus:
         condition: service_started
@@ -27,12 +27,12 @@ services:
       # Using ntfy scheme with insecure flag since ntfy uses HTTP:80 internally
       WATCHTOWER_HTTP_API_METRICS: ${WATCHTOWER_HTTP_API_METRICS:-false}
       TZ: Australia/Sydney
-      DOCKER_HOST: tcp://docker-socket-controller-proxy:2375
+      DOCKER_HOST: tcp://docker-socket-lifecycle-proxy:2375
 
 networks:
-  docker-controller:
+  docker-host-lifecycle:
     external: true
-    name: webservices_docker-controller
+    name: webservices_docker-host-lifecycle
   internet:
     external: true
     name: webservices_internet

@@ -9,9 +9,13 @@
 # - DOMAIN                     (e.g. example.com)
 # - API_MODELS_ALLOWLIST      (space-separated CIDRs)
 # - KOPIA_PROXY_AUTHORIZATION (Basic auth header for the Caddy -> Kopia hop)
+# - BOOKSTACK_INTERNAL_API_TOKEN (shared token for api.bookstack.$DOMAIN)
+# - CHATGPT_CONNECTOR_TRUSTED_PROXY_SECRET (trusted-proxy secret for ChatGPT Connector)
+# - ONBOARDING_TRUSTED_PROXY_SECRET (trusted-proxy secret for onboarding)
+# - SEARCH_SERVICE_INTERNAL_TOKEN (shared token for Caddy -> search-service)
 # - STACK_ADMIN_EMAIL          (e.g. admin@example.com)
 # - VAULTWARDEN_ORG_ID         (vaultwarden org UUID for SSO policy resolution)
-# - WORKSPACE_PROXY_AUTH_SECRET (shared trusted-proxy secret for internal auth hops)
+# - WORKSPACE_PROXY_AUTH_SECRET (trusted-proxy secret for internal auth hops)
 #
 # TLS Configuration:
 # - Render-selected mode; local PKI is the current default.
@@ -62,16 +66,17 @@
 				request_header -Remote-User
 				request_header -Remote-Groups
 				request_header -Remote-Name
-				request_header -Remote-Email
-				request_header -X-Remote-User
-				request_header -X-Remote-Groups
-				request_header -X-Remote-Name
-				request_header -X-Remote-Email
-				request_header -X-Auth-Request-User
-				request_header -X-Auth-Request-Groups
-				request_header -X-Auth-Request-Email
+					request_header -Remote-Email
+					request_header -X-Remote-User
+					request_header -X-Remote-Groups
+					request_header -X-Remote-Name
+					request_header -X-Remote-Email
+					request_header -X-Auth-Request-User
+					request_header -X-Auth-Request-Groups
+					request_header -X-Auth-Request-Email
+					request_header -Authorization
 
-				forward_auth keycloak-auth-gateway:4180 {
+					forward_auth keycloak-auth-gateway:4180 {
 					uri /oauth2/auth
 					copy_headers X-Auth-Request-Preferred-Username>Remote-User X-Auth-Request-Groups>Remote-Groups X-Auth-Request-Email>Remote-Email
 					@unauth status 401 403
@@ -144,23 +149,23 @@ onboarding.{$DOMAIN} {
 			header_up -X-Remote-Groups
 			header_up -X-Remote-Name
 			header_up -X-Remote-Email
-			header_up X-Trusted-Proxy-Secret {$WORKSPACE_PROXY_AUTH_SECRET}
+				header_up X-Trusted-Proxy-Secret {$ONBOARDING_TRUSTED_PROXY_SECRET}
 		}
 
-		handle {
-			import keycloak_auth_base onboarding
-			reverse_proxy onboarding:8080 {
+			handle {
+				import keycloak_auth_base onboarding
+				reverse_proxy onboarding:8080 {
 				header_up -Remote-User
 				header_up -Remote-Groups
 				header_up -Remote-Name
 				header_up -Remote-Email
 				header_up X-Remote-User {header.Remote-User}
-				header_up X-Remote-Groups {header.Remote-Groups}
-				header_up X-Remote-Name {header.Remote-Name}
-				header_up X-Remote-Email {header.Remote-Email}
-				header_up X-Trusted-Proxy-Secret {$WORKSPACE_PROXY_AUTH_SECRET}
+					header_up X-Remote-Groups {header.Remote-Groups}
+					header_up X-Remote-Name {header.Remote-Name}
+					header_up X-Remote-Email {header.Remote-Email}
+					header_up X-Trusted-Proxy-Secret {$ONBOARDING_TRUSTED_PROXY_SECRET}
+				}
 			}
-		}
 	}
 }
 
@@ -357,19 +362,22 @@ erpnext.{$DOMAIN} {
 	}
 }
 
-# BookStack API (internal network only - for data-fetcher and search services)
-# Bypasses auth for API token authentication
+# BookStack API (internal token only - for data-fetcher and search services)
 api.bookstack.{$DOMAIN} {
 	import access_observability
-	# Only allow from internal Docker networks
-	@notinternal not remote_ip 172.20.0.0/24 172.21.0.0/24 172.22.0.0/24
-	handle @notinternal {
-		respond "Access denied: Internal API only" 403
+
+	@bookstack_api_authorized {
+		path /api /api/*
+		header X-Internal-Token {$BOOKSTACK_INTERNAL_API_TOKEN}
+	}
+	handle @bookstack_api_authorized {
+		request_header -X-Internal-Token
+		reverse_proxy bookstack:80
 	}
 
 	@bookstack_api path /api /api/*
 	handle @bookstack_api {
-		reverse_proxy bookstack:80
+		respond "Access denied: internal token required" 403
 	}
 
 	respond 404
@@ -433,8 +441,8 @@ matrix.{$DOMAIN} {
 		respond 404
 	}
 
-	@matrix_client_well_known path /.well-known/matrix/client
-	handle @matrix_client_well_known {
+	@matrix_host_client_well_known path /.well-known/matrix/client
+	handle @matrix_host_client_well_known {
 		header Content-Type application/json
 		header Access-Control-Allow-Origin "*"
 		header Access-Control-Allow-Methods "GET, OPTIONS"
@@ -610,15 +618,15 @@ workspaces.{$DOMAIN} {
 				request_header X-Remote-Groups {header.Remote-Groups}
 				request_header X-Remote-Name {header.Remote-Name}
 				request_header X-Remote-Email {header.Remote-Email}
-				forward_auth workspace-provisioner:8120 {
-					uri /api/workspaces/{re.workspace_shell.1}/shell/auth
+					forward_auth workspace-provisioner:8120 {
+						uri /api/workspaces/{re.workspace_shell.1}/shell/auth
 					copy_headers X-Workspace-Ttyd-Port X-Workspace-Ttyd-Base-Path X-Workspace-Health
 					header_up X-Remote-User {header.X-Remote-User}
-					header_up X-Remote-Groups {header.X-Remote-Groups}
-					header_up X-Remote-Name {header.X-Remote-Name}
-					header_up X-Remote-Email {header.X-Remote-Email}
-					header_up X-Trusted-Proxy-Secret {$WORKSPACE_PROXY_AUTH_SECRET}
-				}
+						header_up X-Remote-Groups {header.X-Remote-Groups}
+						header_up X-Remote-Name {header.X-Remote-Name}
+						header_up X-Remote-Email {header.X-Remote-Email}
+						header_up X-Trusted-Proxy-Secret {$WORKSPACE_PROXY_AUTH_SECRET}
+					}
 				header X-Workspace-Health {header.X-Workspace-Health}
 				reverse_proxy {$WORKSPACE_RUNTIME_PUBLIC_HOST}:{header.X-Workspace-Ttyd-Port}
 			}
@@ -832,7 +840,9 @@ search.{$DOMAIN} {
 	import access_observability
 	route {
 		import keycloak_auth search
-		reverse_proxy search-service:8098
+		reverse_proxy search-service:8098 {
+			header_up X-Internal-Token {$SEARCH_SERVICE_INTERNAL_TOKEN}
+		}
 	}
 }
 
@@ -849,9 +859,11 @@ pipeline.{$DOMAIN} {
 chatgpt-connector.{$DOMAIN} {
 	import access_observability
 	route {
-		@mcp path /mcp
-		reverse_proxy @mcp chatgpt-connector:8130
-		import keycloak_auth chatgpt_connector
-		reverse_proxy chatgpt-connector:8130
+			@mcp path /mcp
+			reverse_proxy @mcp chatgpt-connector:8130
+			import keycloak_auth chatgpt_connector
+			reverse_proxy chatgpt-connector:8130 {
+				header_up X-Trusted-Proxy-Secret {$CHATGPT_CONNECTOR_TRUSTED_PROXY_SECRET}
+			}
+		}
 	}
-}

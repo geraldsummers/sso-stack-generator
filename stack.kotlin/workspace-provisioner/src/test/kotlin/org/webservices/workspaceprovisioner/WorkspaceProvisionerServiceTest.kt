@@ -226,6 +226,7 @@ class WorkspaceProvisionerServiceTest {
             workspaceClientId = "workspace-cli",
             workspaceCliRedirectUri = "http://127.0.0.1:38080/callback",
             runtimePublicHost = "labware.local",
+            runtimeHttpBindAddress = "127.0.0.1",
             runtimeSshPortStart = 47000,
             runtimeSshPortEnd = 47005,
             runtimeNotebookPortStart = 48000,

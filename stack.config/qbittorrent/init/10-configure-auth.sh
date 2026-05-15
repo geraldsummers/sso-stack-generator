@@ -8,10 +8,13 @@ echo "[qbittorrent-init] Enforcing reverse-proxy WebUI auth settings..."
 mkdir -p "$CONF_DIR"
 
 resolve_caddy_whitelist() {
-    getent ahostsv4 caddy 2>/dev/null \
-        | awk '{ print $1 }' \
-        | sort -u \
-        | paste -sd, -
+    local caddy_ips
+    caddy_ips="$(getent ahostsv4 caddy | awk '{print $1}' | sort -u | paste -sd, -)"
+    if [ -n "$caddy_ips" ]; then
+        printf '127.0.0.1,%s\n' "$caddy_ips"
+    else
+        printf '%s\n' '127.0.0.1'
+    fi
 }
 
 upsert_preference() {

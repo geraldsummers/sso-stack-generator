@@ -583,9 +583,13 @@ export function findRoute(host: string): BrowserRoute {
   return route;
 }
 
+function isTestdevExcluded(route: BrowserRoute): boolean {
+  return process.env.TESTDEV_SKIP_GPU_INGESTION === '1' && route.host === 'pipeline';
+}
+
 export const routeContractRoutes = browserRouteCatalog.filter((route) => route.ownership.route);
-export const smokeRoutes = browserRouteCatalog.filter((route) => route.ownership.smoke);
-export const visualRoutes = browserRouteCatalog.filter((route) => route.ownership.visual);
+export const smokeRoutes = browserRouteCatalog.filter((route) => route.ownership.smoke && !isTestdevExcluded(route));
+export const visualRoutes = browserRouteCatalog.filter((route) => route.ownership.visual && !isTestdevExcluded(route));
 
 export function uncataloguedHosts(): string[] {
   const cataloguedHosts = new Set(browserRouteCatalog.map((route) => route.host));

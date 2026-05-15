@@ -19,7 +19,10 @@ const explicitVisualCoverageHosts = [
   'vaultwarden',
 ] as const;
 
-const excludedVisualCoverageHosts = new Set(['www']);
+const excludedVisualCoverageHosts = new Set([
+  'www',
+  ...(process.env.TESTDEV_SKIP_GPU_INGESTION === '1' ? ['pipeline'] : []),
+]);
 const genericVisualHosts = new Set(visualRoutes.map((route) => route.host));
 const allCoveredVisualHosts = new Set<string>([
   ...genericVisualHosts,

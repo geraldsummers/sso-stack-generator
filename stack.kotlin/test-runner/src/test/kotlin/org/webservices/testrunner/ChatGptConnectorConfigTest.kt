@@ -22,7 +22,7 @@ class ChatGptConnectorConfigTest {
         assertTrue(compose.contains("image: webservices/chatgpt-connector:local-build"))
         assertTrue(compose.contains("dockerfile: ./stack.containers/chatgpt-connector/Dockerfile"))
         assertTrue(compose.contains("chatgpt_connector_data:/data"))
-        assertTrue(compose.contains("CHATGPT_CONNECTOR_TRUSTED_PROXY_SECRET: \${MODEL_CONTEXT_PROXY_AUTH_SECRET:?MODEL_CONTEXT_PROXY_AUTH_SECRET is required}"))
+        assertTrue(compose.contains("CHATGPT_CONNECTOR_TRUSTED_PROXY_SECRET: \${CHATGPT_CONNECTOR_TRUSTED_PROXY_SECRET:?CHATGPT_CONNECTOR_TRUSTED_PROXY_SECRET is required}"))
         assertTrue(compose.contains("CHATGPT_CONNECTOR_KEYCLOAK_ADMIN_PASSWORD: \${KEYCLOAK_ADMIN_PASSWORD:?KEYCLOAK_ADMIN_PASSWORD is required}"))
         assertTrue(compose.contains("keycloak:"))
         assertTrue(compose.contains("search-service:"))
@@ -52,6 +52,7 @@ class ChatGptConnectorConfigTest {
         assertTrue(block.contains("reverse_proxy @mcp chatgpt-connector:8130"))
         assertTrue(block.contains("import keycloak_auth chatgpt_connector"))
         assertTrue(block.contains("reverse_proxy chatgpt-connector:8130"))
+        assertTrue(block.contains("header_up X-Trusted-Proxy-Secret {\$CHATGPT_CONNECTOR_TRUSTED_PROXY_SECRET}"))
         assertTrue(
             block.indexOf("reverse_proxy @mcp chatgpt-connector:8130") < block.indexOf("import keycloak_auth chatgpt_connector"),
             "/mcp must reach the connector before Caddy forward-auth redirects browser-oriented routes"

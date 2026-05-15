@@ -201,7 +201,9 @@ suspend fun TestRunner.foundationTests() = suite("Foundation Tests") {
     }
 
     test("Search service returns 404 for unknown exact document lookup") {
-        val response = requestHttpClient.get("${endpoints.searchService}/documents/definitely-missing-document")
+        val response = requestHttpClient.get("${endpoints.searchService}/documents/definitely-missing-document") {
+            applyInternalApiAuthHeaders()
+        }
         response.status shouldBe HttpStatusCode.NotFound
     }
 
@@ -244,6 +246,10 @@ suspend fun TestRunner.foundationTests() = suite("Foundation Tests") {
     }
 
     test("Embedding backend health endpoint responds") {
+        if (System.getenv("TESTDEV_SKIP_GPU_INGESTION") == "1") {
+            println("      ✓ Embedding backend intentionally excluded from testdev profile")
+            return@test
+        }
         val embeddingReadiness = probeEmbeddingBackendReadiness(
             maxAttempts = 2,
             attemptTimeoutMs = 20_000L,
@@ -257,8 +263,9 @@ suspend fun TestRunner.foundationTests() = suite("Foundation Tests") {
     }
 
     test("Caddy exports its local CA bundle for dependent services") {
+        val caddyContainer = System.getenv("CADDY_CONTAINER") ?: "caddy"
         val result = DockerCli.run(
-            "exec", "caddy", "sh", "-lc", "test -s /ca/caddy-ca.crt"
+            "exec", caddyContainer, "sh", "-lc", "test -s /ca/caddy-ca.crt"
         )
         require(result.exitCode == 0) {
             "Caddy did not export a readable local CA bundle at /ca/caddy-ca.crt: ${result.output}"

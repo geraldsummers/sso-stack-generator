@@ -5,10 +5,23 @@ SCRIPT_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 PLAYWRIGHT_DIR=$(CDPATH= cd -- "$SCRIPT_DIR/.." && pwd)
 
 require_container_health() {
-  container_name="$1"
+  service_name="$1"
+  project_name="${TEST_RUNNER_COMPOSE_PROJECT_NAME:-${COMPOSE_PROJECT_NAME:-webservices}}"
+  container_name="${2:-}"
+
+  if [ -z "$container_name" ]; then
+    container_name=$(docker ps \
+      --filter "label=com.docker.compose.project=${project_name}" \
+      --filter "label=com.docker.compose.service=${service_name}" \
+      --format '{{.Names}}' \
+      | head -n 1)
+  fi
+  if [ -z "$container_name" ]; then
+    container_name="$service_name"
+  fi
 
   if ! inspect_output=$(docker inspect --format '{{.State.Status}} {{if .State.Health}}{{.State.Health.Status}}{{else}}none{{end}}' "$container_name" 2>/dev/null); then
-    printf 'missing:%s\n' "$container_name"
+    printf 'missing:%s\n' "$service_name"
     return 1
   fi
 
@@ -16,12 +29,12 @@ require_container_health() {
   health_status=$(printf '%s' "$inspect_output" | awk '{print $2}')
 
   if [ "$container_status" != "running" ]; then
-    printf 'stopped:%s:%s\n' "$container_name" "$container_status"
+    printf 'stopped:%s:%s\n' "$service_name" "$container_status"
     return 1
   fi
 
   if [ "$health_status" != "none" ] && [ "$health_status" != "healthy" ]; then
-    printf 'unhealthy:%s:%s\n' "$container_name" "$health_status"
+    printf 'unhealthy:%s:%s\n' "$service_name" "$health_status"
     return 1
   fi
 
@@ -31,7 +44,7 @@ require_container_health() {
 preflight_visual_stack() {
   missing_report=""
 
-  for container_name in \
+  for service_name in \
     caddy \
     keycloak \
     keycloak-auth-gateway \
@@ -52,7 +65,6 @@ preflight_visual_stack() {
     mastodon-web \
     mastodon-sidekiq \
     ntfy \
-    knowledge-ingestion \
     planka \
     prometheus \
     qbittorrent \
@@ -63,13 +75,22 @@ preflight_visual_stack() {
     vaultwarden \
     workspace-provisioner
   do
-    if ! status_line=$(require_container_health "$container_name"); then
+    if ! status_line=$(require_container_health "$service_name"); then
       if [ -n "$missing_report" ]; then
         missing_report="${missing_report}\n"
       fi
       missing_report="${missing_report}${status_line}"
     fi
   done
+
+  if [ "${TESTDEV_SKIP_GPU_INGESTION:-0}" != "1" ]; then
+    if ! status_line=$(require_container_health "knowledge-ingestion"); then
+      if [ -n "$missing_report" ]; then
+        missing_report="${missing_report}\n"
+      fi
+      missing_report="${missing_report}${status_line}"
+    fi
+  fi
 
   if [ -n "$missing_report" ]; then
     printf 'Visual suite preflight failed. Required local containers are missing or unhealthy:\n' >&2
@@ -81,7 +102,7 @@ preflight_visual_stack() {
 cd "$PLAYWRIGHT_DIR"
 preflight_visual_stack
 
-exec npx playwright test \
+set -- \
   tests/visual \
   tests/deep/forward-auth/homeassistant.spec.ts \
   tests/deep/forward-auth/alertmanager.spec.ts \
@@ -91,12 +112,16 @@ exec npx playwright test \
   tests/deep/forward-auth/prometheus.spec.ts \
   tests/deep/forward-auth/qbittorrent.spec.ts \
   tests/deep/forward-auth/search.spec.ts \
-  tests/deep/forward-auth/pipeline.spec.ts \
   tests/deep/forward-auth/seafile.spec.ts \
   tests/deep/forward-auth/onboarding.spec.ts \
   tests/deep/forward-auth/workspaces.spec.ts \
   tests/deep/oidc/element.spec.ts \
   tests/deep/oidc/mastodon.spec.ts \
   tests/deep/oidc/planka.spec.ts \
-  tests/deep/oidc/vaultwarden.spec.ts \
-  "$@"
+  tests/deep/oidc/vaultwarden.spec.ts
+
+if [ "${TESTDEV_SKIP_GPU_INGESTION:-0}" != "1" ]; then
+  set -- "$@" tests/deep/forward-auth/pipeline.spec.ts
+fi
+
+exec npx playwright test "$@"

@@ -31,12 +31,12 @@ class MatrixMailExposureHardeningTest {
         assertTrue(homepageBlock.contains("\\\"io.element.e2ee\\\":{\\\"default\\\":true}"))
         assertTrue(homepageBlock.contains("\\\"org.matrix.msc4143.rtc_foci\\\":[{\\\"type\\\":\\\"livekit\\\",\\\"livekit_service_url\\\":\\\"https://matrix-rtc.$domainToken/livekit/jwt\\\"}]"))
         assertTrue(homepageBlock.contains("\\\"m.server\\\":\\\"matrix.$domainToken:443\\\""))
-        assertTrue(matrixBlock.contains("@matrix_client_well_known path /.well-known/matrix/client"))
+        assertTrue(matrixBlock.contains("@matrix_host_client_well_known path /.well-known/matrix/client"))
         assertTrue(matrixBlock.contains("\\\"org.matrix.msc4143.rtc_foci\\\":[{\\\"type\\\":\\\"livekit\\\",\\\"livekit_service_url\\\":\\\"https://matrix-rtc.$domainToken/livekit/jwt\\\"}]"))
         assertFalse(matrixBlock.contains("jitsi", ignoreCase = true))
 
         val clientHandler = handlerBlock(homepageBlock, "matrix_client_well_known")
-        val matrixClientHandler = handlerBlock(matrixBlock, "matrix_client_well_known")
+        val matrixClientHandler = handlerBlock(matrixBlock, "matrix_host_client_well_known")
         val serverHandler = handlerBlock(homepageBlock, "matrix_server_well_known")
         val authIndex = homepageBlock.indexOf("import keycloak_auth homepage")
 

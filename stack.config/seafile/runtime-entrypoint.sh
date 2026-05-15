@@ -402,6 +402,13 @@ fail_if_partial_unmarked_state() {
     return 0
   fi
 
+  if [ "${#existing_paths[@]}" -eq 1 ] \
+    && [ "${existing_paths[0]}" = "$SHARED_ROOT/seafile-data" ] \
+    && database_schemas_are_empty; then
+    log "Found only pre-mounted Seafile data storage with empty schemas; treating as fresh bootstrap"
+    return 0
+  fi
+
   if [ "${#existing_paths[@]}" -gt 0 ]; then
     log "Found existing shared Seafile paths without init marker:"
     printf '  %s\n' "${existing_paths[@]}" >&2

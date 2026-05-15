@@ -67,6 +67,8 @@ class KeycloakIdentityConfigTest {
         assertTrue(authGateway.contains("OAUTH2_PROXY_WHITELIST_DOMAINS: \${DOMAIN},.\${DOMAIN}"))
         assertTrue(authGateway.contains("OAUTH2_PROXY_SESSION_STORE_TYPE: redis"))
         assertTrue(authGateway.contains("OAUTH2_PROXY_REDIS_CONNECTION_URL: redis://default:\${VALKEY_ADMIN_PASSWORD}@valkey:6379/2"))
+        assertTrue(authGateway.contains("OAUTH2_PROXY_PASS_ACCESS_TOKEN: \"false\""))
+        assertTrue(authGateway.contains("OAUTH2_PROXY_PASS_AUTHORIZATION_HEADER: \"false\""))
         assertTrue(authGateway.contains("- valkey"))
         assertTrue(authGateway.contains("valkey:"))
         assertTrue(configureRuntime.contains("ensure_confidential_client"))

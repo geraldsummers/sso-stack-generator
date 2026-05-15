@@ -49,3 +49,21 @@ services:
       timeout: 10s
       retries: 3
       start_period: 60s
+
+  vaultwarden-maintenance:
+    build:
+      context: ./stack.containers/vaultwarden-maintenance
+    image: stack/vaultwarden-maintenance:local-build
+    container_name: vaultwarden-maintenance
+    restart: unless-stopped
+    depends_on:
+      vaultwarden:
+        condition: service_healthy
+    environment:
+      VAULTWARDEN_ORG_ID: ${VAULTWARDEN_ORG_ID}
+      VAULTWARDEN_ORG_IDENTIFIER: ${VAULTWARDEN_ORG_IDENTIFIER}
+      VAULTWARDEN_PROFILE_SYNC_INTERVAL_SECONDS: ${VAULTWARDEN_PROFILE_SYNC_INTERVAL_SECONDS:-2}
+    volumes:
+      - vaultwarden_data:/data
+      - ./configs/vaultwarden/seed.sh:/seed.sh:ro
+    command: ["/seed.sh"]

@@ -33,6 +33,7 @@ class TestArchitectureTest {
         assertTrue(text.contains("DEFAULT_KT_SUITE=\"\${DEFAULT_KT_SUITE:-stack-contract}\""))
         assertTrue(text.contains("kt-contract"))
         assertTrue(text.contains("kt-live-ingestion"))
+        assertTrue(text.contains("kt-recovery"))
         assertTrue(text.contains("kt-agent-lab"))
         assertTrue(composeText.contains("TEST_RESULTS_HOST_DIR:?TEST_RESULTS_HOST_DIR must be set by run-tests.sh"))
         assertTrue(composeText.contains("TEST_RUNNER_RUNTIME_HOST_DIR:?TEST_RUNNER_RUNTIME_HOST_DIR must be set by run-tests.sh"))
@@ -45,7 +46,9 @@ class TestArchitectureTest {
         assertTrue(composeText.contains("IDENTITY_PROVIDER: \${IDENTITY_PROVIDER:-keycloak}"))
         assertTrue(composeText.contains("KEYCLOAK_INTERNAL_URL: \${KEYCLOAK_INTERNAL_URL:-http://keycloak:8080}"))
         assertTrue(composeText.contains("KEYCLOAK_ADMIN_PASSWORD: \${KEYCLOAK_ADMIN_PASSWORD}"))
-        assertTrue(composeText.contains("WORKSPACE_PROXY_AUTH_SECRET: \${MODEL_CONTEXT_PROXY_AUTH_SECRET}"))
+        assertTrue(composeText.contains("WORKSPACE_PROXY_AUTH_SECRET: \${WORKSPACE_PROXY_AUTH_SECRET}"))
+        assertTrue(composeText.contains("SEARCH_SERVICE_INTERNAL_TOKEN: \${SEARCH_SERVICE_INTERNAL_TOKEN}"))
+        assertTrue(composeText.contains("INFERENCE_CONTROLLER_API_TOKEN: \${INFERENCE_CONTROLLER_API_TOKEN}"))
         assertTrue(composeText.contains("MODEL_CONTEXT_OIDC_REDIRECT_URI: \${MODEL_CONTEXT_OIDC_REDIRECT_URI:-http://test-runner-managed/callback}"))
         assertTrue(text.contains("resolve_test_runner_runtime_host_dir"))
         assertTrue(text.contains("resolve_test_runner_systemd_runtime_host_dir"))
@@ -65,8 +68,10 @@ class TestArchitectureTest {
         val agentWorkspaceSuites = Files.readString(repoRoot.resolve("stack.kotlin/test-runner/src/main/kotlin/org/webservices/testrunner/suites/AgentWorkspaceSuites.kt"))
 
         assertTrue(networksText.contains("docker-controller:\n    driver: bridge\n    internal: true"))
+        assertTrue(networksText.contains("docker-host-lifecycle:\n    driver: bridge\n    internal: true"))
         assertTrue(proxyText.contains("docker-socket-proxy:\n    image: tecnativa/docker-socket-proxy"))
         assertTrue(proxyText.contains("docker-socket-controller-proxy:\n    image: tecnativa/docker-socket-proxy"))
+        assertTrue(proxyText.contains("docker-socket-lifecycle-proxy:\n    image: tecnativa/docker-socket-proxy"))
         assertTrue(proxyText.contains("docker-vm-controller-proxy:\n    image: tecnativa/docker-socket-proxy"))
         assertTrue(proxyText.contains("POST: 0          # Disallow create/start/stop/exec"))
         assertTrue(proxyText.contains("DELETE: 0        # Disallow removals"))
@@ -75,7 +80,85 @@ class TestArchitectureTest {
         assertTrue(forgejoRunnerConfig.contains("network: \"bridge\""))
         assertTrue(testRunnerCompose.contains("DOCKER_HOST: tcp://docker-socket-controller-proxy:2375"))
         assertTrue(testRunnerCompose.contains("ISOLATED_DOCKER_VM_DOCKER_HOST: tcp://docker-vm-controller-proxy:2375"))
+        assertTrue(Files.readString(repoRoot.resolve("stack.compose/watchtower.yml")).contains("DOCKER_HOST: tcp://docker-socket-lifecycle-proxy:2375"))
+        assertTrue(Files.readString(repoRoot.resolve("stack.compose/autoheal.yml")).contains("DOCKER_SOCK: tcp://docker-socket-lifecycle-proxy:2375"))
         assertFalse(agentWorkspaceSuites.contains("/var/run/docker.sock:/var/run/docker.sock"))
+    }
+
+    @Test
+    fun `testdev is pinned to labware and nested docker`() {
+        val repoRoot = repoRoot()
+        val commonText = Files.readString(repoRoot.resolve("scripts/testdev/common.sh"))
+        val readmeText = Files.readString(repoRoot.resolve("scripts/testdev/README.md"))
+        val remoteText = Files.readString(repoRoot.resolve("scripts/testdev/remote.sh"))
+        val upText = Files.readString(repoRoot.resolve("scripts/testdev/up.sh"))
+        val verifyText = Files.readString(repoRoot.resolve("scripts/testdev/verify.sh"))
+        val downText = Files.readString(repoRoot.resolve("scripts/testdev/down.sh"))
+        val buildText = Files.readString(repoRoot.resolve("build.sh"))
+
+        assertTrue(commonText.contains("TESTDEV_ALLOWED_HOSTS:-labware"))
+        assertTrue(commonText.contains("systemd-detect-virt"))
+        assertTrue(commonText.contains("TESTDEV_UNSAFE_ALLOW_NON_LABWARE_HOST"))
+        assertTrue(commonText.contains("I_UNDERSTAND_THIS_TOUCHES_LOCAL_DOCKER"))
+        assertTrue(commonText.contains("Refusing because DOCKER_HOST is set"))
+        assertFalse(commonText.contains("TESTDEV_ALLOW_NON_VM_HOST"))
+        assertTrue(upText.contains("testdev_require_local_docker_context"))
+        assertTrue(verifyText.contains("testdev_require_local_docker_context"))
+        assertTrue(downText.contains("testdev_require_local_docker_context"))
+        assertTrue(downText.contains("testdev_require_virtualized_host"))
+        assertTrue(remoteText.contains("gerald@labware.local"))
+        assertTrue(remoteText.contains("/tmp/sso-testdev-e2e"))
+        assertTrue(readmeText.contains("labware: runs disposable testdev DinD"))
+        assertTrue(readmeText.contains("latium: runs the real stack deployment"))
+        assertTrue(buildText.contains("exec \"\$SCRIPT_DIR/testdev-verify.sh\" \"\$@\""))
+        assertTrue(buildText.contains("export DIST_DIR=\"\$SCRIPT_DIR/build\""))
+    }
+
+    @Test
+    fun `security sensitive runtime boundaries are explicit`() {
+        val repoRoot = repoRoot()
+        val runtimeText = Files.readString(repoRoot.resolve("stack.kotlin/workspace-provisioner/src/main/kotlin/org/webservices/workspaceprovisioner/DockerWorkspaceRuntime.kt"))
+        val workspaceCompose = Files.readString(repoRoot.resolve("stack.compose/workspace-provisioner.yml"))
+        val caddyCompose = Files.readString(repoRoot.resolve("stack.compose/caddy.yml"))
+        val caddyfile = Files.readString(repoRoot.resolve("stack.config/caddy/Caddyfile"))
+        val renderValues = Files.readString(repoRoot.resolve("scripts/lib/render-values.sh"))
+
+        assertTrue(runtimeText.contains("\"-p\", runtimeHttpPublish(ttydPort, config.workspaceTtydPortInternal)"))
+        assertTrue(runtimeText.contains("\"-p\", runtimeHttpPublish(notebookPort, config.workspaceNotebookPortInternal)"))
+        assertFalse(runtimeText.contains("\"-p\", \"\${ttydPort}:\${config.workspaceTtydPortInternal}\""))
+        assertFalse(runtimeText.contains("\"-p\", \"\${notebookPort}:\${config.workspaceNotebookPortInternal}\""))
+        assertTrue(workspaceCompose.contains("WORKSPACE_PROVISIONER_RUNTIME_HTTP_BIND_ADDRESS: \${WORKSPACE_RUNTIME_HTTP_BIND_ADDRESS:-127.0.0.1}"))
+
+        assertTrue(caddyCompose.contains("BOOKSTACK_INTERNAL_API_TOKEN: \${BOOKSTACK_INTERNAL_API_TOKEN}"))
+        assertTrue(caddyCompose.contains("SEARCH_SERVICE_INTERNAL_TOKEN: \${SEARCH_SERVICE_INTERNAL_TOKEN}"))
+        assertTrue(caddyCompose.contains("ONBOARDING_TRUSTED_PROXY_SECRET: \${ONBOARDING_TRUSTED_PROXY_SECRET}"))
+        assertTrue(caddyCompose.contains("CHATGPT_CONNECTOR_TRUSTED_PROXY_SECRET: \${CHATGPT_CONNECTOR_TRUSTED_PROXY_SECRET}"))
+        assertTrue(caddyfile.contains("header X-Internal-Token {\$BOOKSTACK_INTERNAL_API_TOKEN}"))
+        assertTrue(caddyfile.contains("header_up X-Trusted-Proxy-Secret {\$ONBOARDING_TRUSTED_PROXY_SECRET}"))
+        assertTrue(caddyfile.contains("header_up X-Trusted-Proxy-Secret {\$CHATGPT_CONNECTOR_TRUSTED_PROXY_SECRET}"))
+        assertFalse(caddyfile.contains("172.20.0.0/24 172.21.0.0/24 172.22.0.0/24"))
+        assertTrue(caddyfile.contains("header_up X-Internal-Token {\$SEARCH_SERVICE_INTERNAL_TOKEN}"))
+        assertTrue(caddyfile.contains("request_header -Authorization"))
+
+        assertTrue(renderValues.contains("render_set WORKSPACE_RUNTIME_HTTP_BIND_ADDRESS"))
+        assertTrue(renderValues.contains("derive_stack_secret workspace-proxy-auth 64"))
+        assertTrue(renderValues.contains("derive_stack_secret search-service-internal 64"))
+        assertTrue(renderValues.contains("derive_stack_secret bookstack-internal-api 64"))
+    }
+
+    @Test
+    fun `testdev storage transform shares generated volumes by source path`() {
+        val transformText = Files.readString(repoRoot().resolve("scripts/testdev/transform-compose.py"))
+        val kopiaText = Files.readString(repoRoot().resolve("stack.compose/kopia.yml"))
+
+        assertTrue(transformText.contains("def testdev_volume_name(source: str)"))
+        assertTrue(transformText.contains("return f\"testdev_bind_{digest}\""))
+        assertTrue(transformText.contains("def should_normalize_storage_source"))
+        assertFalse(transformText.contains("def testdev_volume_name(service_name: str, source: str)"))
+        assertTrue(kopiaText.contains("\${NOCOW_DB_DIR}/postgres:/backup/postgres:ro"))
+        assertTrue(kopiaText.contains("\${NOCOW_DB_DIR}/mariadb:/backup/mariadb:ro"))
+        assertFalse(kopiaText.contains("postgres_data:/backup/postgres"))
+        assertFalse(kopiaText.contains("mariadb_data:/backup/mariadb"))
     }
 
     @Test

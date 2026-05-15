@@ -116,7 +116,11 @@ services:
       DOMAIN: ${DOMAIN}
       STACK_ADMIN_EMAIL: ${STACK_ADMIN_EMAIL}
       MAIL_DOMAIN: ${MAIL_DOMAIN}
-      WORKSPACE_PROXY_AUTH_SECRET: ${MODEL_CONTEXT_PROXY_AUTH_SECRET}
+      WORKSPACE_PROXY_AUTH_SECRET: ${WORKSPACE_PROXY_AUTH_SECRET}
+      SEARCH_SERVICE_INTERNAL_TOKEN: ${SEARCH_SERVICE_INTERNAL_TOKEN}
+      BOOKSTACK_INTERNAL_API_TOKEN: ${BOOKSTACK_INTERNAL_API_TOKEN}
+      ONBOARDING_TRUSTED_PROXY_SECRET: ${ONBOARDING_TRUSTED_PROXY_SECRET}
+      CHATGPT_CONNECTOR_TRUSTED_PROXY_SECRET: ${CHATGPT_CONNECTOR_TRUSTED_PROXY_SECRET}
       WORKSPACE_RUNTIME_PUBLIC_HOST: ${WORKSPACE_RUNTIME_PUBLIC_HOST}
       KOPIA_PROXY_AUTHORIZATION: ${KOPIA_PROXY_AUTHORIZATION}
       VAULTWARDEN_ORG_IDENTIFIER: ${VAULTWARDEN_ORG_IDENTIFIER}
@@ -168,10 +172,10 @@ services:
         - CMD-SHELL
         - |
           test -s /ca/caddy-ca.crt && \
-          wget --quiet --tries=1 --spider --timeout=2 http://127.0.0.1:2019/config/ && \
-          wget --quiet --tries=1 --spider --timeout=2 http://127.0.0.1:2019/reverse_proxy/upstreams && \
+          wget --quiet --tries=1 --spider --timeout=5 http://127.0.0.1:2019/config/ && \
+          wget --quiet --tries=1 --spider --timeout=5 http://127.0.0.1:2019/reverse_proxy/upstreams && \
           caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile 2>&1 | grep -q "Valid configuration"
       interval: 5s
-      timeout: 4s
-      retries: 3
-      start_period: 15s
+      timeout: 10s
+      retries: 12
+      start_period: 45s

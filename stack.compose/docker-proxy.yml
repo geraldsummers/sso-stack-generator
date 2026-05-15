@@ -218,9 +218,41 @@ services:
       VERSION: 1
       SERVICES: 1
       TASKS: 1
-      BUILD: 0
+      BUILD: 1
       COMMIT: 0
       EXEC: 1
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:2375/version"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+  docker-socket-lifecycle-proxy:
+    image: tecnativa/docker-socket-proxy:v0.4.2
+    container_name: docker-socket-lifecycle-proxy
+    restart: unless-stopped
+    networks:
+      - docker-host-lifecycle
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    environment:
+      # Mutating lifecycle access for autoheal/watchtower; no exec/build.
+      CONTAINERS: 1
+      IMAGES: 1
+      NETWORKS: 1
+      VOLUMES: 1
+      LOGS: 1
+      POST: 1
+      DELETE: 1
+      INFO: 1
+      VERSION: 1
+      SERVICES: 1
+      TASKS: 1
+      BUILD: 0
+      SESSION: 0
+      COMMIT: 0
+      EXEC: 0
     healthcheck:
       test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:2375/version"]
       interval: 30s
@@ -232,4 +264,6 @@ networks:
   docker-proxy:
     driver: bridge
   docker-controller:
+    driver: bridge
+  docker-host-lifecycle:
     driver: bridge

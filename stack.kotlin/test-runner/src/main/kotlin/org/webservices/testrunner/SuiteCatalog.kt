@@ -12,6 +12,7 @@ import org.webservices.testrunner.suites.STACK_CONTRACT_SUITE_NAME
 import org.webservices.testrunner.suites.STACK_CORE_SUITE_NAME
 import org.webservices.testrunner.suites.STACK_FULL_SUITE_NAME
 import org.webservices.testrunner.suites.STACK_LIVE_INGESTION_SUITE_NAME
+import org.webservices.testrunner.suites.STACK_RECOVERY_SUITE_NAME
 import org.webservices.testrunner.suites.agentCapabilityContractTests
 import org.webservices.testrunner.suites.agentCapabilityTests
 import org.webservices.testrunner.suites.agentEnvTests
@@ -28,6 +29,7 @@ import org.webservices.testrunner.suites.stackCoreTests
 import org.webservices.testrunner.suites.stackFullTests
 import org.webservices.testrunner.suites.stackLiveIngestionTests
 import org.webservices.testrunner.suites.stackLlmCapabilityTests
+import org.webservices.testrunner.suites.recoveryTests
 
 internal const val LEGACY_DEFAULT_SUITE = "webservices"
 internal const val LEGACY_ALL_SUITE = "all"
@@ -71,6 +73,10 @@ internal object SuiteCatalog {
             name = STACK_LIVE_INGESTION_SUITE_NAME,
             description = "Live ingestion, search corpus, and publication checks"
         ) { stackLiveIngestionTests() },
+        SuiteDefinition(
+            name = STACK_RECOVERY_SUITE_NAME,
+            description = "Disposable testdev backup and recovery drills"
+        ) { recoveryTests() },
         SuiteDefinition(
             name = STACK_FULL_SUITE_NAME,
             description = "Full stack run including live-ingestion checks"

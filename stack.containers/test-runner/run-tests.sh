@@ -102,6 +102,7 @@ print_usage() {
     echo "  kt-apps           Run application-surface contract checks"
     echo "  kt-contract       Run the default blocking platform contract suite"
     echo "  kt-live-ingestion Run live ingestion, search corpus, and publication checks"
+    echo "  kt-recovery       Run disposable testdev recovery drills"
     echo "  kt-full           Run the full stack suite including live ingestion"
     echo "  kt-agent-env      Run base agent workspace toolchain checks"
     echo "  kt-agent-expand   Run optional profile installation checks"
@@ -245,6 +246,12 @@ resolve_test_runner_runtime_host_dir() {
 resolve_test_runner_systemd_runtime_host_dir() {
     local runtime_dir="${TEST_RUNNER_HOST_XDG_RUNTIME_DIR_OVERRIDE:-${XDG_RUNTIME_DIR:-/run/user/$(id -u)}}"
 
+    if [ "${TEST_RUNNER_REQUIRE_SYSTEMD_RUNTIME:-1}" = "0" ]; then
+        mkdir -p "$runtime_dir"
+        printf '%s\n' "$runtime_dir"
+        return 0
+    fi
+
     if [ ! -S "$runtime_dir/bus" ]; then
         echo -e "${RED}Error:${NC} Host user systemd bus is unavailable at $runtime_dir/bus" >&2
         echo "The managed test-runner now controls compose-managed services through systemd --user." >&2
@@ -367,6 +374,8 @@ build_exec_env_args() {
         AIDER_OLLAMA_API_BASE
         AIDER_MODEL
         AIDER_EDIT_FORMAT
+        CADDY_CONTAINER
+        TESTDEV_SKIP_GPU_INGESTION
     )
 
     local var_name
@@ -632,7 +641,7 @@ EOF_PLAN
                 echo "  $index. source-unit"
                 index=$((index + 1))
             fi
-            for item in kt-full kt-agent-env kt-agent-expand kt-agent-fixtures kt-agent-runtime kt-agent-lab kt-agent-security kt-agent-capability kt-agent-advisory ts-unit ts-e2e-all; do
+            for item in kt-full kt-recovery kt-agent-env kt-agent-expand kt-agent-fixtures kt-agent-runtime kt-agent-lab kt-agent-security kt-agent-capability kt-agent-advisory ts-unit ts-e2e-all; do
                 echo "  $index. $item"
                 index=$((index + 1))
             done
@@ -662,6 +671,7 @@ EOF_PLAN
                 kt-apps) echo "  1. suite stack-apps" ;;
                 kt-contract) echo "  1. suite stack-contract" ;;
                 kt-live-ingestion) echo "  1. suite stack-live-ingestion" ;;
+                kt-recovery) echo "  1. suite stack-recovery" ;;
                 kt-full) echo "  1. suite stack-full" ;;
                 kt-agent-env) echo "  1. suite agent-env" ;;
                 kt-agent-expand) echo "  1. suite agent-expand" ;;
@@ -709,6 +719,7 @@ run_registry_target() {
         kt-apps) run_runner suite stack-apps ;;
         kt-contract|stack-contract) run_runner suite stack-contract ;;
         kt-live-ingestion|stack-live-ingestion) run_runner suite stack-live-ingestion ;;
+        kt-recovery|stack-recovery) run_runner suite stack-recovery ;;
         kt-full|stack-full) run_runner suite stack-full ;;
         kt-agent-env|agent-env) run_runner suite agent-env ;;
         kt-agent-expand|agent-expand) run_runner suite agent-expand ;;
@@ -758,6 +769,7 @@ print_changed_plan() {
             stack.containers/test-runner/playwright-tests/tests/deep/*) targets+=("ts-e2e-deep") ;;
             stack.containers/test-runner/playwright-tests/tests/visual/*|stack.containers/test-runner/playwright-tests/utils/route-catalog.ts) targets+=("ts-e2e-visual") ;;
             stack.containers/test-runner/*) targets+=("source-unit" "ts-unit") ;;
+            stack.compose/kopia.yml|scripts/testdev/*) targets+=("source-unit" "kt-recovery" "kt-contract") ;;
             stack.compose/*|stack.config/*|scripts/*) targets+=("source-unit" "kt-contract" "ts-boundary") ;;
             *) targets+=("source-unit") ;;
         esac
@@ -816,10 +828,10 @@ print_test_catalog() {
     printf '%s\n' all default
     echo ""
     echo "Targets:"
-    printf '%s\n' source-unit kt-core kt-auth kt-apps kt-contract kt-live-ingestion kt-full kt-agent-env kt-agent-expand kt-agent-fixtures kt-agent-runtime kt-agent-lab kt-agent-security kt-agent-capability kt-agent-advisory ts-unit ts-boundary ts-app-smoke ts-sso ts-e2e ts-e2e-deep ts-e2e-visual ts-e2e-all
+    printf '%s\n' source-unit kt-core kt-auth kt-apps kt-contract kt-live-ingestion kt-recovery kt-full kt-agent-env kt-agent-expand kt-agent-fixtures kt-agent-runtime kt-agent-lab kt-agent-security kt-agent-capability kt-agent-advisory ts-unit ts-boundary ts-app-smoke ts-sso ts-e2e ts-e2e-deep ts-e2e-visual ts-e2e-all
     echo ""
     echo "Kotlin suites:"
-    printf '%s\n' stack-core stack-auth stack-apps stack-contract stack-live-ingestion stack-full agent-security agent-capability agent-advisory agent-env agent-expand agent-fixtures agent-runtime agent-lab kotlin-all
+    printf '%s\n' stack-core stack-auth stack-apps stack-contract stack-live-ingestion stack-recovery stack-full agent-security agent-capability agent-advisory agent-env agent-expand agent-fixtures agent-runtime agent-lab kotlin-all
     echo ""
     echo "Granular Kotlin managed tests:"
     run_kotlin_metadata list kotlin-all
@@ -828,7 +840,7 @@ print_test_catalog() {
 COMMAND="${1:-kt}"
 shift || true
 
-if [[ ! "$COMMAND" =~ ^(kt|run|kt-list|kt-tests|kt-plan|kt-one|kt-core|kt-auth|kt-apps|kt-contract|kt-live-ingestion|kt-full|kt-agent-env|kt-agent-expand|kt-agent-fixtures|kt-agent-runtime|kt-agent-lab|kt-agent-security|kt-agent-capability|kt-agent-advisory|ts|ts-unit|ts-unit-one|ts-unit-name|ts-boundary|ts-app-smoke|ts-sso|ts-e2e|ts-e2e-route|ts-e2e-smoke|ts-e2e-deep|ts-workflow|ts-e2e-visual|ts-e2e-all|ts-e2e-one|ts-e2e-name|ts-ui|ts-headed|ts-debug|ts-report|source-unit|gradle-one|list|plan|run-target|changed|slowest|failed|all|shell|--help|-h|help)$ ]]; then
+if [[ ! "$COMMAND" =~ ^(kt|run|kt-list|kt-tests|kt-plan|kt-one|kt-core|kt-auth|kt-apps|kt-contract|kt-live-ingestion|kt-recovery|kt-full|kt-agent-env|kt-agent-expand|kt-agent-fixtures|kt-agent-runtime|kt-agent-lab|kt-agent-security|kt-agent-capability|kt-agent-advisory|ts|ts-unit|ts-unit-one|ts-unit-name|ts-boundary|ts-app-smoke|ts-sso|ts-e2e|ts-e2e-route|ts-e2e-smoke|ts-e2e-deep|ts-workflow|ts-e2e-visual|ts-e2e-all|ts-e2e-one|ts-e2e-name|ts-ui|ts-headed|ts-debug|ts-report|source-unit|gradle-one|list|plan|run-target|changed|slowest|failed|all|shell|--help|-h|help)$ ]]; then
     set -- "$COMMAND" "$@"
     COMMAND="kt"
 fi
@@ -838,7 +850,7 @@ case "$COMMAND" in
         run_runner suite "${1:-$DEFAULT_KT_SUITE}"
         ;;
     kt-list)
-        printf '%s\n' stack-core stack-auth stack-apps stack-contract stack-live-ingestion stack-full agent-security agent-capability agent-advisory agent-env agent-expand agent-fixtures agent-runtime agent-lab kotlin-all
+        printf '%s\n' stack-core stack-auth stack-apps stack-contract stack-live-ingestion stack-recovery stack-full agent-security agent-capability agent-advisory agent-env agent-expand agent-fixtures agent-runtime agent-lab kotlin-all
         ;;
     kt-tests)
         run_kotlin_metadata list "${1:-kotlin-all}"
@@ -869,6 +881,9 @@ case "$COMMAND" in
         ;;
     kt-live-ingestion)
         run_runner suite stack-live-ingestion
+        ;;
+    kt-recovery)
+        run_runner suite stack-recovery
         ;;
     kt-full)
         run_runner suite stack-full

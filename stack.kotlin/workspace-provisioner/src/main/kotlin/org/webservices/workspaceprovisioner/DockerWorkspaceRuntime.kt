@@ -105,7 +105,7 @@ class DockerWorkspaceRuntime(
             "--label", "webservices.workspace.id=${record.id}",
             "--label", "webservices.workspace.owner=${record.ownerUsername}",
             "-p", "${record.sshPort}:${config.workspaceSshPortInternal}",
-            "-p", "${ttydPort}:${config.workspaceTtydPortInternal}",
+            "-p", runtimeHttpPublish(ttydPort, config.workspaceTtydPortInternal),
             "-v", "${record.volumeName}:/workspace-home",
             "--user", "root",
             config.workspaceImage,
@@ -160,7 +160,7 @@ class DockerWorkspaceRuntime(
             "--label", "webservices.workspace.id=${record.id}",
             "--label", "webservices.workspace.owner=${record.ownerUsername}",
             "--label", "webservices.session.kind=notebook",
-            "-p", "${notebookPort}:${config.workspaceNotebookPortInternal}",
+            "-p", runtimeHttpPublish(notebookPort, config.workspaceNotebookPortInternal),
             "-e", "JUPYTER_ROOT_DIR=/home/${config.workspaceUser}",
             "-e", "JUPYTER_TOKEN=",
             "-e", "NOTEBOOK_BASE_URL=${notebookBasePath(record.id)}",
@@ -310,6 +310,9 @@ class DockerWorkspaceRuntime(
     }
 
     fun ttydUrl(workspaceId: String): String = "${config.publicBaseUrl}${ttydBasePath(workspaceId)}/"
+
+    private fun runtimeHttpPublish(hostPort: Int, containerPort: Int): String =
+        "${config.runtimeHttpBindAddress}:${hostPort}:${containerPort}"
 
     private fun waitForWorkspaceHomeReady(record: WorkspaceRecord) {
         val readinessCommand = "test -f /workspace-home/.workspace-runtime-ready && test -L /home/${config.workspaceUser}"

@@ -34,6 +34,10 @@ networks:
     driver: bridge
     internal: true
 
+  docker-host-lifecycle:
+    driver: bridge
+    internal: true
+
   caddy:
     driver: bridge
 

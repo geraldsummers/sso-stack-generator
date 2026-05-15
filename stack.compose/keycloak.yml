@@ -58,5 +58,5 @@ services:
           grep -q ' 200 ' <&3"
       interval: 10s
       timeout: 5s
-      retries: 30
-      start_period: 90s
+      retries: 60
+      start_period: 420s
