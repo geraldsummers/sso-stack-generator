@@ -106,7 +106,7 @@ class TestArchitectureTest {
         assertTrue(commonText.contains("cp -a /testdev-docker-config-source/. \"\$DOCKER_CONFIG\"/"))
         assertTrue(commonText.contains("testdev_pull_workspace_base_images"))
         assertTrue(commonText.contains("TESTDEV_PULL_WORKSPACE_BASE_IMAGES:-1"))
-        assertTrue(commonText.contains("stack.containers/agent-workspace/Dockerfile"))
+        assertTrue(commonText.contains("build/stack.containers/agent-workspace/Dockerfile"))
         assertTrue(commonText.contains("docker pull \"\$image_ref\""))
         assertTrue(commonText.contains("I_UNDERSTAND_THIS_TOUCHES_LOCAL_DOCKER"))
         assertTrue(commonText.contains("Refusing because DOCKER_HOST is set"))

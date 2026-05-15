@@ -222,8 +222,8 @@ testdev_pull_workspace_base_images() {
     set -eu
     cd /workspace-home/deploy/bundle
     sed -n "s/^FROM[[:space:]][[:space:]]*\([^[:space:]][^[:space:]]*\).*/\1/p" \
-      stack.containers/agent-workspace/Dockerfile \
-      stack.containers/agent-workspace-notebook/Dockerfile 2>/dev/null |
+      build/stack.containers/agent-workspace/Dockerfile \
+      build/stack.containers/agent-workspace-notebook/Dockerfile 2>/dev/null |
       sort -u |
       while IFS= read -r image_ref; do
         [ -n "$image_ref" ] || continue
