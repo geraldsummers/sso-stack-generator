@@ -353,9 +353,10 @@ run_seahub_migrations() {
 }
 
 reconcile_admin_user() {
-  ensure_shared_links
-  log "Reconciling Seafile admin user"
-  "$SEAHUB_SCRIPT" python-env python3 "$SEAHUB_MANAGE_PY" shell <<'PY'
+  local output_file
+
+  output_file="$(mktemp)"
+  if "$SEAHUB_SCRIPT" python-env python3 "$SEAHUB_MANAGE_PY" shell >"$output_file" 2>&1 <<'PY'
 import os
 
 from seahub.base.accounts import User
@@ -374,7 +375,40 @@ user.set_password(admin_password)
 user.is_staff = True
 user.is_active = True
 user.save()
+
+if not user.check_password(admin_password):
+    raise RuntimeError("Seafile admin password verification failed")
+
+print("WEBSERVICES_SEAFILE_ADMIN_RECONCILED")
 PY
+  then
+    :
+  fi
+
+  if grep -q "WEBSERVICES_SEAFILE_ADMIN_RECONCILED" "$output_file"; then
+    rm -f "$output_file"
+    return 0
+  fi
+
+  rm -f "$output_file"
+  return 1
+}
+
+start_admin_user_reconciler() {
+  (
+    local attempt
+
+    for attempt in $(seq 1 120); do
+      if reconcile_admin_user; then
+        log "Seafile admin user reconciliation complete"
+        exit 0
+      fi
+      sleep 2
+    done
+
+    log "ERROR: timed out reconciling Seafile admin user"
+    exit 1
+  ) &
 }
 
 bootstrap_fresh_state() {
@@ -408,7 +442,6 @@ adopt_complete_unmarked_state_if_present() {
   log "Found complete Seafile state without init marker; adopting it"
   sync_overlay_into_settings
   run_seahub_migrations
-  reconcile_admin_user
   verify_database_schema
   touch "$MARKER_FILE"
   log "Seafile state adoption complete"
@@ -466,7 +499,6 @@ ensure_initialized_state() {
     if required_paths_are_complete && database_schema_is_complete; then
       sync_overlay_into_settings
       run_seahub_migrations
-      reconcile_admin_user
       verify_database_schema
       log "Seafile state validation complete"
       return 0
@@ -484,7 +516,6 @@ ensure_initialized_state() {
   verify_required_paths
   sync_overlay_into_settings
   run_seahub_migrations
-  reconcile_admin_user
   verify_database_schema
   touch "$MARKER_FILE"
   log "Seafile initialization complete"
@@ -497,6 +528,7 @@ main() {
   require_path "$MARKER_FILE"
   verify_required_paths
   ensure_shared_links
+  start_admin_user_reconciler
 
   exec /sbin/my_init -- /scripts/enterpoint.sh "$@"
 }
