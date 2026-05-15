@@ -217,11 +217,12 @@ PY
 
 testdev_run_cli() {
   local network_name volume_name dind_name docker_config_dir
-  local docker_config_args=()
+  local -a command_args docker_config_args
   network_name="$(testdev_network_name)"
   volume_name="$(testdev_volume_name)"
   dind_name="$(testdev_dind_name)"
   docker_config_dir="${TESTDEV_DOCKER_CONFIG:-${DOCKER_CONFIG:-}}"
+  command_args=("$@")
 
   if [ -z "$docker_config_dir" ] && [ -f "${HOME:-}/.docker/config.json" ]; then
     docker_config_dir="${HOME}/.docker"
@@ -230,7 +231,14 @@ testdev_run_cli() {
   if [ -n "$docker_config_dir" ] && [ -f "$docker_config_dir/config.json" ]; then
     docker_config_args=(
       -e DOCKER_CONFIG=/testdev-docker-config
-      -v "$docker_config_dir:/testdev-docker-config:ro"
+      -v "$docker_config_dir:/testdev-docker-config-source:ro"
+    )
+    command_args=(
+      sh
+      -lc
+      'mkdir -p "$DOCKER_CONFIG"; cp -a /testdev-docker-config-source/. "$DOCKER_CONFIG"/; exec "$@"'
+      testdev-cli
+      "$@"
     )
   fi
 
@@ -241,5 +249,5 @@ testdev_run_cli() {
     -e "COMPOSE_PARALLEL_LIMIT=${COMPOSE_PARALLEL_LIMIT:-1}" \
     "${docker_config_args[@]}" \
     -v "$volume_name:/workspace-home" \
-    docker:29-cli "$@"
+    docker:29-cli "${command_args[@]}"
 }
