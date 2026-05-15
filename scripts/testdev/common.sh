@@ -216,16 +216,30 @@ PY
 }
 
 testdev_run_cli() {
-  local network_name volume_name dind_name
+  local network_name volume_name dind_name docker_config_dir
+  local docker_config_args=()
   network_name="$(testdev_network_name)"
   volume_name="$(testdev_volume_name)"
   dind_name="$(testdev_dind_name)"
+  docker_config_dir="${TESTDEV_DOCKER_CONFIG:-${DOCKER_CONFIG:-}}"
+
+  if [ -z "$docker_config_dir" ] && [ -f "${HOME:-}/.docker/config.json" ]; then
+    docker_config_dir="${HOME}/.docker"
+  fi
+
+  if [ -n "$docker_config_dir" ] && [ -f "$docker_config_dir/config.json" ]; then
+    docker_config_args=(
+      -e DOCKER_CONFIG=/testdev-docker-config
+      -v "$docker_config_dir:/testdev-docker-config:ro"
+    )
+  fi
 
   docker run --rm \
     --network "$network_name" \
     -e "DOCKER_HOST=tcp://$dind_name:2375" \
     -e "COMPOSE_PROJECT_NAME=$(testdev_project_name)" \
     -e "COMPOSE_PARALLEL_LIMIT=${COMPOSE_PARALLEL_LIMIT:-1}" \
+    "${docker_config_args[@]}" \
     -v "$volume_name:/workspace-home" \
     docker:29-cli "$@"
 }
