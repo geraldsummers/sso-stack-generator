@@ -206,6 +206,7 @@ export const browserRouteCatalog: BrowserRoute[] = [
       matcher: /\bDonetick\b|\bChores\b|\bTasks\b|\bThings\b/i,
       selector: 'text=/Donetick|Chores|Tasks|Things/i',
       loginLabel: 'Keycloak',
+      oidcStartPath: '/auth/oauth2',
       disallowMatcher: /\bContinue with Keycloak\b|\b503 Service Unavailable\b/i,
     },
     ownership: { route: true, smoke: false, visual: true, deep: true },
