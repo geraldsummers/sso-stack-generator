@@ -170,7 +170,7 @@ export const browserRouteCatalog: BrowserRoute[] = [
     anonymous: { kind: 'service_login', matcher: /\bSOGo\b|\bKeycloak\b|\bLogin\b|\bSign in\b/i, loginLabel: 'Keycloak', allowAuthRedirect: true, path: '/SOGo/' },
     visual: {
       path: '/SOGo/',
-      pathForUser: (user) => `/SOGo/so/${user.email}/Mail/view`,
+      pathForUser: (user) => `/SOGo/so/${encodeURIComponent(user.email)}/Mail/view`,
       fileStem: 'sogo-authenticated',
       matcher: /\bMail\b|\bInbox\b|\bSent\b|\bDrafts\b|\bTrash\b/i,
       selector: 'text=/Mail|Inbox|Sent|Drafts|Trash/i',
