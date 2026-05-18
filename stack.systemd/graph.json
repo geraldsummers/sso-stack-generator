@@ -148,7 +148,8 @@
     {
       "name": "vaultwarden-stack",
       "services": [
-        "vaultwarden"
+        "vaultwarden",
+        "vaultwarden-maintenance"
       ]
     },
     {
