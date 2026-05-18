@@ -189,6 +189,21 @@ async function disconnectRoom(room: Room): Promise<void> {
   ]);
 }
 
+async function waitForObservedEvent(
+  observedEvents: string[],
+  predicate: (event: string) => boolean,
+  label: string,
+): Promise<void> {
+  for (let attempt = 0; attempt < 40; attempt += 1) {
+    if (observedEvents.some(predicate)) {
+      return;
+    }
+    await new Promise((resolve) => setTimeout(resolve, 250));
+  }
+
+  throw new Error(`${label} not observed; events=${observedEvents.join(', ')}`);
+}
+
 test('Element Call MatrixRTC uses internal LiveKit for two-party audio media', async ({ request }) => {
   test.setTimeout(90000);
 
@@ -255,7 +270,11 @@ test('Element Call MatrixRTC uses internal LiveKit for two-party audio media', a
       ),
       `LiveKit participants did not expose the published audio track; events=${observedEvents.join(', ')}`
     ).toBe(true);
-    expect(observedEvents.some((event) => event.includes(':track-subscribed:'))).toBe(true);
+    await waitForObservedEvent(
+      observedEvents,
+      (event) => event.includes(':track-subscribed:'),
+      'LiveKit remote track subscription',
+    );
   } finally {
     await Promise.allSettled([disconnectRoom(alice), disconnectRoom(bob)]);
   }
