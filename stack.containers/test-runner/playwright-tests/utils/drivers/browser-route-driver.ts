@@ -204,6 +204,10 @@ async function waitForSmokeReady(page: Page, smoke: SmokeContract, route: Browse
   throw new Error(`${route.label} authenticated page did not satisfy smoke contract at ${page.url()}; content: ${summary}`);
 }
 
+function smokePathForUser(smoke: SmokeContract, user: BrowserTestUser): string | undefined {
+  return smoke.pathForUser?.({ username: user.username, email: user.email }) ?? smoke.path;
+}
+
 export function isBookStackTransientOidcErrorState(content: string, url: string): boolean {
   return /an error occurred|unknown error occurred/i.test(content) || /\/oidc\/callback\b/i.test(url);
 }
@@ -364,7 +368,8 @@ export async function assertSmokeContract(page: Page, route: BrowserRoute, user:
   }
 
   await applySmokeHeaders(page, route.smoke);
-  await gotoWithRetry(page, routeUrl(route, route.smoke.path));
+  const targetPath = smokePathForUser(route.smoke, user);
+  await gotoWithRetry(page, routeUrl(route, targetPath));
 
   if (route.kind === 'public') {
     await waitForSmokeReady(page, route.smoke, route);
@@ -389,8 +394,8 @@ export async function assertSmokeContract(page: Page, route: BrowserRoute, user:
 
     if (!alreadyReady) {
       await completeOidcLogin(page, route, loginLabel, user);
-      if (route.smoke.path) {
-        await gotoWithRetry(page, routeUrl(route, route.smoke.path));
+      if (targetPath) {
+        await gotoWithRetry(page, routeUrl(route, targetPath));
       }
     }
 
@@ -421,6 +426,7 @@ export async function captureVisualSnapshot(
     disallowUrlMatcher: visual.disallowUrlMatcher,
     headers: visual.headers,
     oidcStartPath: visual.oidcStartPath,
+    pathForUser: visual.pathForUser,
   };
 
   await assertSmokeContract(page, { ...route, smoke: effectiveSmoke }, user);

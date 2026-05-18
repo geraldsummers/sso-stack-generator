@@ -15,6 +15,7 @@ export type AnonymousContract =
 export type SmokeContract = {
   matcher: RegExp;
   path?: string;
+  pathForUser?: (user: { username: string; email: string }) => string;
   selector?: string;
   loginLabel?: string;
   disallowMatcher?: RegExp;
@@ -169,9 +170,10 @@ export const browserRouteCatalog: BrowserRoute[] = [
     anonymous: { kind: 'service_login', matcher: /\bSOGo\b|\bKeycloak\b|\bLogin\b|\bSign in\b/i, loginLabel: 'Keycloak', allowAuthRedirect: true, path: '/SOGo/' },
     visual: {
       path: '/SOGo/',
+      pathForUser: (user) => `/SOGo/so/${encodeURIComponent(user.email)}/Mail/view`,
       fileStem: 'sogo-authenticated',
-      matcher: /\bSOGo\b|\bMail\b|\bCalendar\b|\bAddress Book\b|\bInbox\b/i,
-      selector: 'text=/SOGo|Mail|Calendar|Address Book|Inbox/i',
+      matcher: /\bMail\b|\bInbox\b|\bSent\b|\bDrafts\b|\bTrash\b/i,
+      selector: 'text=/Mail|Inbox|Sent|Drafts|Trash/i',
       loginLabel: 'Keycloak',
       oidcStartPath: '/SOGo/',
       disallowUrlMatcher: /keycloak|keycloak-auth/i,
@@ -206,7 +208,6 @@ export const browserRouteCatalog: BrowserRoute[] = [
       matcher: /\bDonetick\b|\bChores\b|\bTasks\b|\bThings\b/i,
       selector: 'text=/Donetick|Chores|Tasks|Things/i',
       loginLabel: 'Keycloak',
-      oidcStartPath: '/auth/oauth2',
       disallowMatcher: /\bContinue with Keycloak\b|\b503 Service Unavailable\b/i,
     },
     ownership: { route: true, smoke: false, visual: true, deep: true },
