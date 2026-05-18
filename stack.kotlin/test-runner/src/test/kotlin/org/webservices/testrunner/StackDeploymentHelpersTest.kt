@@ -94,6 +94,28 @@ class StackDeploymentHelpersTest {
     }
 
     @Test
+    fun `deploy reloads active units when rebuilt local images change`() {
+        val deployScript = Files.readString(repoFile("scripts/deploy.sh"))
+
+        assertTrue(
+            deployScript.contains("snapshot_built_image_ids_before"),
+            "Deploy should capture built image IDs before rebuilding"
+        )
+        assertTrue(
+            deployScript.contains("reload_changed_built_image_units"),
+            "Deploy should reload active service units whose rebuilt image ID changed"
+        )
+        assertTrue(
+            deployScript.contains("test(\":local-build$\")"),
+            "Deploy should treat local-build tagged images as rebuildable service images"
+        )
+        assertTrue(
+            deployScript.contains("unit_for_compose_service"),
+            "Deploy should map compose services to their systemd lifecycle unit before reloading"
+        )
+    }
+
+    @Test
     fun `caddy can resolve isolated workspace runtime host`() {
         val caddyCompose = Files.readString(repoFile("stack.compose/caddy.yml"))
         val renderValues = Files.readString(repoFile("scripts/lib/render-values.sh"))

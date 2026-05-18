@@ -20,6 +20,7 @@ SYSTEMD_RECONCILE_TIMEOUT_SECONDS="${SYSTEMD_RECONCILE_TIMEOUT_SECONDS:-1800}"
 SYSTEMD_PROGRESS_INTERVAL_SECONDS="${SYSTEMD_PROGRESS_INTERVAL_SECONDS:-5}"
 SYSTEMD_PROGRESS_MAX_ITEMS="${SYSTEMD_PROGRESS_MAX_ITEMS:-8}"
 SYSTEMD_PROGRESS_HEARTBEAT_SECONDS="${SYSTEMD_PROGRESS_HEARTBEAT_SECONDS:-30}"
+declare -A BUILT_IMAGE_IDS_BEFORE=()
 
 usage() {
   cat <<'EOF_USAGE'
@@ -136,6 +137,51 @@ model_prep_services() {
         )
       | .key
     ' | sort
+}
+
+built_image_services() {
+  COMPOSE_PROJECT_NAME="$PROJECT_NAME" run_compose_from_bundle \
+    "$BUNDLE_ROOT" \
+    "$DEPLOY_ROOT/runtime/stack.env" \
+    config --format json | jq -r '
+      .services
+      | to_entries[]
+      | select((.value.build // null) != null or ((.value.image // "") | test(":local-build$")))
+      | select((.value.image // "") != "")
+      | [.key, .value.image]
+      | @tsv
+    ' | sort
+}
+
+image_id_for_ref() {
+  local image_ref="$1"
+  docker image inspect --format '{{.Id}}' "$image_ref" 2>/dev/null || true
+}
+
+unit_for_compose_service() {
+  local service_name="$1"
+  local graph_file="$BUNDLE_ROOT/stack.systemd/graph.json"
+  local unit_prefix domain_name
+
+  unit_prefix="$(jq -r '.unitPrefix // "webservices"' "$graph_file")"
+  domain_name="$(jq -r --arg service "$service_name" '
+    first(
+      .lifecycleDomains[]?
+      | select(((.services // []) | index($service)) != null)
+      | .name
+    ) // $service
+  ' "$graph_file")"
+  printf '%s-%s.service\n' "$unit_prefix" "$domain_name"
+}
+
+snapshot_built_image_ids_before() {
+  local service_name image_ref image_id
+  BUILT_IMAGE_IDS_BEFORE=()
+  while IFS=$'\t' read -r service_name image_ref; do
+    [ -n "$service_name" ] || continue
+    image_id="$(image_id_for_ref "$image_ref")"
+    BUILT_IMAGE_IDS_BEFORE["$service_name"]="$image_id"
+  done < <(built_image_services)
 }
 
 run_model_prep_jobs() {
@@ -518,6 +564,43 @@ reload_deploy_sensitive_units() {
   user_systemctl reload "${units[@]}"
 }
 
+reload_changed_built_image_units() {
+  local service_name image_ref before_id after_id unit_name
+  local units=()
+  local seen=" "
+
+  while IFS=$'\t' read -r service_name image_ref; do
+    [ -n "$service_name" ] || continue
+    before_id="${BUILT_IMAGE_IDS_BEFORE[$service_name]:-}"
+    after_id="$(image_id_for_ref "$image_ref")"
+    if [ -n "$before_id" ] && [ "$before_id" = "$after_id" ]; then
+      continue
+    fi
+
+    unit_name="$(unit_for_compose_service "$service_name")"
+    [ -f "$BUNDLE_ROOT/systemd-user/$unit_name" ] || continue
+    if ! grep -q '^ExecReload=' "$BUNDLE_ROOT/systemd-user/$unit_name"; then
+      continue
+    fi
+    if ! user_systemctl is-active --quiet "$unit_name"; then
+      continue
+    fi
+    if [[ "$seen" == *" $unit_name "* ]]; then
+      continue
+    fi
+    seen="$seen$unit_name "
+    units+=("$unit_name")
+  done < <(built_image_services)
+
+  if [ "${#units[@]}" -eq 0 ]; then
+    deploy_log "no active built-image lifecycle units changed"
+    return 0
+  fi
+
+  deploy_log "reloading active lifecycle units with changed built images under systemd --user: $(join_array_limited "$SYSTEMD_PROGRESS_MAX_ITEMS" "${units[@]}")"
+  user_systemctl reload "${units[@]}"
+}
+
 restart_deploy_job_units() {
   local unit_name
   local configured_units="${DEPLOY_RESTART_JOB_UNITS:-webservices-erpnext-configurator.service webservices-erpnext-bootstrap.service}"
@@ -553,6 +636,9 @@ ensure_runtime_links "$DEPLOY_ROOT" >/dev/null
 set_phase "model-prep"
 run_model_prep_jobs
 
+set_phase "compose-build-snapshot"
+snapshot_built_image_ids_before
+
 set_phase "compose-build"
 deploy_log "building service images"
 COMPOSE_PROJECT_NAME="$PROJECT_NAME" run_compose_from_bundle \
@@ -584,6 +670,9 @@ refresh_infra_units
 
 set_phase "systemd-restart-deploy-job-units"
 restart_deploy_job_units
+
+set_phase "systemd-reload-changed-built-images"
+reload_changed_built_image_units
 
 set_phase "systemd-reload-deploy-sensitive-units"
 reload_deploy_sensitive_units
