@@ -172,7 +172,6 @@ export const browserRouteCatalog: BrowserRoute[] = [
       path: '/SOGo/',
       fileStem: 'sogo-authenticated',
       matcher: /\bCalendar\b|\bMail\b|\bInbox\b|\bSent\b|\bDrafts\b|\bTrash\b/i,
-      selector: 'text=/Calendar|Mail|Inbox|Sent|Drafts|Trash/i',
       loginLabel: 'Keycloak',
       oidcStartPath: '/SOGo/',
       disallowUrlMatcher: /keycloak|keycloak-auth/i,

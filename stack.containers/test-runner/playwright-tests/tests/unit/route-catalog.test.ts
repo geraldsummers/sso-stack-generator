@@ -111,6 +111,7 @@ describe('route-catalog', () => {
       email: 'pw-test@datamancy.net',
     })).toBeUndefined();
     expect(sogo.visual?.path).toBe('/SOGo/');
+    expect(sogo.visual?.selector).toBeUndefined();
     expect(sogo.visual?.matcher.test('Calendar | webservices Mail')).toBe(true);
 
     expect(donetick.visual?.matcher.test('Loading... This is taking longer than usual.')).toBe(false);
