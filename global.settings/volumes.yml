@@ -39,7 +39,11 @@ volumes:
   caddy_data:
 
   seafile_files:
-
+    driver: local
+    driver_opts:
+      type: bind
+      o: bind
+      device: ${SEAFILE_MEDIA_ROOT}
 
   qdrant_data:
     driver: local
@@ -54,13 +58,6 @@ volumes:
       type: bind
       o: bind
       device: ${QBITTORRENT_DATA_ROOT}
-
-  seafile_media:
-    driver: local
-    driver_opts:
-      type: bind
-      o: bind
-      device: ${SEAFILE_MEDIA_ROOT}
 
   jellyfin_media:
     driver: local

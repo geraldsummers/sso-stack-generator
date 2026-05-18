@@ -44,7 +44,6 @@ services:
     entrypoint: ["/bin/bash", "/runtime-entrypoint.sh"]
     volumes:
       - seafile_files:/shared
-      - seafile_media:/shared/seafile/seafile-data/storage
       - ./configs/seafile/seahub_settings.py:/seahub_settings_overlay.py:ro
       - ./configs/seafile/runtime-entrypoint.sh:/runtime-entrypoint.sh:ro
     healthcheck:

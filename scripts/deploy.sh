@@ -241,6 +241,73 @@ ensure_bootstrap_scaffolds() {
   deploy_log "ensured bootstrap scaffold: $repos_root"
 }
 
+runtime_env_value() {
+  local key="$1"
+  env -i bash -c 'set -a; . "$1"; printf "%s\n" "${!2:-}"' bash "$DEPLOY_ROOT/runtime/stack.env" "$key"
+}
+
+migrate_legacy_seafile_split_volume() {
+  local volumes_config="$BUNDLE_ROOT/systemd-user/infra/volumes.json"
+  local volume_name desired_device actual_driver actual_opts seafile_media_root
+
+  [ -f "$volumes_config" ] || return 0
+
+  volume_name="$(jq -r '.[] | select(.key == "seafile_files") | .name // empty' "$volumes_config")"
+  desired_device="$(jq -r '.[] | select(.key == "seafile_files") | .driver_opts.device // empty' "$volumes_config")"
+  [ -n "$volume_name" ] || return 0
+  [ "$desired_device" = '${SEAFILE_MEDIA_ROOT}' ] || return 0
+  docker volume inspect "$volume_name" >/dev/null 2>&1 || return 0
+
+  actual_driver="$(docker volume inspect "$volume_name" -f '{{.Driver}}')"
+  actual_opts="$(docker volume inspect "$volume_name" | jq -cS '.[0].Options // {}')"
+  [ "$actual_driver" = "local" ] || return 0
+  [ "$actual_opts" = "{}" ] || return 0
+
+  seafile_media_root="$(runtime_env_value SEAFILE_MEDIA_ROOT)"
+  [ -n "$seafile_media_root" ] || die "SEAFILE_MEDIA_ROOT is empty; refusing Seafile volume migration"
+  [ "$seafile_media_root" != "/" ] || die "SEAFILE_MEDIA_ROOT resolved to /; refusing Seafile volume migration"
+
+  deploy_log "migrating legacy Seafile split volume $volume_name into $seafile_media_root"
+  user_systemctl stop webservices-seafile.service >/dev/null 2>&1 || true
+  COMPOSE_PROJECT_NAME="$PROJECT_NAME" run_compose_from_bundle \
+    "$BUNDLE_ROOT" \
+    "$DEPLOY_ROOT/runtime/stack.env" \
+    stop seafile >/dev/null 2>&1 || true
+  COMPOSE_PROJECT_NAME="$PROJECT_NAME" run_compose_from_bundle \
+    "$BUNDLE_ROOT" \
+    "$DEPLOY_ROOT/runtime/stack.env" \
+    rm -f -s seafile >/dev/null 2>&1 || true
+
+  mkdir -p "$seafile_media_root"
+  docker run --rm \
+    -v "$volume_name:/legacy-shared:ro" \
+    -v "$seafile_media_root:/target-shared" \
+    "$RUNTIME_CLEANUP_IMAGE" \
+    sh -ceu '
+      cp -a /legacy-shared/. /target-shared/
+      mkdir -p /target-shared/seafile/seafile-data/storage
+      for name in blocks commits fs httptemp tmp; do
+        source="/target-shared/$name"
+        dest="/target-shared/seafile/seafile-data/storage/$name"
+        [ -e "$source" ] || continue
+        mkdir -p "$dest"
+        for entry in "$source"/* "$source"/.[!.]* "$source"/..?*; do
+          [ -e "$entry" ] || continue
+          base="$(basename "$entry")"
+          if [ -e "$dest/$base" ]; then
+            echo "refusing to overwrite existing Seafile storage entry: $dest/$base" >&2
+            exit 1
+          fi
+          mv "$entry" "$dest/"
+        done
+        rmdir "$source" 2>/dev/null || true
+      done
+    '
+
+  docker volume rm "$volume_name" >/dev/null
+  deploy_log "legacy Seafile split volume migrated; $volume_name will be recreated as a bind volume"
+}
+
 join_array_limited() {
   local max_items="$1"
   shift
@@ -676,6 +743,9 @@ user_systemctl reset-failed
 user_systemctl enable webservices.target >/dev/null
 
 deploy_log "enabled target: webservices.target"
+
+set_phase "seafile-volume-migration"
+migrate_legacy_seafile_split_volume
 
 set_phase "systemd-refresh-infra"
 refresh_infra_units
