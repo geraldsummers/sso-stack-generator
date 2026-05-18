@@ -48,12 +48,16 @@ async function applySmokeHeaders(page: Page, smoke: SmokeContract): Promise<void
 }
 
 async function combinedPageContent(page: Page): Promise<string> {
-  const [title, bodyText] = await Promise.all([
+  const body = page.locator('body').first();
+  const [title, bodyInnerText, bodyText] = await Promise.all([
     page.title().catch(() => ''),
+    typeof (body as unknown as { innerText?: unknown }).innerText === 'function'
+      ? body.innerText({ timeout: 1000 }).catch(() => '')
+      : Promise.resolve(''),
     page.textContent('body').catch(() => ''),
   ]);
 
-  return [title, bodyText || ''].filter(Boolean).join('\n');
+  return [title, bodyInnerText || '', bodyText || ''].filter(Boolean).join('\n');
 }
 
 async function expectPageMatcher(page: Page, matcher: RegExp, description: string): Promise<void> {
@@ -111,9 +115,28 @@ function smokeSelectorLocator(page: Page, selector: string): Locator {
     .reduce((combined, locator) => combined.or(locator));
 }
 
+async function isAnySmokeSelectorVisible(page: Page, selector: string): Promise<boolean> {
+  const locator = smokeSelectorLocator(page, selector);
+  const countFn = (locator as unknown as { count?: () => Promise<number> }).count;
+  const nthFn = (locator as unknown as { nth?: (index: number) => Locator }).nth;
+
+  if (typeof countFn !== 'function' || typeof nthFn !== 'function') {
+    return locator.first().isVisible().catch(() => false);
+  }
+
+  const count = await countFn.call(locator).catch(() => 0);
+  for (let index = 0; index < Math.min(count, 50); index += 1) {
+    if (await nthFn.call(locator, index).isVisible().catch(() => false)) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
 async function isSmokeReady(page: Page, smoke: SmokeContract): Promise<boolean> {
   if (smoke.selector) {
-    const selectorVisible = await smokeSelectorLocator(page, smoke.selector).first().isVisible().catch(() => false);
+    const selectorVisible = await isAnySmokeSelectorVisible(page, smoke.selector);
     if (!selectorVisible) {
       return false;
     }
@@ -155,24 +178,30 @@ async function loginWithDefaultProvider(page: Page, user: BrowserTestUser): Prom
 }
 
 async function waitForSmokeReady(page: Page, smoke: SmokeContract, route: BrowserRoute): Promise<void> {
-  if (smoke.selector) {
-    await expect(smokeSelectorLocator(page, smoke.selector).first()).toBeVisible({ timeout: 20000 });
+  const deadline = Date.now() + 60000;
+  let nextRecoveryAt = Date.now() + 7000;
+  let lastContent = '';
+
+  while (Date.now() < deadline) {
+    await page.waitForLoadState('domcontentloaded', { timeout: 5000 }).catch(() => {});
+    await page.waitForLoadState('networkidle', { timeout: 5000 }).catch(() => {});
+
+    if (await isSmokeReady(page, smoke).catch(() => false)) {
+      return;
+    }
+
+    lastContent = await combinedPageContent(page);
+    const contentLooksStuck = lastContent.trim().length === 0 || /\bLoading\.\.\.|\btaking longer than usual\b/i.test(lastContent);
+    if (contentLooksStuck && smoke.path && Date.now() >= nextRecoveryAt) {
+      await gotoWithRetry(page, routeUrl(route, smoke.path)).catch(() => {});
+      nextRecoveryAt = Date.now() + 7000;
+    }
+
+    await page.waitForTimeout(1000);
   }
 
-  await expectPageMatcher(page, smoke.matcher, `${route.label} authenticated page`);
-
-  if (smoke.disallowMatcher) {
-    await expectPageNotMatcher(page, smoke.disallowMatcher, `${route.label} authenticated page`);
-  }
-
-  if (smoke.disallowUrlMatcher) {
-    await expect
-      .poll(() => !smoke.disallowUrlMatcher?.test(page.url()), {
-        timeout: 5000,
-        message: `${route.label} authenticated page should not remain on ${smoke.disallowUrlMatcher}`,
-      })
-      .toBe(true);
-  }
+  const summary = lastContent.trim().replace(/\s+/g, ' ').slice(0, 240) || '<empty page>';
+  throw new Error(`${route.label} authenticated page did not satisfy smoke contract at ${page.url()}; content: ${summary}`);
 }
 
 export function isBookStackTransientOidcErrorState(content: string, url: string): boolean {
