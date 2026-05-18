@@ -84,6 +84,10 @@ class StackDeploymentHelpersTest {
             "Workspace provisioner should wait for docker-vm-controller-proxy startup"
         )
         assertTrue(
+            composeSource.contains("DOCKER_BUILDKIT: \"0\""),
+            "Workspace provisioner image builds should use the classic Docker build endpoint exposed by the isolated controller proxy"
+        )
+        assertTrue(
             composeSource.contains("search-service:\n        condition: service_started"),
             "Workspace provisioner should wait for search-service startup"
         )

@@ -51,6 +51,7 @@ services:
       WORKSPACE_PROVISIONER_CA_URL: https://workspaces.${DOMAIN}
       WORKSPACE_PROVISIONER_CA_PROVISIONER: workspace-provisioner
       DOCKER_HOST: tcp://docker-vm-controller-proxy:2375
+      DOCKER_BUILDKIT: "0"
     volumes:
       - workspace_provisioner_data:/data
       - ./stack.containers/agent-workspace:/workspace/stack.containers/agent-workspace:ro
