@@ -313,6 +313,9 @@ build_derived_render_values() {
   if ! render_has BOOKSTACK_INTERNAL_API_TOKEN || [ -z "$(render_get BOOKSTACK_INTERNAL_API_TOKEN)" ]; then
     render_set BOOKSTACK_INTERNAL_API_TOKEN "$(derive_stack_secret bookstack-internal-api 64)"
   fi
+  if ! render_has HOMEASSISTANT_TRUSTED_PROXY_SECRET || [ -z "$(render_get HOMEASSISTANT_TRUSTED_PROXY_SECRET)" ]; then
+    render_set HOMEASSISTANT_TRUSTED_PROXY_SECRET "$(derive_stack_secret homeassistant-trusted-proxy 64)"
+  fi
   if ! render_has INFERENCE_CONTROLLER_API_TOKEN || [ -z "$(render_get INFERENCE_CONTROLLER_API_TOKEN)" ]; then
     render_set INFERENCE_CONTROLLER_API_TOKEN "$(derive_stack_secret inference-controller-api 64)"
   fi

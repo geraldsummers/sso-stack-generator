@@ -28,16 +28,20 @@ class HomeAssistantAuthConfigTest {
         assertFalse(configuration.contains("${retiredDirectoryId}_"))
         assertFalse(compose.contains(retiredDirectoryEnvPrefix))
         assertFalse(compose.contains("$retiredDirectoryId:"))
-        assertTrue(compose.contains("TRUSTED_PROXY_NETWORKS: \${CADDY_IP}/32"))
+        assertTrue(compose.contains("TRUSTED_PROXY_NETWORKS: 172.16.0.0/12"))
+        assertTrue(compose.contains("HOMEASSISTANT_TRUSTED_PROXY_SECRET: \${HOMEASSISTANT_TRUSTED_PROXY_SECRET}"))
+        assertTrue(caddyfile.contains("header_up X-Trusted-Proxy-Secret {\$HOMEASSISTANT_TRUSTED_PROXY_SECRET}"))
 
         assertTrue(directBlock.contains("reverse_proxy homeassistant:8123"))
         assertTrue(directBlock.contains("header_up -Remote-User"))
         assertTrue(directBlock.contains("header_up -X-Remote-User"))
         assertTrue(directBlock.contains("header_up -X-Forwarded-User"))
+        assertTrue(directBlock.contains("header_up -X-Trusted-Proxy-Secret"))
         assertFalse(directBlock.contains("keycloak_auth"))
 
         assertTrue(apiBlock.contains("header_up -X-Remote-User"))
         assertTrue(apiBlock.contains("header_up -X-Forwarded-User"))
+        assertTrue(apiBlock.contains("header_up -X-Trusted-Proxy-Secret"))
     }
 
     @Test
@@ -51,8 +55,10 @@ class HomeAssistantAuthConfigTest {
         assertTrue(provider.contains("Missing trusted edge identity"))
         assertTrue(provider.contains("async_validate_trusted_header_login"))
         assertTrue(provider.contains("@AUTH_PROVIDERS.register(\"trusted_networks\")"))
-        assertTrue(provider.contains("os.getenv(\"TRUSTED_PROXY_NETWORKS\", \"192.168.16.20/32\")"))
-        assertFalse(provider.contains("172.16.0.0/12"))
+        assertTrue(provider.contains("os.getenv(\"TRUSTED_PROXY_NETWORKS\", \"172.16.0.0/12\")"))
+        assertTrue(provider.contains("HOMEASSISTANT_TRUSTED_PROXY_SECRET"))
+        assertTrue(provider.contains("Invalid trusted proxy secret"))
+        assertTrue(provider.contains("Missing trusted proxy secret configuration"))
         assertTrue(provider.contains("if \"user\" in flow_result:"))
         assertTrue(provider.contains("await self.store.async_link_user(selected_user, credential)"))
         assertTrue(provider.contains("user is not None and user.is_active"))

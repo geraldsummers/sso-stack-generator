@@ -32,9 +32,11 @@ _LOGGER = logging.getLogger(__name__)
 CONF_TRUSTED_REMOTE_USER_HEADER = "trusted_remote_user_header"
 CONF_TRUSTED_REMOTE_NAME_HEADER = "trusted_remote_name_header"
 CONF_TRUSTED_REMOTE_EMAIL_HEADER = "trusted_remote_email_header"
+CONF_TRUSTED_PROXY_SECRET_HEADER = "X-Trusted-Proxy-Secret"
+TRUSTED_PROXY_SECRET = os.getenv("HOMEASSISTANT_TRUSTED_PROXY_SECRET", "").strip()
 TRUSTED_PROXY_NETWORKS = [
     ip_network(value.strip())
-    for value in os.getenv("TRUSTED_PROXY_NETWORKS", "192.168.16.20/32").split(",")
+    for value in os.getenv("TRUSTED_PROXY_NETWORKS", "172.16.0.0/12").split(",")
     if value.strip()
 ]
 USERNAME_PATTERN = re.compile(r"^[a-z0-9][a-z0-9._-]{0,63}$")
@@ -95,6 +97,10 @@ class KeycloakTrustedAuthProvider(AuthProvider):
         request = current_request.get(None)
         if request is None:
             raise InvalidAuthError("Missing trusted proxy request")
+        if not TRUSTED_PROXY_SECRET:
+            raise InvalidAuthError("Missing trusted proxy secret configuration")
+        if request.headers.get(CONF_TRUSTED_PROXY_SECRET_HEADER) != TRUSTED_PROXY_SECRET:
+            raise InvalidAuthError("Invalid trusted proxy secret")
         username = request.headers.get(
             self.trusted_remote_user_header
         ) or request.headers.get("X-Remote-User")
@@ -106,6 +112,11 @@ class KeycloakTrustedAuthProvider(AuthProvider):
         """Validate SSO username passed by a trusted reverse proxy header."""
         request = current_request.get(None)
         if request is None:
+            return None
+
+        if not TRUSTED_PROXY_SECRET:
+            return None
+        if request.headers.get(CONF_TRUSTED_PROXY_SECRET_HEADER) != TRUSTED_PROXY_SECRET:
             return None
 
         username = request.headers.get(self.trusted_remote_user_header) or request.headers.get("X-Remote-User")

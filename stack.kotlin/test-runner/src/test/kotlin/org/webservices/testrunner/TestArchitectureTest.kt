@@ -145,9 +145,11 @@ class TestArchitectureTest {
 
         assertTrue(caddyCompose.contains("BOOKSTACK_INTERNAL_API_TOKEN: \${BOOKSTACK_INTERNAL_API_TOKEN}"))
         assertTrue(caddyCompose.contains("SEARCH_SERVICE_INTERNAL_TOKEN: \${SEARCH_SERVICE_INTERNAL_TOKEN}"))
+        assertTrue(caddyCompose.contains("HOMEASSISTANT_TRUSTED_PROXY_SECRET: \${HOMEASSISTANT_TRUSTED_PROXY_SECRET}"))
         assertTrue(caddyCompose.contains("ONBOARDING_TRUSTED_PROXY_SECRET: \${ONBOARDING_TRUSTED_PROXY_SECRET}"))
         assertTrue(caddyCompose.contains("CHATGPT_CONNECTOR_TRUSTED_PROXY_SECRET: \${CHATGPT_CONNECTOR_TRUSTED_PROXY_SECRET}"))
         assertTrue(caddyfile.contains("header X-Internal-Token {\$BOOKSTACK_INTERNAL_API_TOKEN}"))
+        assertTrue(caddyfile.contains("header_up X-Trusted-Proxy-Secret {\$HOMEASSISTANT_TRUSTED_PROXY_SECRET}"))
         assertTrue(caddyfile.contains("header_up X-Trusted-Proxy-Secret {\$ONBOARDING_TRUSTED_PROXY_SECRET}"))
         assertTrue(caddyfile.contains("header_up X-Trusted-Proxy-Secret {\$CHATGPT_CONNECTOR_TRUSTED_PROXY_SECRET}"))
         assertFalse(caddyfile.contains("172.20.0.0/24 172.21.0.0/24 172.22.0.0/24"))
@@ -158,6 +160,7 @@ class TestArchitectureTest {
         assertTrue(renderValues.contains("derive_stack_secret workspace-proxy-auth 64"))
         assertTrue(renderValues.contains("derive_stack_secret search-service-internal 64"))
         assertTrue(renderValues.contains("derive_stack_secret bookstack-internal-api 64"))
+        assertTrue(renderValues.contains("derive_stack_secret homeassistant-trusted-proxy 64"))
     }
 
     @Test

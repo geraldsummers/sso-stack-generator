@@ -746,6 +746,7 @@ homeassistant.{$DOMAIN}, home.{$DOMAIN} {
 			header_up -X-Remote-Name
 			header_up -X-Remote-Email
 			header_up -X-Forwarded-User
+			header_up -X-Trusted-Proxy-Secret
 		}
 	}
 
@@ -758,6 +759,7 @@ homeassistant.{$DOMAIN}, home.{$DOMAIN} {
 			header_up Remote-Groups {header.Remote-Groups}
 			header_up Remote-Name {header.Remote-Name}
 			header_up Remote-Email {header.Remote-Email}
+			header_up X-Trusted-Proxy-Secret {$HOMEASSISTANT_TRUSTED_PROXY_SECRET}
 		}
 	}
 }
@@ -777,6 +779,7 @@ direct.homeassistant.{$DOMAIN}, direct.home.{$DOMAIN} {
 		header_up -X-Remote-Name
 		header_up -X-Remote-Email
 		header_up -X-Forwarded-User
+		header_up -X-Trusted-Proxy-Secret
 	}
 }
 
@@ -798,6 +801,7 @@ api.homeassistant.{$DOMAIN}, api.home.{$DOMAIN} {
 			header_up -X-Remote-Name
 			header_up -X-Remote-Email
 			header_up -X-Forwarded-User
+			header_up -X-Trusted-Proxy-Secret
 		}
 	}
 
@@ -814,6 +818,7 @@ api.homeassistant.{$DOMAIN}, api.home.{$DOMAIN} {
 			header_up -X-Remote-Name
 			header_up -X-Remote-Email
 			header_up -X-Forwarded-User
+			header_up -X-Trusted-Proxy-Secret
 		}
 	}
 
@@ -831,6 +836,7 @@ api.homeassistant.{$DOMAIN}, api.home.{$DOMAIN} {
 			header_up -X-Remote-Name
 			header_up -X-Remote-Email
 			header_up -X-Forwarded-User
+			header_up -X-Trusted-Proxy-Secret
 		}
 	}
 
