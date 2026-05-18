@@ -386,6 +386,30 @@ test('Mastodon - federated preview card images render with real pixels', async (
     }, requestPath);
   };
 
+  const timelinePaths = [
+    '/api/v1/timelines/home?limit=40',
+    '/api/v1/timelines/public?remote=true&limit=40',
+    '/api/v1/timelines/public?limit=40',
+  ];
+
+  let statusWithPreviewCard: MastodonTimelineStatus | undefined;
+  for (const timelinePath of timelinePaths) {
+    const timelineResponse = await browserFetchJson<MastodonTimelineStatus[]>(timelinePath);
+    if (!timelineResponse.ok || !timelineResponse.json) {
+      console.log(`   Mastodon timeline ${timelinePath} was not readable from browser session: HTTP ${timelineResponse.status}`);
+      continue;
+    }
+
+    const status = timelineResponse.json.find((candidate) =>
+      candidate.account?.acct &&
+      candidate.card?.image
+    );
+    if (status) {
+      statusWithPreviewCard = status;
+      break;
+    }
+  }
+
   const knownFederatedAccounts = [
     'aeva@mastodon.gamedev.place',
     'crinstamcamp@thecanadian.social',
@@ -395,22 +419,23 @@ test('Mastodon - federated preview card images render with real pixels', async (
     'briankrebs@infosec.exchange',
   ];
 
-  let statusWithPreviewCard: MastodonTimelineStatus | undefined;
-  for (const acct of knownFederatedAccounts) {
-    const lookup = await browserFetchJson<MastodonAccount>(`/api/v1/accounts/lookup?acct=${encodeURIComponent(acct)}`);
-    if (!lookup.ok || !lookup.json?.id) {
-      continue;
-    }
+  if (!statusWithPreviewCard) {
+    for (const acct of knownFederatedAccounts) {
+      const lookup = await browserFetchJson<MastodonAccount>(`/api/v1/accounts/lookup?acct=${encodeURIComponent(acct)}`);
+      if (!lookup.ok || !lookup.json?.id) {
+        continue;
+      }
 
-    const statusesResponse = await browserFetchJson<MastodonTimelineStatus[]>(
-      `/api/v1/accounts/${lookup.json.id}/statuses?limit=40`
-    );
-    const status = statusesResponse.json?.find((candidate) => candidate.card?.image);
-    if (status) {
-      status.account = status.account || { id: lookup.json.id, acct };
-      status.account.acct = status.account.acct || acct;
-      statusWithPreviewCard = status;
-      break;
+      const statusesResponse = await browserFetchJson<MastodonTimelineStatus[]>(
+        `/api/v1/accounts/${lookup.json.id}/statuses?limit=40`
+      );
+      const status = statusesResponse.json?.find((candidate) => candidate.card?.image);
+      if (status) {
+        status.account = status.account || { id: lookup.json.id, acct };
+        status.account.acct = status.account.acct || acct;
+        statusWithPreviewCard = status;
+        break;
+      }
     }
   }
 
