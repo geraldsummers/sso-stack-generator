@@ -109,7 +109,8 @@ describe('route-catalog', () => {
     expect(sogo.visual?.pathForUser?.({
       username: 'pw-test',
       email: 'pw-test@datamancy.net',
-    })).toBe('/SOGo/so/pw-test%40datamancy.net/Mail/view');
+    })).toBeUndefined();
+    expect(sogo.visual?.path).toBe('/SOGo/');
 
     expect(donetick.visual?.matcher.test('Loading... This is taking longer than usual.')).toBe(false);
     expect(donetick.visual?.disallowMatcher?.test('Loading... This is taking longer than usual.')).toBe(true);
