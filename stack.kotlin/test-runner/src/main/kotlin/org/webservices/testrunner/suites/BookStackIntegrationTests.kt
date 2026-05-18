@@ -138,7 +138,6 @@ suspend fun TestRunner.bookStackIntegrationTests() {
         }
 
         test("BookStack: Wikipedia book exists") {
-            requireSourcePublicationReady(runner, publicationReadinessCache, "wikipedia", "Wikipedia BookStack publication")
             val response = bookStackResponse("/api/books?filter[name]=Wikipedia%20Articles")
 
             if (response.status == HttpStatusCode.Unauthorized) {

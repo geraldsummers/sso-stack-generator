@@ -921,7 +921,6 @@ suspend fun TestRunner.dataPipelineTests() = suite("Data Pipeline Tests") {
     }
 
     test("BookStack: Pipeline creates Wikipedia article books") {
-        requireSourcePublicationReady(runner, publicationReadinessCache, "wikipedia", "Wikipedia BookStack publication")
         val response = getBookStackResponse("/api/books?filter[name]=Wikipedia%20Articles")
             ?: run {
                 fail("BookStack unavailable after retries while checking Wikipedia books")
