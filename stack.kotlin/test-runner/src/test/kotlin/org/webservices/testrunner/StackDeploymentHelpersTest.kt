@@ -120,6 +120,17 @@ class StackDeploymentHelpersTest {
     }
 
     @Test
+    fun `test runner search client authenticates internal search requests`() {
+        val serviceClient = Files.readString(repoFile("stack.kotlin/test-runner/src/main/kotlin/org/webservices/testrunner/framework/ServiceClient.kt"))
+        val searchPostIndex = serviceClient.indexOf("client.post(\"${'$'}{endpoints.searchService}/search\")")
+        val contentTypeIndex = serviceClient.indexOf("contentType(ContentType.Application.Json)", searchPostIndex)
+        val authIndex = serviceClient.indexOf("applyInternalApiAuthHeaders()", searchPostIndex)
+
+        assertTrue(searchPostIndex >= 0, "ServiceClient should post searches to search-service")
+        assertTrue(authIndex in searchPostIndex until contentTypeIndex, "Search requests should include internal API auth headers")
+    }
+
+    @Test
     fun `caddy can resolve isolated workspace runtime host`() {
         val caddyCompose = Files.readString(repoFile("stack.compose/caddy.yml"))
         val renderValues = Files.readString(repoFile("scripts/lib/render-values.sh"))

@@ -482,6 +482,7 @@ class ServiceClient(
         return try {
             val executeRequest: suspend () -> HttpResponse = {
                 client.post("${endpoints.searchService}/search") {
+                    applyInternalApiAuthHeaders()
                     contentType(ContentType.Application.Json)
                     setBody(buildJsonObject {
                         put("query", query)
