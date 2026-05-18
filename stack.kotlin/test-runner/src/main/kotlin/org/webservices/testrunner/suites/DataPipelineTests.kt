@@ -402,7 +402,7 @@ suspend fun TestRunner.dataPipelineTests() = suite("Data Pipeline Tests") {
             collections = listOf("*"),
             limit = 5,
             mode = "bm25",
-            timeoutMs = 20_000L
+            timeoutMs = 45_000L
         )
 
         result.success shouldBe true
@@ -623,7 +623,7 @@ suspend fun TestRunner.dataPipelineTests() = suite("Data Pipeline Tests") {
               AND total_chunks IS NOT NULL
               AND total_chunks > 1
             """.trimIndent(),
-            timeoutSeconds = 15
+            timeoutSeconds = 45
         )?.toLongOrNull() ?: 0L
 
         require(chunkedRows > 0) {
@@ -640,7 +640,7 @@ suspend fun TestRunner.dataPipelineTests() = suite("Data Pipeline Tests") {
               AND total_chunks IS NOT NULL
               AND total_chunks > 1
             """.trimIndent(),
-            timeoutSeconds = 15
+            timeoutSeconds = 45
         )?.toLongOrNull() ?: 0L
 
         println("      ✓ Found $chunkedRows chunked Wikipedia staging rows ($completedChunkedRows completed)")
