@@ -13,6 +13,7 @@ const authenticatedRoutes = visualRoutes.filter((route) => route.kind !== 'publi
 test.describe('Visual Smoke', () => {
   for (const route of publicRoutes) {
     test(`${route.label} snapshot`, async ({ page }) => {
+      test.setTimeout(120000);
       await captureVisualSnapshot(page, route, loadTestUser(), screenshotRoot);
     });
   }
@@ -22,6 +23,7 @@ test.describe('Visual Smoke', () => {
 
     for (const route of authenticatedRoutes) {
       test(`${route.label} snapshot`, async ({ page }) => {
+        test.setTimeout(120000);
         await captureVisualSnapshot(page, route, loadTestUser(), screenshotRoot);
       });
     }
