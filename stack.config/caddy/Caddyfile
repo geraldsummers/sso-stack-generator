@@ -344,10 +344,13 @@ jellyfin.{$DOMAIN} {
 donetick.{$DOMAIN} {
 	import access_observability
 	route {
+		vars donetick_upstream_authorization {http.request.header.Authorization}
 		import keycloak_auth donetick
 		@donetick_users header_regexp Remote-Groups (^|.*[,[:space:]])(users|operators|admins)([,[:space:]].*|$)
 		handle @donetick_users {
-			reverse_proxy donetick:2021
+			reverse_proxy donetick:2021 {
+				header_up Authorization {vars.donetick_upstream_authorization}
+			}
 		}
 		respond "Donetick requires the users, operators, or admins Keycloak group" 403
 	}

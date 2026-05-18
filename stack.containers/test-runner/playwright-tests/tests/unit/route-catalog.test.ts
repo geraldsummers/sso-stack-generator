@@ -102,6 +102,20 @@ describe('route-catalog', () => {
     }
   });
 
+  it('uses stable visual targets for SOGo and Donetick', () => {
+    const sogo = findRoute('sogo');
+    const donetick = findRoute('donetick');
+
+    expect(sogo.visual?.pathForUser?.({
+      username: 'pw-test',
+      email: 'pw-test@datamancy.net',
+    })).toBe('/SOGo/so/pw-test@datamancy.net/Mail/view');
+
+    expect(donetick.visual?.matcher.test('Loading... This is taking longer than usual.')).toBe(false);
+    expect(donetick.visual?.disallowMatcher?.test('Loading... This is taking longer than usual.')).toBe(true);
+    expect(donetick.visual?.matcher.test('All Tasks\nArchived\nThings\nLabels')).toBe(true);
+  });
+
   it('reads host inventory from an explicit file and strips comments', () => {
     const hostsFile = path.join(
       fs.mkdtempSync(path.join(os.tmpdir(), 'route-catalog-')),

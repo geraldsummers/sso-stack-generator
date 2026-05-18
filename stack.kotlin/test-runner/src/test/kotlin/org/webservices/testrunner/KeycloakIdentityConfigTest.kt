@@ -204,6 +204,8 @@ class KeycloakIdentityConfigTest {
         assertTrue(caddyfile.contains("request_header X-Remote-User {header.Remote-User}"))
         assertTrue(caddyfile.contains("header_up X-Remote-User {header.X-Remote-User}"))
         assertTrue(caddyfile.contains("@donetick_users header_regexp Remote-Groups"))
+        assertTrue(caddyfile.contains("vars donetick_upstream_authorization {http.request.header.Authorization}"))
+        assertTrue(caddyfile.contains("header_up Authorization {vars.donetick_upstream_authorization}"))
         assertTrue(caddyfile.contains("Donetick requires the users, operators, or admins Keycloak group"))
         assertTrue(donetickCompose.contains("DT_OAUTH2_CLIENT_ID: donetick"))
         assertTrue(donetickCompose.contains("DT_OAUTH2_SCOPES: openid profile email groups"))

@@ -170,7 +170,7 @@ export const browserRouteCatalog: BrowserRoute[] = [
     anonymous: { kind: 'service_login', matcher: /\bSOGo\b|\bKeycloak\b|\bLogin\b|\bSign in\b/i, loginLabel: 'Keycloak', allowAuthRedirect: true, path: '/SOGo/' },
     visual: {
       path: '/SOGo/',
-      pathForUser: (user) => `/SOGo/so/${encodeURIComponent(user.email)}/Mail/view`,
+      pathForUser: (user) => `/SOGo/so/${user.email}/Mail/view`,
       fileStem: 'sogo-authenticated',
       matcher: /\bMail\b|\bInbox\b|\bSent\b|\bDrafts\b|\bTrash\b/i,
       selector: 'text=/Mail|Inbox|Sent|Drafts|Trash/i',
@@ -205,10 +205,10 @@ export const browserRouteCatalog: BrowserRoute[] = [
     anonymous: { kind: 'service_login', matcher: /\bDonetick\b|\bContinue with Keycloak\b/i, loginLabel: 'Keycloak', allowAuthRedirect: true },
     visual: {
       fileStem: 'donetick-authenticated',
-      matcher: /\bDonetick\b|\bChores\b|\bTasks\b|\bThings\b/i,
-      selector: 'text=/Donetick|Chores|Tasks|Things/i',
+      matcher: /\bAll Tasks\b|\bArchived\b|\bThings\b|\bLabels\b|\bProjects\b|\bFilters\b|\bActivities\b|\bPoints\b/i,
+      selector: 'text=/All Tasks|Archived|Things|Labels|Projects|Filters|Activities|Points/i',
       loginLabel: 'Keycloak',
-      disallowMatcher: /\bContinue with Keycloak\b|\b503 Service Unavailable\b/i,
+      disallowMatcher: /\bContinue with Keycloak\b|\bLoading\.\.\.|\btaking longer than usual\b|\b503 Service Unavailable\b/i,
     },
     ownership: { route: true, smoke: false, visual: true, deep: true },
   },
