@@ -195,6 +195,35 @@ fun main() {
             }
         }
 
+        if (config.openDota.enabled) {
+            launch {
+                runStandardizedSource(config.qdrant.openDotaCollection, stagingStore, dedupStore, metadataStore, runtimeTracker = runtimeTracker) {
+                    OpenDotaMatchStandardizedSource(
+                        baseUrl = config.openDota.baseUrl,
+                        maxMatches = config.openDota.maxMatches,
+                        fetchMatchDetails = config.openDota.fetchMatchDetails,
+                        scheduleMinutes = config.openDota.scheduleMinutes
+                    )
+                }
+            }
+        }
+
+        if (config.poeNinja.enabled) {
+            launch {
+                runStandardizedSource(config.qdrant.poeNinjaCollection, stagingStore, dedupStore, metadataStore, runtimeTracker = runtimeTracker) {
+                    PoeNinjaPriceStandardizedSource(
+                        baseUrl = config.poeNinja.baseUrl,
+                        leagues = config.poeNinja.leagues,
+                        currencyTypes = config.poeNinja.currencyTypes,
+                        itemTypes = config.poeNinja.itemTypes,
+                        maxEntriesPerType = config.poeNinja.maxEntriesPerType,
+                        requestDelayMs = config.poeNinja.requestDelayMs,
+                        scheduleMinutes = config.poeNinja.scheduleMinutes
+                    )
+                }
+            }
+        }
+
         if (config.stackKnowledge.enabled) {
             launch {
                 runStandardizedSource(config.qdrant.stackKnowledgeCollection, stagingStore, dedupStore, metadataStore, runtimeTracker = runtimeTracker) {
@@ -388,6 +417,8 @@ private fun buildMonitoredSources(config: PipelineConfig): List<MonitoredSourceD
         MonitoredSourceDefinition("wikipedia", "Wikipedia", "Wikipedia article dumps", config.wikipedia.enabled),
         MonitoredSourceDefinition("australian_laws", "Australian Laws", "Legal documents from legislation.gov.au", config.australianLaws.enabled),
         MonitoredSourceDefinition("linux_docs", "Linux Documentation", "Kernel and system documentation", config.linuxDocs.enabled),
+        MonitoredSourceDefinition("opendota_matches", "OpenDota Matches", "Public Dota 2 match summaries from OpenDota", config.openDota.enabled),
+        MonitoredSourceDefinition("poe_ninja_prices", "poe.ninja Prices", "Path of Exile economy price tables from poe.ninja", config.poeNinja.enabled),
         MonitoredSourceDefinition("stack_knowledge", "Stack Knowledge", "Platform documentation for AI agents and operators", config.stackKnowledge.enabled),
         MonitoredSourceDefinition(
             "debian_wiki",

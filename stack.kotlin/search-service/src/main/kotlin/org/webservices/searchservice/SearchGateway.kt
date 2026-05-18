@@ -112,7 +112,22 @@ class SearchGateway(
             "interactive",
             "source",
             "type",
+            "category",
+            "league",
+            "base_type",
+            "variant",
             "document_id",
+            "match_id",
+            "started_at",
+            "radiant_win",
+            "game_mode",
+            "lobby_type",
+            "avg_rank_tier",
+            "chaos_value",
+            "divine_value",
+            "primary_value",
+            "listing_count",
+            "seven_day_change_percent",
             "infohash",
             "cveId",
             "cve_id",
@@ -236,6 +251,35 @@ class SearchGateway(
                 ) ||
                 setweight(to_tsvector('english', text), 'B')
             """.trimIndent()
+            "opendota_matches" -> """
+                setweight(
+                    to_tsvector(
+                        'english',
+                        COALESCE(metadata::json->>'match_id', '') || ' ' ||
+                        COALESCE(metadata::json->>'game_mode', '') || ' ' ||
+                        COALESCE(metadata::json->>'lobby_type', '') || ' ' ||
+                        COALESCE(metadata::json->>'avg_rank_tier', '') || ' ' ||
+                        COALESCE(metadata::json->>'title', '')
+                    ),
+                    'A'
+                ) ||
+                setweight(to_tsvector('english', text), 'B')
+            """.trimIndent()
+            "poe_ninja_prices" -> """
+                setweight(
+                    to_tsvector(
+                        'english',
+                        COALESCE(metadata::json->>'name', '') || ' ' ||
+                        COALESCE(metadata::json->>'title', '') || ' ' ||
+                        COALESCE(metadata::json->>'base_type', '') || ' ' ||
+                        COALESCE(metadata::json->>'variant', '') || ' ' ||
+                        COALESCE(metadata::json->>'league', '') || ' ' ||
+                        COALESCE(metadata::json->>'type', '')
+                    ),
+                    'A'
+                ) ||
+                setweight(to_tsvector('english', text), 'B')
+            """.trimIndent()
             else -> """
                 setweight(
                     to_tsvector(
@@ -272,7 +316,7 @@ class SearchGateway(
     private val postgresStatementTimeoutSeconds =
         (System.getenv("SEARCH_POSTGRES_STATEMENT_TIMEOUT_SECONDS")?.toIntOrNull() ?: 20).coerceIn(1, 120)
     private val directPresentationCollections = (System.getenv("SEARCH_PRESENTATION_METADATA_COLLECTIONS")
-        ?: "market_data,test-market,torrents")
+        ?: "market_data,test-market,torrents,opendota_matches,poe_ninja_prices")
         .split(',')
         .map { it.trim() }
         .filter { it.isNotEmpty() }

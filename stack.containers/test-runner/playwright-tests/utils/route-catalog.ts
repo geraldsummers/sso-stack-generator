@@ -306,6 +306,13 @@ export const browserRouteCatalog: BrowserRoute[] = [
     ownership: { route: true, smoke: true, visual: false, deep: true },
   },
   {
+    host: 'direct.homeassistant',
+    label: 'Home Assistant Direct',
+    kind: 'non_ui',
+    anonymous: { kind: 'non_ui', reason: 'Direct device endpoint protected by Home Assistant native auth.' },
+    ownership: { route: true, smoke: false, visual: false, deep: false },
+  },
+  {
     host: 'homepage',
     label: 'Homepage',
     kind: 'forward_auth',

@@ -1225,8 +1225,8 @@ suspend fun TestRunner.dataPipelineTests() = suite("Data Pipeline Tests") {
             val json = Json.parseToJsonElement(response.bodyAsText()).jsonObject
             val sources = json["sources"]?.jsonArray
 
-            require(sources != null && sources.size >= 8) {
-                "Expected at least 8 pipeline sources, found: ${sources?.size}"
+            require(sources != null && sources.size >= 10) {
+                "Expected at least 10 pipeline sources, found: ${sources?.size}"
             }
 
             val sourceNames = sources.mapNotNull {
@@ -1235,7 +1235,8 @@ suspend fun TestRunner.dataPipelineTests() = suite("Data Pipeline Tests") {
 
             val expectedSources = listOf(
                 "rss", "cve", "torrents", "wikipedia",
-                "australian_laws", "linux_docs", "debian_wiki", "arch_wiki"
+                "australian_laws", "linux_docs", "opendota_matches", "poe_ninja_prices",
+                "debian_wiki", "arch_wiki"
             )
 
             expectedSources.forEach { expected ->
@@ -1251,7 +1252,8 @@ suspend fun TestRunner.dataPipelineTests() = suite("Data Pipeline Tests") {
     test("All Qdrant collections have consistent dimensions") {
         val collections = listOf(
             "rss_feeds", "cve", "torrents", "wikipedia",
-            "australian_laws", "linux_docs", "debian_wiki", "arch_wiki"
+            "australian_laws", "linux_docs", "opendota_matches", "poe_ninja_prices",
+            "debian_wiki", "arch_wiki"
         )
 
         val dimensions = mutableMapOf<String, Int>()

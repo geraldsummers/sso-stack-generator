@@ -89,6 +89,8 @@ fun main() {
         config.qdrant.wikipediaCollection to QdrantSink(config.qdrant.host, config.qdrant.port, config.qdrant.wikipediaCollection, config.embedding.vectorSize, config.qdrant.apiKey),
         config.qdrant.australianLawsCollection to QdrantSink(config.qdrant.host, config.qdrant.port, config.qdrant.australianLawsCollection, config.embedding.vectorSize, config.qdrant.apiKey),
         config.qdrant.linuxDocsCollection to QdrantSink(config.qdrant.host, config.qdrant.port, config.qdrant.linuxDocsCollection, config.embedding.vectorSize, config.qdrant.apiKey),
+        config.qdrant.openDotaCollection to QdrantSink(config.qdrant.host, config.qdrant.port, config.qdrant.openDotaCollection, config.embedding.vectorSize, config.qdrant.apiKey),
+        config.qdrant.poeNinjaCollection to QdrantSink(config.qdrant.host, config.qdrant.port, config.qdrant.poeNinjaCollection, config.embedding.vectorSize, config.qdrant.apiKey),
         config.qdrant.stackKnowledgeCollection to QdrantSink(config.qdrant.host, config.qdrant.port, config.qdrant.stackKnowledgeCollection, config.embedding.vectorSize, config.qdrant.apiKey),
         config.qdrant.debianWikiCollection to QdrantSink(config.qdrant.host, config.qdrant.port, config.qdrant.debianWikiCollection, config.embedding.vectorSize, config.qdrant.apiKey),
         config.qdrant.archWikiCollection to QdrantSink(config.qdrant.host, config.qdrant.port, config.qdrant.archWikiCollection, config.embedding.vectorSize, config.qdrant.apiKey)

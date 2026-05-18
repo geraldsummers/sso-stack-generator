@@ -40,6 +40,7 @@ services:
           - api.element.${DOMAIN}
           - api.chat.${DOMAIN}
           - homeassistant.${DOMAIN}
+          - direct.homeassistant.${DOMAIN}
           - api.homeassistant.${DOMAIN}
           - keycloak.${DOMAIN}
           - keycloak-auth.${DOMAIN}
@@ -88,6 +89,7 @@ services:
           - planka.${DOMAIN}
           - kopia.${DOMAIN}
           - homeassistant.${DOMAIN}
+          - direct.homeassistant.${DOMAIN}
           - api.homeassistant.${DOMAIN}
           - api.home.${DOMAIN}
           - mail.${DOMAIN}

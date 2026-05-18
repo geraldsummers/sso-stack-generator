@@ -2,7 +2,8 @@
 
 The edge already authenticates browser users with Keycloak and forwards trusted
 identity headers only from Caddy. This provider converts those headers into Home
-Assistant credentials without keeping a local password fallback.
+Assistant credentials while the native Home Assistant auth provider remains
+available for direct device access.
 """
 
 from __future__ import annotations
@@ -91,6 +92,15 @@ class KeycloakTrustedAuthProvider(AuthProvider):
         address = ip_address(str(ip_addr))
         if not any(address in network for network in TRUSTED_PROXY_NETWORKS):
             raise InvalidAuthError("Not in trusted proxy networks")
+        request = current_request.get(None)
+        if request is None:
+            raise InvalidAuthError("Missing trusted proxy request")
+        username = request.headers.get(
+            self.trusted_remote_user_header
+        ) or request.headers.get("X-Remote-User")
+        if not username:
+            raise InvalidAuthError("Missing trusted edge identity")
+        _canonicalize_username(username)
 
     async def async_validate_trusted_header_login(self) -> str | None:
         """Validate SSO username passed by a trusted reverse proxy header."""

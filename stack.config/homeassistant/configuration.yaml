@@ -17,6 +17,7 @@ homeassistant:
   auth_providers:
     - type: trusted_networks
       name: Keycloak
+    - type: homeassistant
 
 automation: !include automations.yaml
 script: !include scripts.yaml

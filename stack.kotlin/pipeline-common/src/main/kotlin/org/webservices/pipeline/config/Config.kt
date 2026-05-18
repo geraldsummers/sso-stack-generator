@@ -12,6 +12,8 @@ data class PipelineConfig(
     val torrents: TorrentsConfig = TorrentsConfig(),
     val binance: BinanceConfig = BinanceConfig(),
     val market: MarketConfig = MarketConfig(),
+    val openDota: OpenDotaConfig = OpenDotaConfig(),
+    val poeNinja: PoeNinjaConfig = PoeNinjaConfig(),
     val wikipedia: WikipediaConfig = WikipediaConfig(),
     val australianLaws: AustralianLawsConfig = AustralianLawsConfig(),
     val linuxDocs: LinuxDocsConfig = LinuxDocsConfig(),
@@ -125,6 +127,32 @@ data class PipelineConfig(
                     scheduleMinutes = getEnvOrPropertyInt("BINANCE_SCHEDULE_MINUTES", 60, min = 1),
                     storeVectors = getEnvOrPropertyBoolean("BINANCE_STORE_VECTORS", false)
                 ),
+                openDota = OpenDotaConfig(
+                    enabled = getEnvOrPropertyBoolean("OPEN_DOTA_ENABLED", false),
+                    baseUrl = getEnvOrProperty("OPEN_DOTA_BASE_URL") ?: "https://api.opendota.com/api",
+                    scheduleMinutes = getEnvOrPropertyInt("OPEN_DOTA_SCHEDULE_MINUTES", 60, min = 5),
+                    maxMatches = getEnvOrPropertyInt("OPEN_DOTA_MAX_MATCHES", 100, min = 1, max = 1000),
+                    fetchMatchDetails = getEnvOrPropertyBoolean("OPEN_DOTA_FETCH_MATCH_DETAILS", false)
+                ),
+                poeNinja = PoeNinjaConfig(
+                    enabled = getEnvOrPropertyBoolean("POE_NINJA_ENABLED", false),
+                    baseUrl = getEnvOrProperty("POE_NINJA_BASE_URL") ?: "https://poe.ninja",
+                    leagues = getEnvOrProperty("POE_NINJA_LEAGUES")?.split(",")?.filter { it.isNotBlank() } ?: listOf("Standard"),
+                    currencyTypes = getEnvOrProperty("POE_NINJA_CURRENCY_TYPES")?.split(",")?.filter { it.isNotBlank() } ?: listOf("Currency"),
+                    itemTypes = getEnvOrProperty("POE_NINJA_ITEM_TYPES")?.split(",")?.filter { it.isNotBlank() } ?: listOf(
+                        "UniqueWeapon",
+                        "UniqueArmour",
+                        "UniqueAccessory",
+                        "UniqueFlask",
+                        "UniqueJewel",
+                        "SkillGem",
+                        "DivinationCard",
+                        "Map"
+                    ),
+                    scheduleMinutes = getEnvOrPropertyInt("POE_NINJA_SCHEDULE_MINUTES", 360, min = 15),
+                    maxEntriesPerType = getEnvOrPropertyInt("POE_NINJA_MAX_ENTRIES_PER_TYPE", 1000, min = 1, max = 10000),
+                    requestDelayMs = getEnvOrPropertyLong("POE_NINJA_REQUEST_DELAY_MS", 500, min = 0)
+                ),
                 wikipedia = WikipediaConfig(
                     enabled = getEnvOrPropertyBoolean("WIKIPEDIA_ENABLED", true),
                     dumpPath = getEnvOrProperty("WIKIPEDIA_DUMP_PATH") ?: "/app/data/enwiki-latest-pages-articles.xml.bz2",
@@ -176,6 +204,8 @@ data class PipelineConfig(
                     cveCollection = getEnvOrProperty("QDRANT_CVE_COLLECTION") ?: "cve",
                     torrentsCollection = getEnvOrProperty("QDRANT_TORRENTS_COLLECTION") ?: "torrents",
                     marketCollection = getEnvOrProperty("QDRANT_MARKET_COLLECTION") ?: "market_data",
+                    openDotaCollection = getEnvOrProperty("QDRANT_OPEN_DOTA_COLLECTION") ?: "opendota_matches",
+                    poeNinjaCollection = getEnvOrProperty("QDRANT_POE_NINJA_COLLECTION") ?: "poe_ninja_prices",
                     wikipediaCollection = getEnvOrProperty("QDRANT_WIKIPEDIA_COLLECTION") ?: "wikipedia",
                     australianLawsCollection = getEnvOrProperty("QDRANT_AUSTRALIAN_LAWS_COLLECTION") ?: "australian_laws",
                     linuxDocsCollection = getEnvOrProperty("QDRANT_LINUX_DOCS_COLLECTION") ?: "linux_docs",
@@ -233,6 +263,36 @@ data class MarketConfig(
 )
 
 @Serializable
+data class OpenDotaConfig(
+    val enabled: Boolean = false,
+    val baseUrl: String = "https://api.opendota.com/api",
+    val scheduleMinutes: Int = 60,
+    val maxMatches: Int = 100,
+    val fetchMatchDetails: Boolean = false
+)
+
+@Serializable
+data class PoeNinjaConfig(
+    val enabled: Boolean = false,
+    val baseUrl: String = "https://poe.ninja",
+    val leagues: List<String> = listOf("Standard"),
+    val currencyTypes: List<String> = listOf("Currency"),
+    val itemTypes: List<String> = listOf(
+        "UniqueWeapon",
+        "UniqueArmour",
+        "UniqueAccessory",
+        "UniqueFlask",
+        "UniqueJewel",
+        "SkillGem",
+        "DivinationCard",
+        "Map"
+    ),
+    val scheduleMinutes: Int = 360,
+    val maxEntriesPerType: Int = 1000,
+    val requestDelayMs: Long = 500
+)
+
+@Serializable
 data class EmbeddingConfig(
     val serviceUrl: String = "http://inference-gateway:8111",
     val model: String = "bge-m3",
@@ -275,6 +335,8 @@ data class QdrantConfig(
     val cveCollection: String = "cve",
     val torrentsCollection: String = "torrents",
     val marketCollection: String = "market_data",
+    val openDotaCollection: String = "opendota_matches",
+    val poeNinjaCollection: String = "poe_ninja_prices",
     val wikipediaCollection: String = "wikipedia",
     val australianLawsCollection: String = "australian_laws",
     val linuxDocsCollection: String = "linux_docs",

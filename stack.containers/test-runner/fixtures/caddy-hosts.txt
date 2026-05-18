@@ -35,6 +35,7 @@ www
 mail
 jupyterhub
 homeassistant
+direct.homeassistant
 api.homeassistant
 ntfy
 clickhouse

@@ -104,6 +104,50 @@ class ConfigTest {
     }
 
     @Test
+    fun `fromEnv parses OpenDota configuration from environment`() {
+        withEnvironment(
+            "OPEN_DOTA_ENABLED" to "true",
+            "OPEN_DOTA_BASE_URL" to "https://example.test/opendota",
+            "OPEN_DOTA_SCHEDULE_MINUTES" to "120",
+            "OPEN_DOTA_MAX_MATCHES" to "250",
+            "OPEN_DOTA_FETCH_MATCH_DETAILS" to "true"
+        ) {
+            val config = PipelineConfig.fromEnv()
+
+            assertTrue(config.openDota.enabled)
+            assertEquals("https://example.test/opendota", config.openDota.baseUrl)
+            assertEquals(120, config.openDota.scheduleMinutes)
+            assertEquals(250, config.openDota.maxMatches)
+            assertTrue(config.openDota.fetchMatchDetails)
+        }
+    }
+
+    @Test
+    fun `fromEnv parses poe ninja configuration from environment`() {
+        withEnvironment(
+            "POE_NINJA_ENABLED" to "true",
+            "POE_NINJA_BASE_URL" to "https://example.test/ninja",
+            "POE_NINJA_LEAGUES" to "Mirage,Standard",
+            "POE_NINJA_CURRENCY_TYPES" to "Currency,Fragment",
+            "POE_NINJA_ITEM_TYPES" to "UniqueWeapon,SkillGem",
+            "POE_NINJA_SCHEDULE_MINUTES" to "720",
+            "POE_NINJA_MAX_ENTRIES_PER_TYPE" to "50",
+            "POE_NINJA_REQUEST_DELAY_MS" to "0"
+        ) {
+            val config = PipelineConfig.fromEnv()
+
+            assertTrue(config.poeNinja.enabled)
+            assertEquals("https://example.test/ninja", config.poeNinja.baseUrl)
+            assertEquals(listOf("Mirage", "Standard"), config.poeNinja.leagues)
+            assertEquals(listOf("Currency", "Fragment"), config.poeNinja.currencyTypes)
+            assertEquals(listOf("UniqueWeapon", "SkillGem"), config.poeNinja.itemTypes)
+            assertEquals(720, config.poeNinja.scheduleMinutes)
+            assertEquals(50, config.poeNinja.maxEntriesPerType)
+            assertEquals(0L, config.poeNinja.requestDelayMs)
+        }
+    }
+
+    @Test
     fun `fromEnv parses Wikipedia configuration from environment`() {
         withEnvironment(
             "WIKIPEDIA_ENABLED" to "false",
@@ -204,6 +248,8 @@ class ConfigTest {
             assertEquals("custom_rss", config.qdrant.rssCollection)
             assertEquals("custom_cve", config.qdrant.cveCollection)
             assertEquals("custom_torrents", config.qdrant.torrentsCollection)
+            assertEquals("opendota_matches", config.qdrant.openDotaCollection)
+            assertEquals("poe_ninja_prices", config.qdrant.poeNinjaCollection)
         }
     }
 

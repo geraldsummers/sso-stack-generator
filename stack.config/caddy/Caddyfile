@@ -736,7 +736,17 @@ homeassistant.{$DOMAIN}, home.{$DOMAIN} {
 	# Webhook paths bypass forward_auth
 	@webhooks path /api/webhook/*
 	handle @webhooks {
-		reverse_proxy homeassistant:8123
+		reverse_proxy homeassistant:8123 {
+			header_up -Remote-User
+			header_up -Remote-Groups
+			header_up -Remote-Name
+			header_up -Remote-Email
+			header_up -X-Remote-User
+			header_up -X-Remote-Groups
+			header_up -X-Remote-Name
+			header_up -X-Remote-Email
+			header_up -X-Forwarded-User
+		}
 	}
 
 	# All other paths use forward_auth
@@ -752,6 +762,24 @@ homeassistant.{$DOMAIN}, home.{$DOMAIN} {
 	}
 }
 
+# Direct Home Assistant access for device pairing and clients that cannot use Keycloak.
+# This route is protected by Home Assistant's own auth provider, not edge SSO.
+direct.homeassistant.{$DOMAIN}, direct.home.{$DOMAIN} {
+	import access_observability
+	reverse_proxy homeassistant:8123 {
+		header_up -X-Forwarded-For
+		header_up -Remote-User
+		header_up -Remote-Groups
+		header_up -Remote-Name
+		header_up -Remote-Email
+		header_up -X-Remote-User
+		header_up -X-Remote-Groups
+		header_up -X-Remote-Name
+		header_up -X-Remote-Email
+		header_up -X-Forwarded-User
+	}
+}
+
 # Home Assistant API (for programmatic access with long-lived access tokens)
 # API clients authenticate using HA long-lived access tokens in Authorization header
 api.homeassistant.{$DOMAIN}, api.home.{$DOMAIN} {
@@ -761,13 +789,32 @@ api.homeassistant.{$DOMAIN}, api.home.{$DOMAIN} {
 	handle @api {
 		reverse_proxy homeassistant:8123 {
 			header_up -X-Forwarded-For
+			header_up -Remote-User
+			header_up -Remote-Groups
+			header_up -Remote-Name
+			header_up -Remote-Email
+			header_up -X-Remote-User
+			header_up -X-Remote-Groups
+			header_up -X-Remote-Name
+			header_up -X-Remote-Email
+			header_up -X-Forwarded-User
 		}
 	}
 
 	# Webhooks (no auth required - webhook IDs are secret)
 	@webhooks path /api/webhook/*
 	handle @webhooks {
-		reverse_proxy homeassistant:8123
+		reverse_proxy homeassistant:8123 {
+			header_up -Remote-User
+			header_up -Remote-Groups
+			header_up -Remote-Name
+			header_up -Remote-Email
+			header_up -X-Remote-User
+			header_up -X-Remote-Groups
+			header_up -X-Remote-Name
+			header_up -X-Remote-Email
+			header_up -X-Forwarded-User
+		}
 	}
 
 	# WebSocket API (requires token in connection URL)
@@ -775,6 +822,15 @@ api.homeassistant.{$DOMAIN}, api.home.{$DOMAIN} {
 	handle @websocket {
 		reverse_proxy homeassistant:8123 {
 			header_up -X-Forwarded-For
+			header_up -Remote-User
+			header_up -Remote-Groups
+			header_up -Remote-Name
+			header_up -Remote-Email
+			header_up -X-Remote-User
+			header_up -X-Remote-Groups
+			header_up -X-Remote-Name
+			header_up -X-Remote-Email
+			header_up -X-Forwarded-User
 		}
 	}
 
