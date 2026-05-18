@@ -63,6 +63,12 @@ class MatrixMailExposureHardeningTest {
         assertTrue(bootstrap.contains("remove_legacy_jitsi_widgets \"voice-lounge\""))
         assertTrue(bootstrap.contains("event_type not in (\"m.widget\", \"im.vector.modular.widgets\")"))
         assertTrue(bootstrap.contains("--data '{}'"))
+        assertTrue(bootstrap.contains("SELECT 1 FROM users WHERE name = %s"))
+        assertTrue(bootstrap.contains("Matrix auto-join bot ${'$'}{roombot_user_id} already exists"))
+        assertTrue(
+            bootstrap.indexOf("roombot_exists=") < bootstrap.indexOf("register_new_matrix_user"),
+            "Room bootstrap should not re-register the bot when Synapse already has it"
+        )
     }
 
     @Test

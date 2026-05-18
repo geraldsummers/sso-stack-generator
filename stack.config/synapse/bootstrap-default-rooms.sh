@@ -32,16 +32,6 @@ done
 
 roombot_password="$(printf '%s' "${registration_secret}:matrix-roombot:v1" | sha256sum | awk '{print $1}')"
 
-echo "[matrix-bootstrap] Ensuring Matrix auto-join bot ${roombot_user_id}"
-register_new_matrix_user \
-  --exists-ok \
-  --no-admin \
-  -t bot \
-  -u "$roombot_localpart" \
-  -p "$roombot_password" \
-  -k "$registration_secret" \
-  "$internal_url" >/dev/null
-
 if [ -z "${POSTGRES_HOST:-}" ] || [ -z "${POSTGRES_SYNAPSE_PASSWORD:-}" ]; then
   echo "[matrix-bootstrap] POSTGRES_HOST and POSTGRES_SYNAPSE_PASSWORD are required"
   exit 1
@@ -54,6 +44,43 @@ export PGPORT="${POSTGRES_PORT:-5432}"
 export PGDATABASE="${POSTGRES_DB:-synapse}"
 export PGUSER="${POSTGRES_USER:-synapse}"
 export PGPASSWORD="$POSTGRES_SYNAPSE_PASSWORD"
+
+roombot_exists="$(python3 - <<'PY'
+import os
+
+import psycopg2
+
+conn = psycopg2.connect(
+    host=os.environ["PGHOST"],
+    port=os.environ["PGPORT"],
+    dbname=os.environ["PGDATABASE"],
+    user=os.environ["PGUSER"],
+    password=os.environ["PGPASSWORD"],
+)
+
+try:
+    with conn:
+        with conn.cursor() as cur:
+            cur.execute("SELECT 1 FROM users WHERE name = %s", (os.environ["MATRIX_AUTOJOIN_USER_ID"],))
+            print("true" if cur.fetchone() else "false")
+finally:
+    conn.close()
+PY
+)"
+
+echo "[matrix-bootstrap] Ensuring Matrix auto-join bot ${roombot_user_id}"
+if [ "$roombot_exists" = "true" ]; then
+  echo "[matrix-bootstrap] Matrix auto-join bot ${roombot_user_id} already exists"
+else
+  register_new_matrix_user \
+    --exists-ok \
+    --no-admin \
+    -t bot \
+    -u "$roombot_localpart" \
+    -p "$roombot_password" \
+    -k "$registration_secret" \
+    "$internal_url" >/dev/null
+fi
 
 roombot_token="$(python3 - <<'PY'
 import base64
