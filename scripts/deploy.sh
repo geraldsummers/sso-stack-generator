@@ -158,6 +158,17 @@ image_id_for_ref() {
   docker image inspect --format '{{.Id}}' "$image_ref" 2>/dev/null || true
 }
 
+container_image_id_for_service() {
+  local service_name="$1"
+  local container_id
+  container_id="$(COMPOSE_PROJECT_NAME="$PROJECT_NAME" run_compose_from_bundle \
+    "$BUNDLE_ROOT" \
+    "$DEPLOY_ROOT/runtime/stack.env" \
+    ps -q "$service_name" 2>/dev/null | head -n 1)"
+  [ -n "$container_id" ] || return 0
+  docker inspect --format '{{.Image}}' "$container_id" 2>/dev/null || true
+}
+
 unit_for_compose_service() {
   local service_name="$1"
   local graph_file="$BUNDLE_ROOT/stack.systemd/graph.json"
@@ -565,7 +576,7 @@ reload_deploy_sensitive_units() {
 }
 
 reload_changed_built_image_units() {
-  local service_name image_ref before_id after_id unit_name
+  local service_name image_ref before_id after_id container_image_id unit_name
   local units=()
   local seen=" "
 
@@ -573,7 +584,8 @@ reload_changed_built_image_units() {
     [ -n "$service_name" ] || continue
     before_id="${BUILT_IMAGE_IDS_BEFORE[$service_name]:-}"
     after_id="$(image_id_for_ref "$image_ref")"
-    if [ -n "$before_id" ] && [ "$before_id" = "$after_id" ]; then
+    container_image_id="$(container_image_id_for_service "$service_name")"
+    if [ -n "$before_id" ] && [ "$before_id" = "$after_id" ] && { [ -z "$container_image_id" ] || [ "$container_image_id" = "$after_id" ]; }; then
       continue
     fi
 

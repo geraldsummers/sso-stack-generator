@@ -106,6 +106,10 @@ class StackDeploymentHelpersTest {
             "Deploy should reload active service units whose rebuilt image ID changed"
         )
         assertTrue(
+            deployScript.contains("container_image_id_for_service"),
+            "Deploy should also reload stale containers that still point at an older rebuilt image"
+        )
+        assertTrue(
             deployScript.contains("test(\":local-build$\")"),
             "Deploy should treat local-build tagged images as rebuildable service images"
         )
