@@ -109,6 +109,38 @@ class StackDeploymentHelpersTest {
     }
 
     @Test
+    fun `forgejo runner ssh mount uses dedicated render-managed host directory`() {
+        val compose = Files.readString(repoFile("stack.compose/forgejo-runner.yml"))
+        val renderValues = Files.readString(repoFile("scripts/lib/render-values.sh"))
+        val renderRuntime = Files.readString(repoFile("scripts/deploy/render-runtime.sh"))
+
+        assertTrue(
+            compose.contains("FORGEJO_RUNNER_SSH_DIR:?Set FORGEJO_RUNNER_SSH_DIR to a dedicated runner-only SSH directory"),
+            "Forgejo runner must not fall back to an implicit broad SSH mount"
+        )
+        assertTrue(
+            renderValues.contains("runtime.forgejo_runner_ssh_dir"),
+            "Site bundles should be able to override the dedicated runner SSH directory"
+        )
+        assertTrue(
+            renderValues.contains("default_forgejo_runner_ssh_dir"),
+            "Real deployments should get a safe dedicated default if the site omits the optional override"
+        )
+        assertTrue(
+            renderValues.contains("render_set FORGEJO_RUNNER_SSH_DIR"),
+            "Runtime rendering should publish the runner SSH directory into stack.env"
+        )
+        assertTrue(
+            renderRuntime.contains("prepare_host_runtime_dirs"),
+            "Deploy should create host bind directories before compose validation"
+        )
+        assertTrue(
+            renderRuntime.contains("chmod 700 \"${'$'}forgejo_runner_ssh_dir\""),
+            "The runner SSH directory should be private to the deploy user"
+        )
+    }
+
+    @Test
     fun `mastodon stack targets postgres ssd across all roles`() {
         val mastodonCompose = Files.readString(repoFile("stack.compose/mastodon.yml"))
         val mastodonEnv = Files.readString(repoFile("stack.config/mastodon/mastodon.env"))

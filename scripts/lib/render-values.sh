@@ -43,6 +43,14 @@ default_shadow_accounts_host_dir() {
   fi
 }
 
+default_forgejo_runner_ssh_dir() {
+  if [ -n "${XDG_STATE_HOME:-}" ]; then
+    printf '%s\n' "$XDG_STATE_HOME/stack/forgejo-runner-ssh"
+  else
+    printf '%s\n' "$HOME/.local/state/stack/forgejo-runner-ssh"
+  fi
+}
+
 render_set() {
   local key="$1"
   local value="${2-}"
@@ -140,6 +148,12 @@ load_site_values() {
   isolated_docker_vm_ssh_dir="$(yaml_get_scalar "$site_config_file" 'runtime.isolated_docker_vm_ssh_dir')"
   if [ -n "$isolated_docker_vm_ssh_dir" ]; then
     render_set ISOLATED_DOCKER_VM_SSH_DIR "$(normalize_host_path "$isolated_docker_vm_ssh_dir")"
+  fi
+
+  local forgejo_runner_ssh_dir
+  forgejo_runner_ssh_dir="$(yaml_get_scalar "$site_config_file" 'runtime.forgejo_runner_ssh_dir')"
+  if [ -n "$forgejo_runner_ssh_dir" ]; then
+    render_set FORGEJO_RUNNER_SSH_DIR "$(normalize_host_path "$forgejo_runner_ssh_dir")"
   fi
 
   local workspace_runtime_public_host
@@ -250,6 +264,9 @@ build_derived_render_values() {
   render_set CADDY_GLOBAL_OPTIONS "$(build_caddy_global_options "$(render_context)" "$(render_get CADDY_TLS_MODE)")"
   if ! render_has SHADOW_ACCOUNTS_HOST_DIR || [ -z "$(render_get SHADOW_ACCOUNTS_HOST_DIR)" ]; then
     render_set SHADOW_ACCOUNTS_HOST_DIR "$(default_shadow_accounts_host_dir)"
+  fi
+  if ! render_has FORGEJO_RUNNER_SSH_DIR || [ -z "$(render_get FORGEJO_RUNNER_SSH_DIR)" ]; then
+    render_set FORGEJO_RUNNER_SSH_DIR "$(default_forgejo_runner_ssh_dir)"
   fi
   if render_has ISOLATED_DOCKER_VM_HOST && { ! render_has ISOLATED_DOCKER_VM_SSH_DIR || [ -z "$(render_get ISOLATED_DOCKER_VM_SSH_DIR)" ]; }; then
     render_set ISOLATED_DOCKER_VM_SSH_DIR "$(normalize_host_path "$HOME/.ssh")"

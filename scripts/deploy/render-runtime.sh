@@ -22,6 +22,15 @@ SITE_MANIFEST_PATH="$BUNDLE_ROOT/site/manifest.json"
 RUNTIME_ROOT="$DEPLOY_ROOT/runtime"
 SKIP_COMPOSE_VALIDATE=0
 
+prepare_host_runtime_dirs() {
+  local forgejo_runner_ssh_dir
+  forgejo_runner_ssh_dir="$(render_get FORGEJO_RUNNER_SSH_DIR)"
+  if [ -n "$forgejo_runner_ssh_dir" ]; then
+    mkdir -p "$forgejo_runner_ssh_dir"
+    chmod 700 "$forgejo_runner_ssh_dir"
+  fi
+}
+
 while [ "$#" -gt 0 ]; do
   case "$1" in
     --bundle-root)
@@ -73,6 +82,7 @@ render_set SITE_NAME "$site_name"
 load_secret_store "$secret_store_file"
 load_site_values "$site_config_file"
 build_derived_render_values
+prepare_host_runtime_dirs
 prepare_runtime_dir "$runtime_root"
 render_config_tree "$BUNDLE_ROOT/stack.config" "$runtime_configs_dir"
 mapfile -t runtime_env_keys < <(collect_runtime_env_keys "$runtime_configs_dir" "$BUNDLE_ROOT/global.settings" "$BUNDLE_ROOT/stack.compose")
