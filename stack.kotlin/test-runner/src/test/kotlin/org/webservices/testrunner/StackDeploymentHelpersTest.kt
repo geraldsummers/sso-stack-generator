@@ -125,9 +125,12 @@ class StackDeploymentHelpersTest {
         val searchPostIndex = serviceClient.indexOf("client.post(\"${'$'}{endpoints.searchService}/search\")")
         val contentTypeIndex = serviceClient.indexOf("contentType(ContentType.Application.Json)", searchPostIndex)
         val authIndex = serviceClient.indexOf("applyInternalApiAuthHeaders()", searchPostIndex)
+        val rawSearchAuthIndex = serviceClient.indexOf("url.contains(endpoints.searchService)")
+        val rawAuthIndex = serviceClient.indexOf("builder.applyInternalApiAuthHeaders()", rawSearchAuthIndex)
 
         assertTrue(searchPostIndex >= 0, "ServiceClient should post searches to search-service")
         assertTrue(authIndex in searchPostIndex until contentTypeIndex, "Search requests should include internal API auth headers")
+        assertTrue(rawAuthIndex > rawSearchAuthIndex, "Raw search-service requests should include internal API auth headers")
     }
 
     @Test

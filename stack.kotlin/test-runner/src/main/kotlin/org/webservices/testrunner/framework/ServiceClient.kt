@@ -105,6 +105,10 @@ class ServiceClient(
                 println("      ⚠️  WARNING: Qdrant URL detected but qdrantApiKey is null!")
             }
         }
+
+        if (url.contains(endpoints.searchService)) {
+            builder.applyInternalApiAuthHeaders()
+        }
     }
 
     /**
