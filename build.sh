@@ -8,6 +8,8 @@ source "$SCRIPT_DIR/scripts/lib/common.sh"
 source "$SCRIPT_DIR/scripts/lib/site-manifest.sh"
 # shellcheck source=scripts/lib/compose.sh
 source "$SCRIPT_DIR/scripts/lib/compose.sh"
+# shellcheck source=scripts/lib/components.sh
+source "$SCRIPT_DIR/scripts/lib/components.sh"
 
 SITE_MANIFEST_PATH=""
 BUILD_PROFILE="production"
@@ -66,7 +68,10 @@ cp "$artifact_path" "$DIST_DIR/build/artifact.tar"
 sha256sum "$DIST_DIR/build/artifact.tar" | awk '{print $1}' > "$DIST_DIR/build/artifact.sha256"
 
 stage_site_manifest_bundle "$site_manifest_path" "$DIST_DIR/build/site"
-build_merged_compose "$DIST_DIR/build" "$DIST_DIR/build/docker-compose.yml"
+component_catalog="$DIST_DIR/build/stack.config/components.json"
+component_selection_write_metadata "$site_manifest_path" "$component_catalog" "$DIST_DIR/build/site/components.lock.json"
+log "selected components: $(jq -r '.components | join(", ")' "$DIST_DIR/build/site/components.lock.json")"
+build_merged_compose "$DIST_DIR/build" "$DIST_DIR/build/docker-compose.yml" "$site_manifest_path"
 rewrite_compose_runtime_paths "$DIST_DIR/build/docker-compose.yml"
 rewrite_compose_runtime_paths "$DIST_DIR/build/stack.compose/test-runners.yml"
 if [ "$BUILD_PROFILE" = "testdev" ]; then

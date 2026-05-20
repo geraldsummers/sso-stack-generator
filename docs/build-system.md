@@ -6,6 +6,8 @@ The build is split into two stages.
    - Runs TypeScript compile + unit tests, Gradle tests + shadow jars, and Bazel packaging.
    - Writes a deployable secret-free bundle to `dist/`.
    - Bundles the manifest-selected encrypted site files under `dist/build/site/`.
+   - Resolves `manifest.json` `components` against `stack.config/components.json`.
+   - Generates Compose and systemd output only for the selected components.
    - Does not call `sops`.
    - Does not render runtime env or secret-bearing config files.
 
@@ -46,6 +48,10 @@ The build is split into two stages.
 - `stack.config/`
 - `stack.containers/`
 - `stack.kotlin/`
+
+`dist/build/site/components.lock.json` records the resolved component set used
+for that build. Deploy uses that lock to render component-aware runtime config,
+including Caddy routes and Keycloak clients.
 
 ## Runtime Layout
 

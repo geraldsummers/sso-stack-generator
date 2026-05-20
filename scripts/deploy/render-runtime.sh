@@ -15,6 +15,8 @@ source "$LIB_DIR/templates.sh"
 source "$LIB_DIR/compose.sh"
 # shellcheck source=scripts/lib/runtime-state.sh
 source "$LIB_DIR/runtime-state.sh"
+# shellcheck source=scripts/lib/components.sh
+source "$LIB_DIR/components.sh"
 
 BUNDLE_ROOT="$(cd "$SCRIPT_DIR/.." && pwd -P)"
 DEPLOY_ROOT="$(cd "$BUNDLE_ROOT/.." && pwd -P)"
@@ -74,18 +76,21 @@ site_manifest_path="$(resolve_site_manifest_file "$SITE_MANIFEST_PATH")"
 site_name="$(site_manifest_site_name "$site_manifest_path")"
 site_config_file="$(resolve_site_manifest_stack_config_path "$site_manifest_path")"
 secret_store_file="$(resolve_site_manifest_secret_store_path "$site_manifest_path")"
+component_catalog_file="$BUNDLE_ROOT/stack.config/components.json"
+component_lock_file="$BUNDLE_ROOT/site/components.lock.json"
 runtime_root="$(cd "$(dirname "$RUNTIME_ROOT")" && pwd -P)/$(basename "$RUNTIME_ROOT")"
 runtime_configs_dir="$(runtime_configs_dir_path "$DEPLOY_ROOT")"
 runtime_env_file="$(runtime_env_file_path "$DEPLOY_ROOT")"
 
 render_set SITE_NAME "$site_name"
+component_selection_load_runtime "$site_manifest_path" "$component_catalog_file" "$component_lock_file"
 load_secret_store "$secret_store_file"
 load_site_values "$site_config_file"
 build_derived_render_values
 prepare_host_runtime_dirs
 prepare_runtime_dir "$runtime_root"
 render_config_tree "$BUNDLE_ROOT/stack.config" "$runtime_configs_dir"
-mapfile -t runtime_env_keys < <(collect_runtime_env_keys "$runtime_configs_dir" "$BUNDLE_ROOT/global.settings" "$BUNDLE_ROOT/stack.compose")
+mapfile -t runtime_env_keys < <(collect_runtime_env_keys "$runtime_configs_dir" "$BUNDLE_ROOT/global.settings" "$BUNDLE_ROOT/docker-compose.yml")
 write_env_file "$runtime_env_file" "${runtime_env_keys[@]}"
 write_build_info "$BUNDLE_ROOT/build-info.json" "$runtime_root/build-info.json"
 

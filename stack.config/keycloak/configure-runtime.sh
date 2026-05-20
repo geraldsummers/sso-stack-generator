@@ -302,16 +302,36 @@ ensure_confidential_client \
   "[\"https://keycloak-auth.$DOMAIN\"]" \
   "S256"
 
+# webservices-component-start bookstack
 ensure_confidential_client "bookstack" "BookStack" "${BOOKSTACK_OAUTH_SECRET:-}" "[\"https://bookstack.$DOMAIN/oidc/callback\"]" "[\"https://bookstack.$DOMAIN\"]"
+# webservices-component-end bookstack
+# webservices-component-start sogo
 ensure_confidential_client "sogo" "SOGo" "${SOGO_OAUTH_SECRET:-}" "[\"https://sogo.$DOMAIN/*\"]" "[\"https://sogo.$DOMAIN\"]"
+# webservices-component-end sogo
+# webservices-component-start jellyfin
 ensure_confidential_client "jellyfin" "Jellyfin" "${JELLYFIN_OIDC_SECRET:-}" "[\"https://jellyfin.$DOMAIN/sso/OID/redirect/keycloak\"]" "[\"https://jellyfin.$DOMAIN\"]"
+# webservices-component-end jellyfin
+# webservices-component-start donetick
 ensure_confidential_client "donetick" "Donetick" "${DONETICK_OAUTH_SECRET:-}" "[\"https://donetick.$DOMAIN/auth/oauth2\"]" "[\"https://donetick.$DOMAIN\"]"
+# webservices-component-end donetick
+# webservices-component-start erpnext
 ensure_confidential_client "erpnext" "ERPNext" "${ERPNEXT_OAUTH_SECRET:-}" "[\"https://erpnext.$DOMAIN/api/method/frappe.integrations.oauth2_logins.login_via_keycloak\"]" "[\"https://erpnext.$DOMAIN\"]"
+# webservices-component-end erpnext
+# webservices-component-start forgejo
 ensure_confidential_client "forgejo" "Forgejo" "${FORGEJO_OAUTH_SECRET:-}" "[\"https://forgejo.$DOMAIN/user/oauth2/Keycloak/callback\"]" "[\"https://forgejo.$DOMAIN\"]"
+# webservices-component-end forgejo
+# webservices-component-start mastodon
 ensure_confidential_client "mastodon" "Mastodon" "${MASTODON_OAUTH_SECRET:-}" "[\"https://mastodon.$DOMAIN/auth/auth/openid_connect/callback\"]" "[\"https://mastodon.$DOMAIN\"]"
+# webservices-component-end mastodon
+# webservices-component-start matrix
 ensure_confidential_client "matrix" "Matrix Synapse" "${MATRIX_OAUTH_SECRET:-}" "[\"https://matrix.$DOMAIN/_synapse/client/oidc/callback\"]" "[\"https://matrix.$DOMAIN\",\"https://element.$DOMAIN\"]"
 ensure_confidential_client "matrix-authentication-service" "Matrix Authentication Service" "${MATRIX_AUTHENTICATION_SERVICE_OAUTH_SECRET:-}" "[\"https://matrix-auth.$DOMAIN/upstream/callback/${MATRIX_AUTHENTICATION_SERVICE_UPSTREAM_PROVIDER_ID:-01JY9K7VKQ23V93TP9FB9VYQVM}\"]" "[\"https://matrix-auth.$DOMAIN\",\"https://matrix.$DOMAIN\",\"https://element.$DOMAIN\"]"
+# webservices-component-end matrix
+# webservices-component-start planka
 ensure_confidential_client "planka" "Planka" "${PLANKA_OAUTH_SECRET:-}" "[\"https://planka.$DOMAIN/oidc-callback\"]" "[\"https://planka.$DOMAIN\"]"
+# webservices-component-end planka
+# webservices-component-start vaultwarden
 ensure_confidential_client "vaultwarden" "Vaultwarden" "${VAULTWARDEN_OAUTH_SECRET:-}" "[\"https://vaultwarden.$DOMAIN/identity/connect/oidc-signin\"]" "[\"https://vaultwarden.$DOMAIN\"]" "S256"
+# webservices-component-end vaultwarden
 
 echo "[keycloak-configure] runtime Keycloak clients are ready"

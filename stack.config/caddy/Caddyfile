@@ -170,6 +170,7 @@ onboarding.{$DOMAIN} {
 }
 
 # Kopia UI (protected with forward_auth)
+# webservices-component-start kopia
 kopia.{$DOMAIN} {
 	import access_observability
 	route {
@@ -179,7 +180,9 @@ kopia.{$DOMAIN} {
 		}
 	}
 }
+# webservices-component-end kopia
 
+# webservices-component-start observability
 # Prometheus (protected with forward_auth)
 prometheus.{$DOMAIN} {
 	import access_observability
@@ -218,8 +221,10 @@ grafana.{$DOMAIN} {
 		}
 	}
 }
+# webservices-component-end observability
 
 # Vaultwarden (OIDC)
+# webservices-component-start vaultwarden
 vaultwarden.{$DOMAIN}, pass.{$DOMAIN} {
 	import access_observability
 	@vw_sso_login path /sso-login /sso-login/
@@ -280,20 +285,26 @@ api.vaultwarden.{$DOMAIN}, api.pass.{$DOMAIN} {
 
 	respond 404
 }
+# webservices-component-end vaultwarden
 
 # Planka (uses OIDC)
+# webservices-component-start planka
 planka.{$DOMAIN} {
 	import access_observability
 	reverse_proxy planka:1337
 }
+# webservices-component-end planka
 
 # BookStack (uses OIDC)
+# webservices-component-start bookstack
 bookstack.{$DOMAIN} {
 	import access_observability
 	reverse_proxy bookstack:80
 }
+# webservices-component-end bookstack
 
 # SOGo groupware.
+# webservices-component-start sogo
 sogo.{$DOMAIN} {
 	import access_observability
 	route {
@@ -308,8 +319,10 @@ sogo.{$DOMAIN} {
 		}
 	}
 }
+# webservices-component-end sogo
 
 # Jellyfin media library.
+# webservices-component-start jellyfin
 jellyfin.{$DOMAIN} {
 	import access_observability
 	route {
@@ -339,8 +352,10 @@ jellyfin.{$DOMAIN} {
 		}
 	}
 }
+# webservices-component-end jellyfin
 
 # Donetick chores/tasks.
+# webservices-component-start donetick
 donetick.{$DOMAIN} {
 	import access_observability
 	route {
@@ -355,8 +370,10 @@ donetick.{$DOMAIN} {
 		respond "Donetick requires the users, operators, or admins Keycloak group" 403
 	}
 }
+# webservices-component-end donetick
 
 # ERPNext is protected at the edge; app-local accounts remain ERPNext-managed.
+# webservices-component-start erpnext
 erpnext.{$DOMAIN} {
 	import access_observability
 	route {
@@ -364,8 +381,10 @@ erpnext.{$DOMAIN} {
 		reverse_proxy erpnext:8080
 	}
 }
+# webservices-component-end erpnext
 
 # BookStack API (internal token only - for data-fetcher and search services)
+# webservices-component-start bookstack
 api.bookstack.{$DOMAIN} {
 	import access_observability
 
@@ -385,8 +404,10 @@ api.bookstack.{$DOMAIN} {
 
 	respond 404
 }
+# webservices-component-end bookstack
 
 # Seafile - Uses remote user authentication with forward_auth
+# webservices-component-start seafile
 seafile.{$DOMAIN}, files.{$DOMAIN} {
 	import access_observability
 	route {
@@ -426,15 +447,19 @@ api.seafile.{$DOMAIN}, api.files.{$DOMAIN} {
 	# Return 404 for non-API paths
 	respond 404
 }
+# webservices-component-end seafile
 
 # OnlyOffice is served directly for Seafile's signed editor integration.
+# webservices-component-start onlyoffice
 onlyoffice.{$DOMAIN} {
 	import access_observability
 	reverse_proxy onlyoffice:80
 }
+# webservices-component-end onlyoffice
 
 # Matrix (Synapse) - Client-Server API with access token authentication
 # Matrix clients authenticate using access tokens, so no forward_auth needed
+# webservices-component-start matrix
 matrix.{$DOMAIN} {
 	import access_observability
 {{MATRIX_CADDY_AUTH_ROUTES}}
@@ -544,9 +569,11 @@ matrix-rtc.{$DOMAIN} {
 
 	respond 404
 }
+# webservices-component-end matrix
 
 # Mastodon (web)
 # With OMNIAUTH_ONLY=true, Mastodon auto-redirects unauthenticated users to OIDC
+# webservices-component-start mastodon
 mastodon.{$DOMAIN}, social.{$DOMAIN} {
 	import access_observability
 	reverse_proxy mastodon-web:3000 {
@@ -573,8 +600,18 @@ api.mastodon.{$DOMAIN}, api.social.{$DOMAIN} {
 
 	respond 404
 }
+# webservices-component-end mastodon
+
+# webservices-component-start !homepage
+# Minimal apex route for stacks that do not include the Homepage component.
+{$DOMAIN} {
+	import access_observability
+	respond "webservices core stack" 200
+}
+# webservices-component-end !homepage
 
 # Homepage - apex domain and homepage subdomain
+# webservices-component-start homepage
 {$DOMAIN}, homepage.{$DOMAIN} {
 	import access_observability
 	route {
@@ -598,6 +635,7 @@ api.mastodon.{$DOMAIN}, api.social.{$DOMAIN} {
 		reverse_proxy homepage:3000
 	}
 }
+# webservices-component-end homepage
 
 # Homepage - www redirects to apex
 www.{$DOMAIN} {
@@ -606,6 +644,7 @@ www.{$DOMAIN} {
 }
 
 # Workspace provisioner UI/API
+# webservices-component-start workspace-provisioner
 workspaces.{$DOMAIN} {
 	import access_observability
 	route {
@@ -700,15 +739,19 @@ workspaces.{$DOMAIN} {
 		}
 	}
 }
+# webservices-component-end workspace-provisioner
 
 # Mail hostname: keep an HTTPS virtual host so Caddy obtains/renews TLS certs
 # consumed by the SMTP/IMAP stack.
+# webservices-component-start mailserver
 mail.{$DOMAIN} {
 	import access_observability
 	respond "Mail endpoint is not served over HTTPS" 404
 }
+# webservices-component-end mailserver
 
 # JupyterHub - Uses RemoteUserAuthenticator with forward_auth
+# webservices-component-start jupyterhub
 jupyterhub.{$DOMAIN} {
 	import access_observability
 	route {
@@ -731,9 +774,11 @@ jupyterhub.{$DOMAIN} {
 		}
 	}
 }
+# webservices-component-end jupyterhub
 
 # Home Assistant - Uses Keycloak edge auth
 # Webhooks must bypass auth
+# webservices-component-start homeassistant
 homeassistant.{$DOMAIN}, home.{$DOMAIN} {
 	import access_observability
 	# Webhook paths bypass forward_auth
@@ -846,8 +891,10 @@ api.homeassistant.{$DOMAIN}, api.home.{$DOMAIN} {
 	# Return 404 for non-API paths
 	respond 404
 }
+# webservices-component-end homeassistant
 
 # Ntfy (protected)
+# webservices-component-start ntfy
 ntfy.{$DOMAIN} {
 	import access_observability
 	route {
@@ -855,7 +902,9 @@ ntfy.{$DOMAIN} {
 		reverse_proxy ntfy:80
 	}
 }
+# webservices-component-end ntfy
 
+# webservices-component-start inference
 models.{$DOMAIN} {
 	import access_observability
 	route {
@@ -863,7 +912,9 @@ models.{$DOMAIN} {
 		reverse_proxy embedding-gpu:8080
 	}
 }
+# webservices-component-end inference
 
+# webservices-component-start disabled
 # ClickHouse HTTP
 clickhouse.{$DOMAIN} {
 	import access_observability
@@ -881,16 +932,20 @@ vllm-router.{$DOMAIN} {
 		reverse_proxy vllm-router:8010
 	}
 }
+# webservices-component-end disabled
 
 # Forgejo (Git Forge) - with OIDC authentication via Keycloak
+# webservices-component-start forgejo
 forgejo.{$DOMAIN} {
 	import access_observability
 	@forgejo_token_api path_regexp forgejo_token_api ^/api/v1/users/[^/]+/tokens/?$
 	respond @forgejo_token_api "Forgejo password token creation is disabled" 403
 	reverse_proxy forgejo:3000
 }
+# webservices-component-end forgejo
 
 # qBittorrent (protected)
+# webservices-component-start qbittorrent
 qbittorrent.{$DOMAIN} {
 	import access_observability
 	route {
@@ -900,6 +955,9 @@ qbittorrent.{$DOMAIN} {
 		}
 	}
 }
+# webservices-component-end qbittorrent
+
+# webservices-component-start search
 # Search Gateway (protected - all authenticated users)
 search.{$DOMAIN} {
 	import access_observability
@@ -910,8 +968,10 @@ search.{$DOMAIN} {
 		}
 	}
 }
+# webservices-component-end search
 
 # Pipeline Monitor (protected - read-only stats dashboard)
+# webservices-component-start pipeline
 pipeline.{$DOMAIN} {
 	import access_observability
 	route {
@@ -919,8 +979,10 @@ pipeline.{$DOMAIN} {
 		reverse_proxy knowledge-ingestion:8090
 	}
 }
+# webservices-component-end pipeline
 
 # ChatGPT MCP Connector (protected for interactive account management)
+# webservices-component-start chatgpt-connector
 chatgpt-connector.{$DOMAIN} {
 	import access_observability
 	route {
@@ -932,3 +994,4 @@ chatgpt-connector.{$DOMAIN} {
 			}
 		}
 	}
+# webservices-component-end chatgpt-connector

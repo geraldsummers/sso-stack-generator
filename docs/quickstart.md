@@ -29,7 +29,36 @@ On the target host:
 
 The local build does not decrypt secrets. Secret rendering happens on the target host during `./deploy.sh`.
 
-## 1. Check The Worktree
+## 1. Create Or Choose A Site Repo
+
+For a new deployment, create a separate Git-backed site repo. This repo is for
+component choices, site config, encrypted secrets, rollback history, and the
+generator pin. It is not a fork of this source repo.
+
+```bash
+./scripts/init-site.sh --github /path/to/site-repo
+```
+
+The initializer writes:
+
+- `manifest.json`
+- `stack.config.yaml`
+- encrypted `webservices.sops.json`
+- `.webservices-generator.json`
+- `stack-update.sh`
+
+New site repos enable `core` by default. Edit `manifest.json` or re-run the
+initializer with `--components` to opt into apps, observability, search, or the
+full stack.
+
+To check for upstream generator updates later:
+
+```bash
+cd /path/to/site-repo
+./stack-update.sh
+```
+
+## 2. Check The Worktree
 
 The build expects source to be in a known state.
 
@@ -40,7 +69,7 @@ git status --short
 
 If this prints changed files, decide whether those changes are intended before building.
 
-## 2. Build The Bundle
+## 3. Build The Bundle
 
 ```bash
 SITE_MANIFEST="/path/to/site/manifest.json"
@@ -51,7 +80,7 @@ This creates `dist/`, a deployable bundle.
 
 The bundle is intended to be immutable and secret-free. Do not edit files inside `dist/` to fix behavior. Fix the source files and rebuild.
 
-## 3. Copy The Bundle To The Host
+## 4. Copy The Bundle To The Host
 
 ```bash
 TARGET_HOST="user@example-host"
@@ -62,7 +91,7 @@ rsync -av --no-group --delete ./dist/ "$TARGET_HOST":~/webservices/
 
 The trailing slash on `./dist/` matters. It copies the contents of `dist` into `~/webservices`.
 
-## 4. Deploy On The Host
+## 5. Deploy On The Host
 
 ```bash
 ssh "$TARGET_HOST" 'cd ~/webservices && ./deploy.sh'
@@ -70,7 +99,7 @@ ssh "$TARGET_HOST" 'cd ~/webservices && ./deploy.sh'
 
 Deploy renders runtime files on the host, installs generated `systemd --user` units, and starts the stack.
 
-## 5. Verify The Deployment
+## 6. Verify The Deployment
 
 ```bash
 ssh "$TARGET_HOST" 'cd ~/webservices && ./verify.sh'
@@ -78,7 +107,7 @@ ssh "$TARGET_HOST" 'cd ~/webservices && ./verify.sh'
 
 `verify.sh` runs readiness checks and the blocking platform contract. Treat a failing verify as a deployment failure until investigated.
 
-## 6. Run Optional Tests
+## 7. Run Optional Tests
 
 After a deploy is up, use the bundled test runner from the host:
 

@@ -233,13 +233,13 @@ def build_domains(graph: dict, services: dict, excluded_services: Set[str]) -> L
             if service_name in excluded_services:
                 raise ValueError(f"lifecycle domain {domain_name} references excluded service {service_name}")
             if service_name not in services:
-                raise ValueError(f"lifecycle domain {domain_name} references unknown service {service_name}")
+                continue
             if service_name in assigned:
                 raise ValueError(f"service {service_name} is assigned to multiple lifecycle domains")
             assigned[service_name] = domain_name
             domain_services.append(service_name)
         if not domain_services:
-            raise ValueError(f"lifecycle domain {domain_name} is empty")
+            continue
         domains.append(Domain(
             name=domain_name,
             services=domain_services,

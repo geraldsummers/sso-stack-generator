@@ -2,6 +2,8 @@
 
 # shellcheck source=scripts/lib/common.sh
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/common.sh"
+# shellcheck source=scripts/lib/components.sh
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/components.sh"
 
 extract_top_level_section() {
   local file="$1"
@@ -49,10 +51,25 @@ extract_extension_blocks() {
 
 compose_service_files() {
   local stage_dir="$1"
+  local manifest_path="${2:-}"
+  local catalog selected_file
+  local -A selected_files=()
   local file
+
+  if [ -n "$manifest_path" ]; then
+    catalog="$(component_catalog_path "$stage_dir")"
+    [ -f "$catalog" ] || die "missing component catalog: $catalog"
+    while IFS= read -r selected_file; do
+      selected_files["$selected_file"]=1
+    done < <(component_selection_compose_files "$manifest_path" "$catalog")
+  fi
+
   for file in "$stage_dir"/stack.compose/*.yml; do
     [ -f "$file" ] || continue
     [ "$(basename "$file")" = "test-runners.yml" ] && continue
+    if [ -n "$manifest_path" ] && [ -z "${selected_files[$(basename "$file")]+x}" ]; then
+      continue
+    fi
     printf '%s\n' "$file"
   done | sort
 }
@@ -60,6 +77,7 @@ compose_service_files() {
 build_merged_compose() {
   local stage_dir="$1"
   local output_file="$2"
+  local manifest_path="${3:-}"
   local global_settings="$stage_dir/global.settings"
   local service_file
 
@@ -69,7 +87,7 @@ build_merged_compose() {
 
     while IFS= read -r service_file; do
       extract_extension_blocks "$service_file"
-    done < <(compose_service_files "$stage_dir")
+    done < <(compose_service_files "$stage_dir" "$manifest_path")
 
     printf 'services:\n'
     if [ -f "$global_settings/volume-init.yml" ]; then
@@ -77,7 +95,7 @@ build_merged_compose() {
     fi
     while IFS= read -r service_file; do
       extract_top_level_section "$service_file" 'services:'
-    done < <(compose_service_files "$stage_dir")
+    done < <(compose_service_files "$stage_dir" "$manifest_path")
 
     printf '\nvolumes:\n'
     if [ -f "$global_settings/volume-init.yml" ]; then
@@ -88,7 +106,7 @@ build_merged_compose() {
     fi
     while IFS= read -r service_file; do
       extract_top_level_section "$service_file" 'volumes:'
-    done < <(compose_service_files "$stage_dir")
+    done < <(compose_service_files "$stage_dir" "$manifest_path")
 
     printf '\nnetworks:\n'
     if [ -f "$global_settings/networks.yml" ]; then

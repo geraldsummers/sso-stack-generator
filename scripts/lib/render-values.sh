@@ -258,6 +258,15 @@ derive_stack_secret() {
   printf '%s' "$seed:$label:$(render_get DOMAIN)" | sha256sum | awk '{print $1}' | cut -c "1-$length"
 }
 
+derive_if_missing() {
+  local key="$1"
+  local label="$2"
+  local length="${3:-48}"
+  if ! render_has "$key" || [ -z "$(render_get "$key")" ]; then
+    render_set "$key" "$(derive_stack_secret "$label" "$length")"
+  fi
+}
+
 build_derived_render_values() {
   render_set GENERATION_TIMESTAMP "$(iso_timestamp_utc)"
   render_set BASE_URL "https://$(render_get DOMAIN)"
@@ -280,6 +289,50 @@ build_derived_render_values() {
   if ! render_has ADMIN_SSHA_PASSWORD || [ -z "$(render_get ADMIN_SSHA_PASSWORD)" ]; then
     render_set ADMIN_SSHA_PASSWORD "$(compute_ssha "$(render_get STACK_ADMIN_PASSWORD)")"
   fi
+  if ! render_has POSTGRES_ADMIN_USER || [ -z "$(render_get POSTGRES_ADMIN_USER)" ]; then
+    render_set POSTGRES_ADMIN_USER "webservices"
+  fi
+  derive_if_missing KEYCLOAK_ADMIN_PASSWORD keycloak-admin 48
+  derive_if_missing POSTGRES_ADMIN_PASSWORD postgres-admin 48
+  derive_if_missing POSTGRES_GRAFANA_PASSWORD postgres-grafana 48
+  derive_if_missing POSTGRES_PLANKA_PASSWORD postgres-planka 48
+  derive_if_missing POSTGRES_SYNAPSE_PASSWORD postgres-synapse 48
+  derive_if_missing POSTGRES_VAULTWARDEN_PASSWORD postgres-vaultwarden 48
+  derive_if_missing POSTGRES_HOMEASSISTANT_PASSWORD postgres-homeassistant 48
+  derive_if_missing POSTGRES_AGENT_PASSWORD postgres-agent 48
+  derive_if_missing POSTGRES_TXGATEWAY_PASSWORD postgres-txgateway 48
+  derive_if_missing POSTGRES_FORGEJO_PASSWORD postgres-forgejo 48
+  derive_if_missing POSTGRES_OPENWEBUI_PASSWORD postgres-openwebui 48
+  derive_if_missing POSTGRES_MASTODON_PASSWORD postgres-mastodon 48
+  derive_if_missing POSTGRES_PIPELINE_PASSWORD postgres-pipeline 48
+  derive_if_missing POSTGRES_SEARCH_SERVICE_PASSWORD postgres-search-service 48
+  derive_if_missing POSTGRES_TEST_RUNNER_PASSWORD postgres-test-runner 48
+  derive_if_missing MARIADB_ADMIN_PASSWORD mariadb-admin 48
+  derive_if_missing MARIADB_BOOKSTACK_PASSWORD mariadb-bookstack 48
+  derive_if_missing MARIADB_SEAFILE_PASSWORD mariadb-seafile 48
+  derive_if_missing MARIADB_AGENT_PASSWORD mariadb-agent 48
+  derive_if_missing VALKEY_ADMIN_PASSWORD valkey-admin 48
+  derive_if_missing VALKEY_SEAFILE_PASSWORD valkey-seafile 48
+  derive_if_missing VALKEY_MASTODON_PASSWORD valkey-mastodon 48
+  derive_if_missing OAUTH2_PROXY_CLIENT_SECRET oauth2-proxy-client 48
+  derive_if_missing OAUTH2_PROXY_COOKIE_SECRET oauth2-proxy-cookie 32
+  derive_if_missing BOOKSTACK_APP_KEY bookstack-app-key 48
+  derive_if_missing BOOKSTACK_OAUTH_SECRET bookstack-oauth 48
+  derive_if_missing FORGEJO_OAUTH_SECRET forgejo-oauth 48
+  derive_if_missing MASTODON_OAUTH_SECRET mastodon-oauth 48
+  derive_if_missing MATRIX_OAUTH_SECRET matrix-oauth 48
+  derive_if_missing PLANKA_OAUTH_SECRET planka-oauth 48
+  derive_if_missing TEST_RUNNER_OAUTH_SECRET test-runner-oauth 48
+  derive_if_missing VAULTWARDEN_OAUTH_SECRET vaultwarden-oauth 48
+  derive_if_missing QDRANT_ADMIN_API_KEY qdrant-admin-api 48
+  derive_if_missing LIVEKIT_API_KEY livekit-api-key 24
+  derive_if_missing LIVEKIT_API_SECRET livekit-api-secret 48
+  derive_if_missing ONLYOFFICE_JWT_SECRET onlyoffice-jwt 48
+  derive_if_missing SEAFILE_EMAIL_PASSWORD seafile-email 48
+  derive_if_missing SEAFILE_SECRET_KEY seafile-secret 48
+  derive_if_missing SYNAPSE_FORM_SECRET synapse-form 48
+  derive_if_missing SYNAPSE_MACAROON_SECRET synapse-macaroon 48
+  derive_if_missing SYNAPSE_REGISTRATION_SECRET synapse-registration 48
   if ! render_has SOGO_DB_PASSWORD || [ -z "$(render_get SOGO_DB_PASSWORD)" ]; then
     render_set SOGO_DB_PASSWORD "$(derive_stack_secret sogo-db 48)"
   fi

@@ -11,8 +11,12 @@ site_manifest_validate() {
     type == "object" and
     (.site | type == "string" and length > 0) and
     (.stackConfig | type == "string" and length > 0) and
-    (.secretStore | type == "string" and length > 0)
-  ' "$manifest_path" >/dev/null || die "invalid site manifest: $manifest_path (expected non-empty string keys: site, stackConfig, secretStore)"
+    (.secretStore | type == "string" and length > 0) and
+    (
+      (.components == null) or
+      ((.components | type) == "array" and all(.components[]; type == "string" and length > 0))
+    )
+  ' "$manifest_path" >/dev/null || die "invalid site manifest: $manifest_path (expected non-empty string keys: site, stackConfig, secretStore; optional components must be a string array)"
 }
 
 resolve_site_manifest_file() {

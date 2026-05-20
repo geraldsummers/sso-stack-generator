@@ -4,6 +4,8 @@
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/common.sh"
 # shellcheck source=scripts/lib/render-values.sh
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/render-values.sh"
+# shellcheck source=scripts/lib/components.sh
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/components.sh"
 
 render_multiline_placeholder() {
   local file="$1"
@@ -77,6 +79,60 @@ render_moustache_file() {
   rm -f "$temp_file"
 }
 
+filter_component_blocks() {
+  local input_path="$1"
+  local output_path="$2"
+  local selected_components
+  selected_components="$(component_selection_env_value)"
+  awk -v selected="$selected_components" '
+    function component_enabled(token, raw, inverted) {
+      raw = token
+      inverted = 0
+      if (substr(raw, 1, 1) == "!") {
+        inverted = 1
+        raw = substr(raw, 2)
+      }
+      return inverted ? index(selected, " " raw " ") == 0 : index(selected, " " raw " ") > 0
+    }
+    function current_enabled(i) {
+      for (i = 1; i <= depth; ++i) {
+        if (!enabled[i]) {
+          return 0
+        }
+      }
+      return 1
+    }
+    /^[[:space:]]*#[[:space:]]*webservices-component-start[[:space:]]+/ {
+      token = $0
+      sub(/^[[:space:]]*#[[:space:]]*webservices-component-start[[:space:]]+/, "", token)
+      sub(/[[:space:]]+.*$/, "", token)
+      depth += 1
+      enabled[depth] = component_enabled(token)
+      next
+    }
+    /^[[:space:]]*#[[:space:]]*webservices-component-end[[:space:]]*/ {
+      if (depth <= 0) {
+        print "unmatched webservices-component-end marker" > "/dev/stderr"
+        exit 2
+      }
+      delete enabled[depth]
+      depth -= 1
+      next
+    }
+    {
+      if (current_enabled()) {
+        print
+      }
+    }
+    END {
+      if (depth != 0) {
+        print "unclosed webservices component block" > "/dev/stderr"
+        exit 2
+      }
+    }
+  ' "$input_path" > "$output_path"
+}
+
 render_config_tree() {
   local source_root="$1"
   local dest_root="$2"
@@ -95,6 +151,13 @@ render_config_tree() {
       render_moustache_file "$source" "$target"
     else
       cp "$source" "$target"
+    fi
+
+    if grep -qE '^[[:space:]]*#[[:space:]]*webservices-component-(start|end)' "$target"; then
+      local filtered
+      filtered="$(mktemp)"
+      filter_component_blocks "$target" "$filtered"
+      mv "$filtered" "$target"
     fi
 
     if [ -x "$source" ]; then

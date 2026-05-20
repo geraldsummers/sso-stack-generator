@@ -52,6 +52,9 @@ if [ -f "$local_test_dir/package.json" ]; then
   (cd "$local_test_dir" && npm run test:unit) >&2
 fi
 
+log "running component selection checks"
+"$SCRIPT_DIR/test-component-selection.sh" >&2
+
 log "running Gradle tests and shadow jars"
 ./gradlew test shadowJar --no-daemon >&2
 
