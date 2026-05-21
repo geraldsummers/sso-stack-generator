@@ -2,7 +2,7 @@
 
 ## Scope
 
-This repo owns the generic authenticated web-services platform stack.
+This repo owns the generic authenticated webservices platform stack.
 
 It owns:
 - edge, routing, and shared auth

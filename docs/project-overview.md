@@ -1,6 +1,6 @@
 # Project Overview
 
-This project is a self-hosted platform stack generator. It takes source templates plus a site manifest and produces a deployable bundle for a full authenticated web-services platform.
+This project is a self-hosted platform stack generator. It takes source templates plus a site manifest and produces a deployable bundle for a full authenticated webservices platform.
 
 It is designed to show practical platform engineering rather than a toy demo. The stack includes identity, routing, secrets handling, app integration, observability, runtime provisioning, and automated validation.
 
@@ -127,4 +127,3 @@ The project favors:
 This is not a one-click SaaS clone or a generic Helm chart collection. It is an opinionated platform generator for a specific self-hosted operating model.
 
 It is also not a place for plaintext secrets, site-specific private data, or generated output treated as source.
-

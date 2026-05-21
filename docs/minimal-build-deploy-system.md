@@ -37,7 +37,7 @@ Minimal manifest schema:
 {
   "site": "example",
   "stackConfig": "./global.settings/stack.config.yaml",
-  "secretStore": "./global.settings/web-services.sops.json"
+  "secretStore": "./global.settings/webservices.sops.json"
 }
 ```
 

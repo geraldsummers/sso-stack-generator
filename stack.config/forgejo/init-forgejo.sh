@@ -221,8 +221,8 @@ EOF
 
 ensure_seed_repo() {
     local api_username="${FORGEJO_USERNAME:-${FORGEJO_API_USERNAME:-${STACK_ADMIN_USER:-sysadmin}}}"
-    local repo_name="${FORGEJO_SEED_REPO_NAME:-web-services}"
-    local seed_repo_path="${FORGEJO_SEED_REPO_PATH:-/seed-repos/source/web-services.git}"
+    local repo_name="${FORGEJO_SEED_REPO_NAME:-sso-stack-generator}"
+    local seed_repo_path="${FORGEJO_SEED_REPO_PATH:-/seed-repos/source/sso-stack-generator.git}"
     local temp_root=""
     local mirror_dir=""
     local askpass_path=""

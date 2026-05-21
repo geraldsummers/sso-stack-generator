@@ -1,6 +1,6 @@
 # Agent Workspace Guide
 
-The authenticated web-services stack provides agent workspaces through `workspace-provisioner`.
+The authenticated webservices stack provides agent workspaces through `workspace-provisioner`.
 
 ## Core Endpoints
 
