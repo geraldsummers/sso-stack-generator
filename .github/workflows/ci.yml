@@ -60,6 +60,9 @@ jobs:
       - name: Run deploy-state guard checks
         run: ./scripts/test-deploy-state.sh
 
+      - name: Run env-file security checks
+        run: ./scripts/test-env-file-security.sh
+
   typescript-tests:
     name: TypeScript test runner
     runs-on: ubuntu-24.04

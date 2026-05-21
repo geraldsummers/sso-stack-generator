@@ -10,6 +10,8 @@ import io.ktor.server.application.ApplicationCall
 import io.ktor.server.request.header
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import java.security.MessageDigest
+import java.nio.charset.StandardCharsets
 
 class Authenticator(
     private val config: WorkspaceProvisionerConfig,
@@ -75,7 +77,10 @@ class Authenticator(
     private fun hasTrustedProxySecret(call: ApplicationCall): Boolean {
         val configured = config.trustedProxySecret ?: return false
         val provided = call.request.header("X-Trusted-Proxy-Secret")?.trim()
-        return provided != null && provided == configured
+        return provided != null && MessageDigest.isEqual(
+            provided.toByteArray(StandardCharsets.UTF_8),
+            configured.toByteArray(StandardCharsets.UTF_8)
+        )
     }
 }
 

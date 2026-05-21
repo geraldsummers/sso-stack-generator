@@ -58,6 +58,9 @@ log "running component selection checks"
 log "running deploy-state guard checks"
 "$SCRIPT_DIR/test-deploy-state.sh" >&2
 
+log "running env-file security checks"
+"$SCRIPT_DIR/test-env-file-security.sh" >&2
+
 log "running Gradle tests and shadow jars"
 ./gradlew test shadowJar --no-daemon >&2
 

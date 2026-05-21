@@ -10,6 +10,8 @@ source "$SCRIPT_DIR/lib/common.sh"
 source "$SCRIPT_DIR/lib/site-manifest.sh"
 # shellcheck source=scripts/lib/runtime-state.sh
 source "$SCRIPT_DIR/lib/runtime-state.sh"
+# shellcheck source=scripts/lib/env-file.sh
+source "$SCRIPT_DIR/lib/env-file.sh"
 # shellcheck source=scripts/lib/deploy-state.sh
 source "$SCRIPT_DIR/lib/deploy-state.sh"
 # shellcheck source=scripts/lib/systemd-user.sh
@@ -577,7 +579,7 @@ ensure_bootstrap_scaffolds() {
 
 runtime_env_value() {
   local key="$1"
-  env -i bash -c 'set -a; . "$1"; printf "%s\n" "${!2:-}"' bash "$DEPLOY_ROOT/runtime/stack.env" "$key"
+  env_file_get_value "$DEPLOY_ROOT/runtime/stack.env" "$key"
 }
 
 migrate_legacy_seafile_split_volume() {

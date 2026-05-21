@@ -12,7 +12,7 @@ render_multiline_placeholder() {
   local key="$2"
   local value="$3"
   local temp_file
-  temp_file="$(mktemp)"
+  temp_file="$(mktemp "$(dirname "$file")/.render-multiline.XXXXXX")"
 
   awk -v key="$key" -v value="$value" '
     function flush(prefix, content, n, lines, i) {
@@ -45,7 +45,7 @@ render_moustache_file() {
   local src="$1"
   local dest="$2"
   local temp_file
-  temp_file="$(mktemp)"
+  temp_file="$(mktemp "$(dirname "$dest")/.render-template.XXXXXX")"
   cp "$src" "$temp_file"
 
   mapfile -t keys < <(grep -oE '\{\{[A-Z_][A-Z0-9_]*\}\}' "$src" | tr -d '{}' | sort -u || true)
@@ -155,7 +155,7 @@ render_config_tree() {
 
     if grep -qE '^[[:space:]]*#[[:space:]]*webservices-component-(start|end)' "$target"; then
       local filtered
-      filtered="$(mktemp)"
+      filtered="$(mktemp "$(dirname "$target")/.component-filter.XXXXXX")"
       filter_component_blocks "$target" "$filtered"
       mv "$filtered" "$target"
     fi

@@ -9,6 +9,7 @@ available for direct device access.
 from __future__ import annotations
 
 from collections.abc import Mapping
+import hmac
 from ipaddress import ip_address, ip_network
 import logging
 import os
@@ -99,7 +100,10 @@ class KeycloakTrustedAuthProvider(AuthProvider):
             raise InvalidAuthError("Missing trusted proxy request")
         if not TRUSTED_PROXY_SECRET:
             raise InvalidAuthError("Missing trusted proxy secret configuration")
-        if request.headers.get(CONF_TRUSTED_PROXY_SECRET_HEADER) != TRUSTED_PROXY_SECRET:
+        if not hmac.compare_digest(
+            request.headers.get(CONF_TRUSTED_PROXY_SECRET_HEADER, ""),
+            TRUSTED_PROXY_SECRET,
+        ):
             raise InvalidAuthError("Invalid trusted proxy secret")
         username = request.headers.get(
             self.trusted_remote_user_header
@@ -116,7 +120,10 @@ class KeycloakTrustedAuthProvider(AuthProvider):
 
         if not TRUSTED_PROXY_SECRET:
             return None
-        if request.headers.get(CONF_TRUSTED_PROXY_SECRET_HEADER) != TRUSTED_PROXY_SECRET:
+        if not hmac.compare_digest(
+            request.headers.get(CONF_TRUSTED_PROXY_SECRET_HEADER, ""),
+            TRUSTED_PROXY_SECRET,
+        ):
             return None
 
         username = request.headers.get(self.trusted_remote_user_header) or request.headers.get("X-Remote-User")
