@@ -8,10 +8,11 @@ deploy_state_dir() {
   printf '%s\n' "$deploy_root/runtime/deploy-state"
 }
 
-deploy_state_file_sha256() {
+deploy_state_json_sha256() {
   local path="$1"
+  local filter="${2:-.}"
   if [ -f "$path" ]; then
-    sha256sum "$path" | awk '{print $1}'
+    jq -cS "$filter" "$path" | sha256sum | awk '{print $1}'
   else
     printf 'missing\n'
   fi
@@ -25,14 +26,14 @@ deploy_state_global_signature() {
   local volumes_file="$bundle_root/systemd-user/infra/volumes.json"
 
   jq -n \
-    --arg componentsLock "$(deploy_state_file_sha256 "$components_lock")" \
-    --arg systemdGraph "$(deploy_state_file_sha256 "$graph_file")" \
-    --arg infraNetworks "$(deploy_state_file_sha256 "$networks_file")" \
-    --arg infraVolumes "$(deploy_state_file_sha256 "$volumes_file")" \
+    --arg components "$(deploy_state_json_sha256 "$components_lock" '.components')" \
+    --arg systemdGraph "$(deploy_state_json_sha256 "$graph_file" '.')" \
+    --arg infraNetworks "$(deploy_state_json_sha256 "$networks_file" '.')" \
+    --arg infraVolumes "$(deploy_state_json_sha256 "$volumes_file" '.')" \
     '{
-      version: 1,
+      version: 2,
       inputs: {
-        componentsLock: $componentsLock,
+        components: $components,
         systemdGraph: $systemdGraph,
         infraNetworks: $infraNetworks,
         infraVolumes: $infraVolumes

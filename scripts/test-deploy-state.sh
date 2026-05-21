@@ -41,6 +41,12 @@ if grep -q 'core' "$signature_file"; then
   exit 1
 fi
 
+cat > "$bundle_root/site/components.lock.json" <<'EOF_JSON'
+{"generatedAt":"changed timestamp","components":["core"]}
+EOF_JSON
+
+deploy_state_check_global_signature "$bundle_root" "$deploy_root"
+
 cat > "$bundle_root/stack.systemd/graph.json" <<'EOF_JSON'
 {"unitPrefix":"webservices","defaultTarget":{"name":"webservices.target"},"auxiliaryTargets":[{"name":"webservices-apps.target"}]}
 EOF_JSON
