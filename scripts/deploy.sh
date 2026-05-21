@@ -330,6 +330,22 @@ resolve_scoped_units() {
   done
 }
 
+build_scoped_service_images() {
+  local services=()
+
+  mapfile -t services < <(resolve_scoped_services)
+  if [ "${#services[@]}" -eq 0 ]; then
+    deploy_log "no compose services selected for scoped build"
+    return 0
+  fi
+
+  deploy_log "building selected compose services: $(join_array_limited "$SYSTEMD_PROGRESS_MAX_ITEMS" "${services[@]}")"
+  COMPOSE_PROJECT_NAME="$PROJECT_NAME" run_compose_from_bundle \
+    "$BUNDLE_ROOT" \
+    "$DEPLOY_ROOT/runtime/stack.env" \
+    build "${services[@]}"
+}
+
 scoped_health_units() {
   local unit_name health_unit
   while IFS= read -r unit_name; do
@@ -934,7 +950,7 @@ fi
 
 set_phase "compose-build"
 if [ "$PARTIAL_DEPLOY" = "1" ]; then
-  deploy_log "skipping global compose build; selected lifecycle units build through ExecReload/ExecStart"
+  build_scoped_service_images
 else
   deploy_log "building service images"
   COMPOSE_PROJECT_NAME="$PROJECT_NAME" run_compose_from_bundle \
