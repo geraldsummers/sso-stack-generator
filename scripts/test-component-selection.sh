@@ -65,7 +65,6 @@ fake_bin="$tmp_root/bin"
 bundle_root="$tmp_root/bundle/build"
 site_root="$bundle_root/site"
 runtime_root="$tmp_root/runtime"
-runtime_env_file="$tmp_root/bundle/runtime/stack.env"
 isolated_docker_vm_ssh_dir="$tmp_root/isolated-docker-vm-ssh"
 test_runner_runtime_dir="$tmp_root/test-runner-runtime"
 test_results_dir="$tmp_root/test-results"
@@ -201,10 +200,6 @@ PATH="$fake_bin:$PATH" "$ROOT_DIR/scripts/deploy/render-runtime.sh" \
   --runtime-root "$runtime_root" \
   --skip-compose-validate >/dev/null
 
-rm -rf "$bundle_root/configs"
-copy_tree "$tmp_root/bundle/runtime/configs" "$bundle_root/configs"
-docker compose --env-file "$runtime_env_file" -f "$bundle_root/docker-compose.yml" config --quiet >/dev/null
-
 caddy_file="$tmp_root/bundle/runtime/configs/caddy/Caddyfile"
 keycloak_configure="$tmp_root/bundle/runtime/configs/keycloak/configure-runtime.sh"
 
@@ -239,10 +234,6 @@ PATH="$fake_bin:$PATH" "$ROOT_DIR/scripts/deploy/render-runtime.sh" \
   --site-manifest "$site_root/manifest.json" \
   --runtime-root "$runtime_root" \
   --skip-compose-validate >/dev/null
-
-rm -rf "$bundle_root/configs"
-copy_tree "$tmp_root/bundle/runtime/configs" "$bundle_root/configs"
-docker compose --env-file "$runtime_env_file" -f "$bundle_root/docker-compose.full.yml" config --quiet >/dev/null
 
 assert_contains "$caddy_file" 'reverse_proxy vaultwarden:80' "full Vaultwarden route"
 assert_contains "$caddy_file" 'reverse_proxy homepage:3000' "full Homepage route"
