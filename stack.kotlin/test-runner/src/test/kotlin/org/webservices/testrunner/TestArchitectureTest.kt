@@ -230,7 +230,16 @@ class TestArchitectureTest {
                 .toList()
         }
 
-        assertEquals(listOf("build-artifact.sh", "deploy.sh", "verify.sh"), topLevelFiles)
+        assertEquals(
+            listOf(
+                "build-artifact.sh",
+                "deploy.sh",
+                "init-site.sh",
+                "test-component-selection.sh",
+                "verify.sh",
+            ),
+            topLevelFiles,
+        )
     }
 
     @Test
