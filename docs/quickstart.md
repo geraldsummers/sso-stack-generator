@@ -51,6 +51,11 @@ New site repos enable `core` by default. Edit `manifest.json` or re-run the
 initializer with `--components` to opt into apps, observability, search, or the
 full stack.
 
+`.webservices-generator.json` pins the downstream generator fork used by the
+site. When this source checkout also has an `upstream` or `legacy` remote, the
+initializer records that original parent remote too, so `stack-update.sh` can
+report the fork's upstream parent while still updating from the downstream fork.
+
 To check for upstream generator updates later:
 
 ```bash

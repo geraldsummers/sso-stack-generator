@@ -216,6 +216,8 @@ fi
 [ -n "$GENERATOR_REMOTE" ] || GENERATOR_REMOTE="$ROOT_DIR"
 generator_ref="$(git -C "$ROOT_DIR" symbolic-ref --quiet --short HEAD || printf 'HEAD')"
 generator_commit="$(git -C "$ROOT_DIR" rev-parse HEAD)"
+generator_upstream_remote="$(git -C "$ROOT_DIR" config --get remote.upstream.url || git -C "$ROOT_DIR" config --get remote.legacy.url || true)"
+generator_upstream_ref="$(git -C "$ROOT_DIR" config --get webservices.upstreamRef || printf 'main')"
 
 component_json="$(printf '%s\n' "$COMPONENTS" | tr ',' '\n' | awk '{$1=$1; print}' | jq -R 'select(length > 0)' | jq -s '.')"
 
@@ -264,7 +266,9 @@ cat > "$target_dir/.webservices-generator.json" <<EOF_GENERATOR
 {
   "generatorRemote": "$GENERATOR_REMOTE",
   "generatorRef": "$generator_ref",
-  "generatorCommit": "$generator_commit"
+  "generatorCommit": "$generator_commit",
+  "generatorUpstreamRemote": "$generator_upstream_remote",
+  "generatorUpstreamRef": "$generator_upstream_ref"
 }
 EOF_GENERATOR
 
@@ -306,9 +310,9 @@ cat > "$target_dir/stack-update.sh" <<'EOF_UPDATE'
 #!/usr/bin/env bash
 set -euo pipefail
 
-SITE_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
-PIN_FILE="$SITE_ROOT/.webservices-generator.json"
-CACHE_DIR="$SITE_ROOT/.stack-generator"
+SCRIPT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
+SITE_ROOT="$SCRIPT_ROOT"
+CACHE_DIR="$SCRIPT_ROOT/.stack-generator"
 
 die() {
   printf '[stack-update] ERROR: %s\n' "$*" >&2
@@ -319,6 +323,29 @@ log() {
   printf '[stack-update] %s\n' "$*" >&2
 }
 
+while [ "$#" -gt 0 ]; do
+  case "$1" in
+    --site-root)
+      [ "$#" -ge 2 ] || die "--site-root requires a value"
+      SITE_ROOT="$(cd "$2" && pwd -P)"
+      shift
+      ;;
+    -h|--help)
+      cat <<'EOF_USAGE'
+Usage:
+  ./stack-update.sh [--site-root <path>]
+EOF_USAGE
+      exit 0
+      ;;
+    *)
+      die "unknown argument: $1"
+      ;;
+  esac
+  shift
+done
+
+PIN_FILE="$SITE_ROOT/.webservices-generator.json"
+
 command -v git >/dev/null 2>&1 || die "missing required command: git"
 command -v jq >/dev/null 2>&1 || die "missing required command: jq"
 [ -f "$PIN_FILE" ] || die "missing generator pin: $PIN_FILE"
@@ -326,6 +353,8 @@ command -v jq >/dev/null 2>&1 || die "missing required command: jq"
 remote="$(jq -r '.generatorRemote' "$PIN_FILE")"
 ref="$(jq -r '.generatorRef // "main"' "$PIN_FILE")"
 current="$(jq -r '.generatorCommit' "$PIN_FILE")"
+upstream_remote="$(jq -r '.generatorUpstreamRemote // empty' "$PIN_FILE")"
+upstream_ref="$(jq -r '.generatorUpstreamRef // "main"' "$PIN_FILE")"
 [ -n "$remote" ] && [ "$remote" != "null" ] || die "generatorRemote is empty"
 [ -n "$current" ] && [ "$current" != "null" ] || die "generatorCommit is empty"
 
@@ -336,13 +365,25 @@ fi
 
 git -C "$CACHE_DIR" fetch origin "$ref"
 latest="$(git -C "$CACHE_DIR" rev-parse "origin/$ref^{commit}")"
+if [ -n "$upstream_remote" ] && [ "$upstream_remote" != "null" ]; then
+  if git -C "$CACHE_DIR" remote get-url upstream >/dev/null 2>&1; then
+    git -C "$CACHE_DIR" remote set-url upstream "$upstream_remote"
+  else
+    git -C "$CACHE_DIR" remote add upstream "$upstream_remote"
+  fi
+  git -C "$CACHE_DIR" fetch upstream "$upstream_ref" || true
+  upstream_latest="$(git -C "$CACHE_DIR" rev-parse "upstream/$upstream_ref^{commit}" 2>/dev/null || true)"
+  if [ -n "$upstream_latest" ]; then
+    log "upstream parent: $upstream_remote $upstream_ref @ $upstream_latest"
+  fi
+fi
 
 if [ "$latest" = "$current" ]; then
-  log "already current at $current"
+  log "already current on downstream generator fork at $current"
   exit 0
 fi
 
-log "generator update available:"
+log "downstream generator fork update available:"
 log "  current: $current"
 log "  latest:  $latest"
 git -C "$CACHE_DIR" log --oneline --decorate --max-count=30 "$current..$latest" || true
@@ -358,7 +399,7 @@ if [ "${STACK_UPDATE_SKIP_BUILD:-0}" != "1" ]; then
   "$CACHE_DIR/build.sh" --manifest "$SITE_ROOT/manifest.json"
 fi
 
-git -C "$SITE_ROOT" diff -- . ':!.stack-generator' || true
+git -C "$SCRIPT_ROOT" diff -- "$SITE_ROOT" ':!.stack-generator' || true
 printf 'Commit this generator update to the site repo? [y/N] ' >&2
 read -r answer
 case "$answer" in
@@ -366,8 +407,8 @@ case "$answer" in
     tmp_pin="$(mktemp)"
     jq --arg latest "$latest" '.generatorCommit = $latest' "$PIN_FILE" > "$tmp_pin"
     mv "$tmp_pin" "$PIN_FILE"
-    git -C "$SITE_ROOT" add manifest.json stack.config.yaml webservices.sops.json .webservices-generator.json stack-update.sh README.md .gitignore
-    git -C "$SITE_ROOT" commit -m "Update webservices generator pin to ${latest:0:12}"
+    git -C "$SCRIPT_ROOT" add "$SITE_ROOT"
+    git -C "$SCRIPT_ROOT" commit -m "Update webservices generator pin to ${latest:0:12}"
     log "updated generator pin to $latest"
     ;;
   *)
