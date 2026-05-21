@@ -65,9 +65,65 @@ fake_bin="$tmp_root/bin"
 bundle_root="$tmp_root/bundle/build"
 site_root="$bundle_root/site"
 runtime_root="$tmp_root/runtime"
+runtime_env_file="$tmp_root/bundle/runtime/stack.env"
 isolated_docker_vm_ssh_dir="$tmp_root/isolated-docker-vm-ssh"
-mkdir -p "$fake_bin" "$bundle_root" "$site_root" "$runtime_root" "$isolated_docker_vm_ssh_dir"
+test_runner_runtime_dir="$tmp_root/test-runner-runtime"
+test_results_dir="$tmp_root/test-results"
+forgejo_runner_ssh_dir="$tmp_root/forgejo-runner-ssh"
+host_paths_dir="$tmp_root/host-paths"
+mkdir -p \
+  "$fake_bin" \
+  "$bundle_root" \
+  "$site_root" \
+  "$runtime_root" \
+  "$isolated_docker_vm_ssh_dir" \
+  "$test_runner_runtime_dir" \
+  "$test_results_dir" \
+  "$forgejo_runner_ssh_dir" \
+  "$host_paths_dir"
 export ISOLATED_DOCKER_VM_SSH_DIR="$isolated_docker_vm_ssh_dir"
+export FORGEJO_RUNNER_SSH_DIR="$forgejo_runner_ssh_dir"
+export TEST_RESULTS_HOST_DIR="$test_results_dir"
+export TEST_RUNNER_HOST_XDG_RUNTIME_DIR="$test_runner_runtime_dir"
+export TEST_RUNNER_RUNTIME_HOST_DIR="$test_runner_runtime_dir"
+export CHATGPT_CONNECTOR_TRUSTED_PROXY_SECRET=component-test-secret
+export DOMAIN=example.test
+export DONETICK_JWT_SECRET=component-test-secret
+export DONETICK_OAUTH_SECRET=component-test-secret
+export ERPNEXT_OAUTH_SECRET=component-test-secret
+export ISOLATED_DOCKER_VM_HOST=
+export JELLYFIN_OIDC_SECRET=component-test-secret
+export KEYCLOAK_ADMIN_PASSWORD=component-test-secret
+export KOPIA_PROXY_AUTHORIZATION=component-test-secret
+export ONBOARDING_TRUSTED_PROXY_SECRET=component-test-secret
+export SEARCH_SERVICE_INTERNAL_TOKEN=component-test-secret
+export VALKEY_ADMIN_PASSWORD=component-test-secret
+export BOOKSTACK_INTERNAL_API_TOKEN=component-test-secret
+export BOOKSTACK_API_TOKEN_ID=component-test-token-id
+export BOOKSTACK_API_TOKEN_SECRET=component-test-secret
+export HOMEASSISTANT_TRUSTED_PROXY_SECRET=component-test-secret
+export KOPIA_PASSWORD=component-test-secret
+export MAIL_DOMAIN=example.test
+export MEDIA_WRITER_GID="$(id -g)"
+export MEDIA_WRITER_UID="$(id -u)"
+export NOCOW_DB_DIR="$host_paths_dir/nocow"
+export NTFY_PASSWORD=component-test-secret
+export NTFY_USERNAME=component-test
+export PG_SSD_ROOT="$host_paths_dir/pg-ssd"
+export POSTGRES_PIPELINE_USER=pipeline
+export POSTGRES_SEARCH_SERVICE_USER=search_service
+export QBITTORRENT_DATA_ROOT="$host_paths_dir/qbittorrent"
+export SEAFILE_MEDIA_ROOT="$host_paths_dir/seafile"
+export SEAFILE_JWT_KEY=component-test-secret
+export STACK_ADMIN_EMAIL=admin@example.test
+export VAULTWARDEN_ORG_ID=00000000-0000-0000-0000-000000000000
+export VAULTWARDEN_ORG_IDENTIFIER=component-test
+export VAULTWARDEN_SMTP_PASSWORD=component-test-secret
+export VECTOR_DB_ROOT="$host_paths_dir/vector"
+export WORKSPACE_AGENT_TOKEN_SECRET=component-test-secret
+export WORKSPACE_PROXY_AUTH_SECRET=component-test-secret
+export WORKSPACE_RUNTIME_PUBLIC_ADDRESS=127.0.0.1
+export WORKSPACE_RUNTIME_PUBLIC_HOST=workspace.example.test
 
 cat > "$fake_bin/sops" <<'EOF_SOPS'
 #!/usr/bin/env bash
@@ -130,7 +186,6 @@ component_selection_write_metadata \
   "$site_root/components.lock.json"
 
 build_merged_compose "$bundle_root" "$bundle_root/docker-compose.yml" "$site_root/manifest.json"
-docker compose -f "$bundle_root/docker-compose.yml" config --quiet --no-interpolate >/dev/null
 
 PATH="$fake_bin:$PATH" "$ROOT_DIR/scripts/deploy/render-runtime.sh" \
   --bundle-root "$bundle_root" \
@@ -138,6 +193,8 @@ PATH="$fake_bin:$PATH" "$ROOT_DIR/scripts/deploy/render-runtime.sh" \
   --site-manifest "$site_root/manifest.json" \
   --runtime-root "$runtime_root" \
   --skip-compose-validate >/dev/null
+
+docker compose --env-file "$runtime_env_file" -f "$bundle_root/docker-compose.yml" config --quiet --no-env-resolution --no-path-resolution >/dev/null
 
 caddy_file="$tmp_root/bundle/runtime/configs/caddy/Caddyfile"
 keycloak_configure="$tmp_root/bundle/runtime/configs/keycloak/configure-runtime.sh"
@@ -165,7 +222,6 @@ component_selection_write_metadata \
   "$site_root/components.lock.json"
 
 build_merged_compose "$bundle_root" "$bundle_root/docker-compose.full.yml" "$site_root/manifest.json"
-docker compose -f "$bundle_root/docker-compose.full.yml" config --quiet --no-interpolate >/dev/null
 cp "$bundle_root/docker-compose.full.yml" "$bundle_root/docker-compose.yml"
 
 PATH="$fake_bin:$PATH" "$ROOT_DIR/scripts/deploy/render-runtime.sh" \
@@ -174,6 +230,8 @@ PATH="$fake_bin:$PATH" "$ROOT_DIR/scripts/deploy/render-runtime.sh" \
   --site-manifest "$site_root/manifest.json" \
   --runtime-root "$runtime_root" \
   --skip-compose-validate >/dev/null
+
+docker compose --env-file "$runtime_env_file" -f "$bundle_root/docker-compose.full.yml" config --quiet --no-env-resolution --no-path-resolution >/dev/null
 
 assert_contains "$caddy_file" 'reverse_proxy vaultwarden:80' "full Vaultwarden route"
 assert_contains "$caddy_file" 'reverse_proxy homepage:3000' "full Homepage route"
