@@ -1,0 +1,161 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - dev
+      - stable
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  hygiene:
+    name: Repository hygiene
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Install shell tooling
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends shellcheck
+
+      - name: Check required publication files
+        run: |
+          test -f README.md
+          test -f CONTRIBUTING.md
+          test -f LICENSE
+          test -f SECURITY.md
+          test -f docs/project-overview.md
+          test -f docs/quickstart.md
+          test -f docs/testing.md
+
+      - name: Check for private path leaks in public files
+        run: |
+          ! git grep -nE '(/home/gerald|gerald@|latium\.local|datamancy\.net)' -- \
+            README.md CONTRIBUTING.md SECURITY.md AGENTS.md docs global.settings \
+            stack.config stack.compose scripts ops
+
+      - name: Check shell syntax
+        run: |
+          git ls-files 'scripts/**/*.sh' 'ops/**/*.sh' 'stack.config/**/*.sh' \
+            | xargs -r -n1 bash -n
+
+      - name: Run ShellCheck
+        run: |
+          git ls-files 'scripts/**/*.sh' 'ops/**/*.sh' 'stack.config/**/*.sh' \
+            | xargs -r shellcheck -S error -s bash
+
+  typescript-tests:
+    name: TypeScript test runner
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: stack.containers/test-runner/playwright-tests/package-lock.json
+
+      - name: Install dependencies
+        working-directory: stack.containers/test-runner/playwright-tests
+        run: npm ci
+
+      - name: Compile tests
+        working-directory: stack.containers/test-runner/playwright-tests
+        run: npm run build
+
+      - name: Run unit tests
+        working-directory: stack.containers/test-runner/playwright-tests
+        run: npm run test:unit
+
+  kotlin-tests:
+    name: Kotlin and package build
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Build test runner npm dependencies
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: stack.containers/test-runner/playwright-tests/package-lock.json
+
+      - name: Install test runner dependencies
+        working-directory: stack.containers/test-runner/playwright-tests
+        run: npm ci
+
+      - name: Run Gradle tests and shadow jars
+        run: ./gradlew test shadowJar --no-daemon
+
+      - name: Run component selection checks
+        run: ./scripts/test-component-selection.sh
+
+  bazel-release:
+    name: Bazel release artifact
+    runs-on: ubuntu-24.04
+    needs:
+      - hygiene
+      - typescript-tests
+      - kotlin-tests
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: stack.containers/test-runner/playwright-tests/package-lock.json
+
+      - name: Set up Bazelisk
+        uses: bazelbuild/setup-bazelisk@v3
+
+      - name: Restore Bazel cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/bazel
+            ~/.cache/bazelisk
+          key: bazel-${{ runner.os }}-${{ hashFiles('MODULE.bazel', '**/BUILD.bazel', 'WORKSPACE*') }}
+          restore-keys: |
+            bazel-${{ runner.os }}-
+
+      - name: Install test runner dependencies
+        working-directory: stack.containers/test-runner/playwright-tests
+        run: npm ci
+
+      - name: Build immutable release artifact
+        run: ./scripts/build-artifact.sh

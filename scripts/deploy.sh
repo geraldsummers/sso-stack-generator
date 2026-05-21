@@ -12,24 +12,36 @@ source "$SCRIPT_DIR/lib/site-manifest.sh"
 source "$SCRIPT_DIR/lib/runtime-state.sh"
 # shellcheck source=scripts/lib/systemd-user.sh
 source "$SCRIPT_DIR/lib/systemd-user.sh"
+# shellcheck source=scripts/lib/components.sh
+source "$SCRIPT_DIR/lib/components.sh"
 
 PROJECT_NAME="${PROJECT_NAME:-webservices}"
 PREFLIGHT_ONLY=0
+PARTIAL_DEPLOY=0
 CURRENT_PHASE="initializing"
 SYSTEMD_RECONCILE_TIMEOUT_SECONDS="${SYSTEMD_RECONCILE_TIMEOUT_SECONDS:-1800}"
 SYSTEMD_PROGRESS_INTERVAL_SECONDS="${SYSTEMD_PROGRESS_INTERVAL_SECONDS:-5}"
 SYSTEMD_PROGRESS_MAX_ITEMS="${SYSTEMD_PROGRESS_MAX_ITEMS:-8}"
 SYSTEMD_PROGRESS_HEARTBEAT_SECONDS="${SYSTEMD_PROGRESS_HEARTBEAT_SECONDS:-30}"
 declare -A BUILT_IMAGE_IDS_BEFORE=()
+declare -a SCOPED_COMPONENTS=()
+declare -a SCOPED_SERVICES=()
+declare -a SCOPED_UNITS=()
 
 usage() {
   cat <<'EOF_USAGE'
 Usage:
   ./scripts/deploy.sh [--preflight-only]
+  ./scripts/deploy.sh [--component <name> ...] [--service <compose-service> ...] [--unit <systemd-unit-or-domain> ...]
 
 Deploys the in-place bundle under ~/webservices by rendering runtime material into
 ~/webservices/runtime, installing pre-rendered systemd user units from ./build,
 and asking systemd --user to reconcile webservices.target.
+
+Scoped deploys render and install the same bundle, but only reload/start the
+selected lifecycle units and the dependency units required by systemd. Use them
+for small app/config updates where reconciling the whole webservices.target is
+unnecessary.
 EOF_USAGE
 }
 
@@ -41,6 +53,24 @@ while [ "$#" -gt 0 ]; do
       ;;
     --preflight-only)
       PREFLIGHT_ONLY=1
+      ;;
+    --component)
+      [ "$#" -ge 2 ] || die "--component requires a value"
+      PARTIAL_DEPLOY=1
+      SCOPED_COMPONENTS+=("$2")
+      shift
+      ;;
+    --service)
+      [ "$#" -ge 2 ] || die "--service requires a value"
+      PARTIAL_DEPLOY=1
+      SCOPED_SERVICES+=("$2")
+      shift
+      ;;
+    --unit)
+      [ "$#" -ge 2 ] || die "--unit requires a value"
+      PARTIAL_DEPLOY=1
+      SCOPED_UNITS+=("$2")
+      shift
       ;;
     *)
       die "unknown argument for deploy.sh: $1"
@@ -183,6 +213,182 @@ unit_for_compose_service() {
     ) // $service
   ' "$graph_file")"
   printf '%s-%s.service\n' "$unit_prefix" "$domain_name"
+}
+
+compose_service_exists() {
+  local service_name="$1"
+  COMPOSE_PROJECT_NAME="$PROJECT_NAME" run_compose_from_bundle \
+    "$BUNDLE_ROOT" \
+    "$DEPLOY_ROOT/runtime/stack.env" \
+    config --format json | jq -e --arg service "$service_name" '.services[$service] != null' >/dev/null
+}
+
+component_compose_files() {
+  local component="$1"
+  local catalog="$BUNDLE_ROOT/stack.config/components.json"
+
+  jq -r --arg requested "$component" '
+    def walk_component($name):
+      if .components[$name] == null then
+        error("unknown component: " + $name)
+      else
+        [$name] + ((.components[$name].dependencies // []) | map(walk_component(.)) | add // [])
+      end;
+
+    (walk_component($requested) | unique) as $selected
+    | .components
+    | keys_unsorted[] as $component
+    | select($selected | index($component))
+    | .[$component].composeFiles[]?
+  ' "$catalog"
+}
+
+services_from_compose_file() {
+  local compose_file="$1"
+  local compose_path="$BUNDLE_ROOT/stack.compose/$compose_file"
+
+  [ -f "$compose_path" ] || die "component references missing compose file: $compose_file"
+  docker compose -f "$compose_path" config --format json --no-interpolate | jq -r '.services | keys[]'
+}
+
+append_unique() {
+  local value="$1"
+  shift
+  local -n target_array="$1"
+  local existing
+
+  [ -n "$value" ] || return 0
+  for existing in "${target_array[@]}"; do
+    [ "$existing" != "$value" ] || return 0
+  done
+  target_array+=("$value")
+}
+
+resolve_scoped_services() {
+  local services=()
+  local component compose_file service_name
+
+  for service_name in "${SCOPED_SERVICES[@]}"; do
+    append_unique "$service_name" services
+  done
+
+  for component in "${SCOPED_COMPONENTS[@]}"; do
+    while IFS= read -r compose_file; do
+      [ -n "$compose_file" ] || continue
+      while IFS= read -r service_name; do
+        append_unique "$service_name" services
+      done < <(services_from_compose_file "$compose_file")
+    done < <(component_compose_files "$component")
+  done
+
+  for service_name in "${services[@]}"; do
+    if ! compose_service_exists "$service_name"; then
+      die "selected compose service is not present in this bundle: $service_name"
+    fi
+    printf '%s\n' "$service_name"
+  done
+}
+
+normalize_scoped_unit() {
+  local unit="$1"
+  local prefix
+
+  prefix="$(jq -r '.unitPrefix // "webservices"' "$BUNDLE_ROOT/stack.systemd/graph.json")"
+  case "$unit" in
+    *.service|*.target)
+      printf '%s\n' "$unit"
+      ;;
+    "$prefix"-*)
+      printf '%s.service\n' "$unit"
+      ;;
+    *)
+      printf '%s-%s.service\n' "$prefix" "$unit"
+      ;;
+  esac
+}
+
+resolve_scoped_units() {
+  local units=()
+  local service_name unit_name requested_unit
+
+  while IFS= read -r service_name; do
+    [ -n "$service_name" ] || continue
+    unit_name="$(unit_for_compose_service "$service_name")"
+    append_unique "$unit_name" units
+  done < <(resolve_scoped_services)
+
+  for requested_unit in "${SCOPED_UNITS[@]}"; do
+    unit_name="$(normalize_scoped_unit "$requested_unit")"
+    append_unique "$unit_name" units
+  done
+
+  [ "${#units[@]}" -gt 0 ] || die "scoped deploy requested, but no service or unit scope resolved"
+
+  for unit_name in "${units[@]}"; do
+    [ -f "$BUNDLE_ROOT/systemd-user/$unit_name" ] || die "selected systemd unit is not present in this bundle: $unit_name"
+    printf '%s\n' "$unit_name"
+  done
+}
+
+scoped_health_units() {
+  local unit_name health_unit
+  while IFS= read -r unit_name; do
+    [[ "$unit_name" == *.service ]] || continue
+    health_unit="${unit_name%.service}-healthy.service"
+    [ -f "$BUNDLE_ROOT/systemd-user/$health_unit" ] || continue
+    printf '%s\n' "$health_unit"
+  done < <(resolve_scoped_units)
+}
+
+reconcile_scoped_units() {
+  local units=() health_units=() reload_units=() restart_units=() start_units=()
+  local unit_name action_units=()
+
+  mapfile -t units < <(resolve_scoped_units)
+  mapfile -t health_units < <(scoped_health_units)
+
+  deploy_log "scoped deploy selected units: $(join_array_limited "$SYSTEMD_PROGRESS_MAX_ITEMS" "${units[@]}")"
+
+  for unit_name in "${units[@]}"; do
+    if [[ "$unit_name" == *.target ]]; then
+      start_units+=("$unit_name")
+    elif user_systemctl is-active --quiet "$unit_name"; then
+      if grep -q '^ExecReload=' "$BUNDLE_ROOT/systemd-user/$unit_name"; then
+        reload_units+=("$unit_name")
+      else
+        restart_units+=("$unit_name")
+      fi
+    else
+      start_units+=("$unit_name")
+    fi
+  done
+
+  if [ "${#reload_units[@]}" -gt 0 ]; then
+    deploy_log "reloading selected active units: $(join_array_limited "$SYSTEMD_PROGRESS_MAX_ITEMS" "${reload_units[@]}")"
+    user_systemctl reload "${reload_units[@]}"
+  fi
+
+  if [ "${#restart_units[@]}" -gt 0 ]; then
+    deploy_log "restarting selected active units without ExecReload: $(join_array_limited "$SYSTEMD_PROGRESS_MAX_ITEMS" "${restart_units[@]}")"
+    user_systemctl reset-failed "${restart_units[@]}" || true
+    user_systemctl restart "${restart_units[@]}"
+  fi
+
+  if [ "${#start_units[@]}" -gt 0 ]; then
+    deploy_log "starting selected inactive units: $(join_array_limited "$SYSTEMD_PROGRESS_MAX_ITEMS" "${start_units[@]}")"
+    user_systemctl reset-failed "${start_units[@]}" || true
+    user_systemctl start "${start_units[@]}"
+  fi
+
+  action_units=("${reload_units[@]}" "${restart_units[@]}" "${start_units[@]}")
+  if [ "${#action_units[@]}" -gt 0 ]; then
+    user_systemctl reset-failed
+  fi
+
+  if [ "${#health_units[@]}" -gt 0 ]; then
+    deploy_log "waiting on selected healthy gates: $(join_array_limited "$SYSTEMD_PROGRESS_MAX_ITEMS" "${health_units[@]}")"
+    user_systemctl start "${health_units[@]}"
+  fi
 }
 
 snapshot_built_image_ids_before() {
@@ -713,17 +919,29 @@ ensure_runtime_links "$DEPLOY_ROOT" >/dev/null
 "$SCRIPT_DIR/deploy/render-runtime.sh" --bundle-root "$BUNDLE_ROOT" --deploy-root "$DEPLOY_ROOT" --site-manifest "$site_manifest_path"
 
 set_phase "model-prep"
-run_model_prep_jobs
+if [ "$PARTIAL_DEPLOY" = "1" ]; then
+  deploy_log "skipping global model prep for scoped deploy"
+else
+  run_model_prep_jobs
+fi
 
 set_phase "compose-build-snapshot"
-snapshot_built_image_ids_before
+if [ "$PARTIAL_DEPLOY" = "1" ]; then
+  deploy_log "skipping global built-image snapshot for scoped deploy"
+else
+  snapshot_built_image_ids_before
+fi
 
 set_phase "compose-build"
-deploy_log "building service images"
-COMPOSE_PROJECT_NAME="$PROJECT_NAME" run_compose_from_bundle \
-  "$BUNDLE_ROOT" \
-  "$DEPLOY_ROOT/runtime/stack.env" \
-  build
+if [ "$PARTIAL_DEPLOY" = "1" ]; then
+  deploy_log "skipping global compose build; selected lifecycle units build through ExecReload/ExecStart"
+else
+  deploy_log "building service images"
+  COMPOSE_PROJECT_NAME="$PROJECT_NAME" run_compose_from_bundle \
+    "$BUNDLE_ROOT" \
+    "$DEPLOY_ROOT/runtime/stack.env" \
+    build
+fi
 
 set_phase "cleanup-excluded-services"
 cleanup_excluded_service_containers
@@ -751,19 +969,39 @@ set_phase "systemd-refresh-infra"
 refresh_infra_units
 
 set_phase "systemd-restart-deploy-job-units"
-restart_deploy_job_units
+if [ "$PARTIAL_DEPLOY" = "1" ]; then
+  deploy_log "skipping global deploy job restarts for scoped deploy"
+else
+  restart_deploy_job_units
+fi
 
 set_phase "systemd-reload-changed-built-images"
-reload_changed_built_image_units
+if [ "$PARTIAL_DEPLOY" = "1" ]; then
+  deploy_log "skipping global built-image reload detection for scoped deploy"
+else
+  reload_changed_built_image_units
+fi
 
 set_phase "systemd-reload-deploy-sensitive-units"
-reload_deploy_sensitive_units
+if [ "$PARTIAL_DEPLOY" = "1" ]; then
+  deploy_log "skipping global deploy-sensitive reloads for scoped deploy"
+else
+  reload_deploy_sensitive_units
+fi
 
 set_phase "systemd-reconcile-target"
-reconcile_target
+if [ "$PARTIAL_DEPLOY" = "1" ]; then
+  reconcile_scoped_units
+else
+  reconcile_target
+fi
 
 set_phase "post-reconcile-bootstrap"
-restart_post_reconcile_units
+if [ "$PARTIAL_DEPLOY" = "1" ]; then
+  deploy_log "skipping global post-reconcile bootstrap restarts for scoped deploy"
+else
+  restart_post_reconcile_units
+fi
 reload_deploy_reconcile_units
 
 set_phase "complete"
