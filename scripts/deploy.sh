@@ -239,18 +239,20 @@ component_compose_files() {
   local catalog="$BUNDLE_ROOT/stack.config/components.json"
 
   jq -r --arg requested "$component" '
+    .components as $components
+    |
     def walk_component($name):
-      if .components[$name] == null then
+      if $components[$name] == null then
         error("unknown component: " + $name)
       else
-        [$name] + ((.components[$name].dependencies // []) | map(walk_component(.)) | add // [])
+        [$name] + (($components[$name].dependencies // []) | map(walk_component(.)) | add // [])
       end;
 
     (walk_component($requested) | unique) as $selected
-    | .components
+    | $components
     | keys_unsorted[] as $component
-    | select($selected | index($component))
-    | .[$component].composeFiles[]?
+    | select($selected | index($component) != null)
+    | $components[$component].composeFiles[]?
   ' "$catalog"
 }
 
@@ -275,21 +277,40 @@ append_unique() {
   target_array+=("$value")
 }
 
+read_lines_into_array() {
+  local output="$1"
+  shift
+  local -n target_array="$1"
+
+  target_array=()
+  [ -n "$output" ] || return 0
+  mapfile -t target_array <<< "$output"
+}
+
 resolve_scoped_services() {
   local services=()
-  local component compose_file service_name
+  local component compose_file service_name compose_output service_output
+  local compose_files=() compose_services=()
 
   for service_name in "${SCOPED_SERVICES[@]}"; do
     append_unique "$service_name" services
   done
 
   for component in "${SCOPED_COMPONENTS[@]}"; do
-    while IFS= read -r compose_file; do
+    if ! compose_output="$(component_compose_files "$component")"; then
+      die "failed to resolve compose files for selected component: $component"
+    fi
+    read_lines_into_array "$compose_output" compose_files
+    for compose_file in "${compose_files[@]}"; do
       [ -n "$compose_file" ] || continue
-      while IFS= read -r service_name; do
+      if ! service_output="$(services_from_compose_file "$compose_file")"; then
+        die "failed to resolve services from component compose file: $compose_file"
+      fi
+      read_lines_into_array "$service_output" compose_services
+      for service_name in "${compose_services[@]}"; do
         append_unique "$service_name" services
-      done < <(services_from_compose_file "$compose_file")
-    done < <(component_compose_files "$component")
+      done
+    done
   done
 
   for service_name in "${services[@]}"; do
@@ -320,13 +341,18 @@ normalize_scoped_unit() {
 
 resolve_scoped_units() {
   local units=()
-  local service_name unit_name requested_unit
+  local service_name unit_name requested_unit service_output
+  local services=()
 
-  while IFS= read -r service_name; do
+  if ! service_output="$(resolve_scoped_services)"; then
+    die "failed to resolve scoped services"
+  fi
+  read_lines_into_array "$service_output" services
+  for service_name in "${services[@]}"; do
     [ -n "$service_name" ] || continue
     unit_name="$(unit_for_compose_service "$service_name")"
     append_unique "$unit_name" units
-  done < <(resolve_scoped_services)
+  done
 
   for requested_unit in "${SCOPED_UNITS[@]}"; do
     unit_name="$(normalize_scoped_unit "$requested_unit")"
@@ -342,9 +368,12 @@ resolve_scoped_units() {
 }
 
 build_scoped_service_images() {
-  local services=()
+  local services=() service_output
 
-  mapfile -t services < <(resolve_scoped_services)
+  if ! service_output="$(resolve_scoped_services)"; then
+    die "failed to resolve scoped services for build"
+  fi
+  read_lines_into_array "$service_output" services
   if [ "${#services[@]}" -eq 0 ]; then
     deploy_log "no compose services selected for scoped build"
     return 0
@@ -358,22 +387,37 @@ build_scoped_service_images() {
 }
 
 scoped_health_units() {
-  local unit_name health_unit
-  while IFS= read -r unit_name; do
+  local unit_name health_unit unit_output
+  local units=()
+  if ! unit_output="$(resolve_scoped_units)"; then
+    die "failed to resolve scoped units"
+  fi
+  read_lines_into_array "$unit_output" units
+  for unit_name in "${units[@]}"; do
     [[ "$unit_name" == *.service ]] || continue
     health_unit="${unit_name%.service}-healthy.service"
     [ -f "$BUNDLE_ROOT/systemd-user/$health_unit" ] || continue
     printf '%s\n' "$health_unit"
-  done < <(resolve_scoped_units)
+  done
 }
 
 emit_deploy_plan() {
   local services=() units=() health_units=()
+  local service_output unit_output health_output
 
   if [ "$PARTIAL_DEPLOY" = "1" ]; then
-    mapfile -t services < <(resolve_scoped_services)
-    mapfile -t units < <(resolve_scoped_units)
-    mapfile -t health_units < <(scoped_health_units)
+    if ! service_output="$(resolve_scoped_services)"; then
+      die "failed to resolve scoped services for deploy plan"
+    fi
+    if ! unit_output="$(resolve_scoped_units)"; then
+      die "failed to resolve scoped units for deploy plan"
+    fi
+    if ! health_output="$(scoped_health_units)"; then
+      die "failed to resolve scoped healthy gates for deploy plan"
+    fi
+    read_lines_into_array "$service_output" services
+    read_lines_into_array "$unit_output" units
+    read_lines_into_array "$health_output" health_units
     deploy_log "deploy plan: mode=scoped"
     if [ "${#services[@]}" -gt 0 ]; then
       deploy_log "plan compose services: $(join_array_limited "$SYSTEMD_PROGRESS_MAX_ITEMS" "${services[@]}")"
@@ -396,10 +440,16 @@ emit_deploy_plan() {
 
 reconcile_scoped_units() {
   local units=() health_units=() reload_units=() restart_units=() start_units=()
-  local unit_name action_units=()
+  local unit_name action_units=() unit_output health_output
 
-  mapfile -t units < <(resolve_scoped_units)
-  mapfile -t health_units < <(scoped_health_units)
+  if ! unit_output="$(resolve_scoped_units)"; then
+    die "failed to resolve scoped units for reconcile"
+  fi
+  if ! health_output="$(scoped_health_units)"; then
+    die "failed to resolve scoped healthy gates for reconcile"
+  fi
+  read_lines_into_array "$unit_output" units
+  read_lines_into_array "$health_output" health_units
 
   deploy_log "scoped deploy selected units: $(join_array_limited "$SYSTEMD_PROGRESS_MAX_ITEMS" "${units[@]}")"
 
