@@ -10,6 +10,8 @@ source "$SCRIPT_DIR/lib/common.sh"
 source "$SCRIPT_DIR/lib/site-manifest.sh"
 # shellcheck source=scripts/lib/runtime-state.sh
 source "$SCRIPT_DIR/lib/runtime-state.sh"
+# shellcheck source=scripts/lib/deploy-state.sh
+source "$SCRIPT_DIR/lib/deploy-state.sh"
 # shellcheck source=scripts/lib/systemd-user.sh
 source "$SCRIPT_DIR/lib/systemd-user.sh"
 # shellcheck source=scripts/lib/components.sh
@@ -18,6 +20,7 @@ source "$SCRIPT_DIR/lib/components.sh"
 PROJECT_NAME="${PROJECT_NAME:-webservices}"
 PREFLIGHT_ONLY=0
 PARTIAL_DEPLOY=0
+PLAN_ONLY=0
 CURRENT_PHASE="initializing"
 SYSTEMD_RECONCILE_TIMEOUT_SECONDS="${SYSTEMD_RECONCILE_TIMEOUT_SECONDS:-1800}"
 SYSTEMD_PROGRESS_INTERVAL_SECONDS="${SYSTEMD_PROGRESS_INTERVAL_SECONDS:-5}"
@@ -31,7 +34,7 @@ declare -a SCOPED_UNITS=()
 usage() {
   cat <<'EOF_USAGE'
 Usage:
-  ./scripts/deploy.sh [--preflight-only]
+  ./scripts/deploy.sh [--preflight-only] [--plan-only]
   ./scripts/deploy.sh [--component <name> ...] [--service <compose-service> ...] [--unit <systemd-unit-or-domain> ...]
 
 Deploys the in-place bundle under ~/webservices by rendering runtime material into
@@ -42,6 +45,11 @@ Scoped deploys render and install the same bundle, but only reload/start the
 selected lifecycle units and the dependency units required by systemd. Use them
 for small app/config updates where reconciling the whole webservices.target is
 unnecessary.
+
+Scoped deploys are guarded by the last full deploy signature. If component
+selection, the systemd graph, or Docker network/volume metadata changed, the
+deploy aborts and asks for a full deploy so global control-plane changes are
+reconciled together.
 EOF_USAGE
 }
 
@@ -53,6 +61,9 @@ while [ "$#" -gt 0 ]; do
       ;;
     --preflight-only)
       PREFLIGHT_ONLY=1
+      ;;
+    --plan-only|--dry-run)
+      PLAN_ONLY=1
       ;;
     --component)
       [ "$#" -ge 2 ] || die "--component requires a value"
@@ -354,6 +365,33 @@ scoped_health_units() {
     [ -f "$BUNDLE_ROOT/systemd-user/$health_unit" ] || continue
     printf '%s\n' "$health_unit"
   done < <(resolve_scoped_units)
+}
+
+emit_deploy_plan() {
+  local services=() units=() health_units=()
+
+  if [ "$PARTIAL_DEPLOY" = "1" ]; then
+    mapfile -t services < <(resolve_scoped_services)
+    mapfile -t units < <(resolve_scoped_units)
+    mapfile -t health_units < <(scoped_health_units)
+    deploy_log "deploy plan: mode=scoped"
+    if [ "${#services[@]}" -gt 0 ]; then
+      deploy_log "plan compose services: $(join_array_limited "$SYSTEMD_PROGRESS_MAX_ITEMS" "${services[@]}")"
+    else
+      deploy_log "plan compose services: none selected directly"
+    fi
+    deploy_log "plan lifecycle units: $(join_array_limited "$SYSTEMD_PROGRESS_MAX_ITEMS" "${units[@]}")"
+    if [ "${#health_units[@]}" -gt 0 ]; then
+      deploy_log "plan healthy gates: $(join_array_limited "$SYSTEMD_PROGRESS_MAX_ITEMS" "${health_units[@]}")"
+    else
+      deploy_log "plan healthy gates: none"
+    fi
+    deploy_log "plan global maintenance: skipped after deploy signature guard"
+    deploy_log "plan systemd action: reload active units with ExecReload, restart active units without it, start inactive selected units"
+  else
+    deploy_log "deploy plan: mode=full target=webservices.target"
+    deploy_log "plan global maintenance: model prep, image build, excluded-service cleanup, Docker infra refresh, deploy jobs, target reconcile, post-reconcile auth bootstrap"
+  fi
 }
 
 reconcile_scoped_units() {
@@ -934,6 +972,18 @@ set_phase "render-runtime"
 ensure_runtime_links "$DEPLOY_ROOT" >/dev/null
 "$SCRIPT_DIR/deploy/render-runtime.sh" --bundle-root "$BUNDLE_ROOT" --deploy-root "$DEPLOY_ROOT" --site-manifest "$site_manifest_path"
 
+set_phase "deploy-plan"
+if [ "$PARTIAL_DEPLOY" = "1" ]; then
+  if ! deploy_state_check_global_signature "$BUNDLE_ROOT" "$DEPLOY_ROOT"; then
+    die "scoped deploy refused by deploy-state guard"
+  fi
+fi
+emit_deploy_plan
+if [ "$PLAN_ONLY" = "1" ]; then
+  deploy_log "plan-only complete; no build, systemd, or Docker changes applied"
+  exit 0
+fi
+
 set_phase "model-prep"
 if [ "$PARTIAL_DEPLOY" = "1" ]; then
   deploy_log "skipping global model prep for scoped deploy"
@@ -960,7 +1010,11 @@ else
 fi
 
 set_phase "cleanup-excluded-services"
-cleanup_excluded_service_containers
+if [ "$PARTIAL_DEPLOY" = "1" ]; then
+  deploy_log "skipping excluded-service cleanup for scoped deploy after deploy signature guard"
+else
+  cleanup_excluded_service_containers
+fi
 
 set_phase "bootstrap-scaffolds"
 ensure_bootstrap_scaffolds
@@ -979,10 +1033,18 @@ user_systemctl enable webservices.target >/dev/null
 deploy_log "enabled target: webservices.target"
 
 set_phase "seafile-volume-migration"
-migrate_legacy_seafile_split_volume
+if [ "$PARTIAL_DEPLOY" = "1" ]; then
+  deploy_log "skipping legacy Seafile volume migration for scoped deploy after deploy signature guard"
+else
+  migrate_legacy_seafile_split_volume
+fi
 
 set_phase "systemd-refresh-infra"
-refresh_infra_units
+if [ "$PARTIAL_DEPLOY" = "1" ]; then
+  deploy_log "skipping Docker infra refresh for scoped deploy after deploy signature guard"
+else
+  refresh_infra_units
+fi
 
 set_phase "systemd-restart-deploy-job-units"
 if [ "$PARTIAL_DEPLOY" = "1" ]; then
@@ -1021,5 +1083,6 @@ fi
 reload_deploy_reconcile_units
 
 set_phase "complete"
+deploy_state_write_global_signature "$BUNDLE_ROOT" "$DEPLOY_ROOT"
 deploy_log "deploy complete"
 deploy_log "next step: cd $DEPLOY_ROOT && ./verify.sh"

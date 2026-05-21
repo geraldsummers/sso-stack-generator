@@ -114,3 +114,30 @@ Avoid adding one when a single Compose service already has a clear lifecycle.
 - Generated Compose shards strip build-only fields.
 - Fix the graph source, not generated files under `dist/`.
 
+## Scoped Deploys
+
+`deploy.sh` supports scoped deploys for small application changes:
+
+```text
+./deploy.sh --component <name>
+./deploy.sh --service <compose-service>
+./deploy.sh --unit <systemd-domain-or-unit>
+./deploy.sh --plan-only --component <name>
+```
+
+A scoped deploy still renders runtime files, installs the pre-rendered unit set,
+reloads the user systemd manager, and validates the selected units. It then
+reloads, restarts, or starts only the selected lifecycle units and their healthy
+gates instead of reconciling `webservices.target`.
+
+Scoped deploys are intentionally refused when global deployment inputs changed
+since the last completed deploy:
+
+- selected component lock
+- `stack.systemd/graph.json`
+- rendered Docker network metadata
+- rendered Docker volume metadata
+
+Those inputs affect the control plane rather than one app process. Run a full
+deploy when they change so component selection, target membership, auth/routing
+shape, Docker networks, and Docker volumes reconcile together.
