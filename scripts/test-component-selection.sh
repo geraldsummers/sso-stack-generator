@@ -65,7 +65,9 @@ fake_bin="$tmp_root/bin"
 bundle_root="$tmp_root/bundle/build"
 site_root="$bundle_root/site"
 runtime_root="$tmp_root/runtime"
-mkdir -p "$fake_bin" "$bundle_root" "$site_root" "$runtime_root"
+isolated_docker_vm_ssh_dir="$tmp_root/isolated-docker-vm-ssh"
+mkdir -p "$fake_bin" "$bundle_root" "$site_root" "$runtime_root" "$isolated_docker_vm_ssh_dir"
+export ISOLATED_DOCKER_VM_SSH_DIR="$isolated_docker_vm_ssh_dir"
 
 cat > "$fake_bin/sops" <<'EOF_SOPS'
 #!/usr/bin/env bash
