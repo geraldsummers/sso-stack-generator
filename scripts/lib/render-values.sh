@@ -516,6 +516,8 @@ collect_runtime_env_keys() {
     for search_root in "$@"; do
       if [ -d "$search_root" ]; then
         find "$search_root" -type f -print0 | xargs -0 -r grep -hoE '\$\{[A-Z_][A-Z0-9_]*([^}]*)\}' || true
+      elif [ -f "$search_root" ]; then
+        grep -hoE '\$\{[A-Z_][A-Z0-9_]*([^}]*)\}' "$search_root" || true
       fi
     done
     if [ -d "$runtime_configs_root" ]; then
