@@ -199,7 +199,7 @@ PATH="$fake_bin:$PATH" "$ROOT_DIR/scripts/deploy/render-runtime.sh" \
   --deploy-root "$tmp_root/bundle" \
   --site-manifest "$site_root/manifest.json" \
   --runtime-root "$runtime_root" \
-  --skip-compose-validate >/dev/null
+  --skip-compose-validate
 
 caddy_file="$tmp_root/bundle/runtime/configs/caddy/Caddyfile"
 keycloak_configure="$tmp_root/bundle/runtime/configs/keycloak/configure-runtime.sh"
@@ -234,7 +234,7 @@ PATH="$fake_bin:$PATH" "$ROOT_DIR/scripts/deploy/render-runtime.sh" \
   --deploy-root "$tmp_root/bundle" \
   --site-manifest "$site_root/manifest.json" \
   --runtime-root "$runtime_root" \
-  --skip-compose-validate >/dev/null
+  --skip-compose-validate
 
 assert_contains "$caddy_file" 'reverse_proxy vaultwarden:80' "full Vaultwarden route"
 assert_contains "$caddy_file" 'reverse_proxy homepage:3000' "full Homepage route"
