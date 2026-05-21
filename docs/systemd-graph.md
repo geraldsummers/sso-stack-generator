@@ -123,12 +123,18 @@ Avoid adding one when a single Compose service already has a clear lifecycle.
 ./deploy.sh --service <compose-service>
 ./deploy.sh --unit <systemd-domain-or-unit>
 ./deploy.sh --plan-only --component <name>
+./deploy.sh --component <name> --include-component-dependencies
 ```
 
 A scoped deploy still renders runtime files, installs the pre-rendered unit set,
 reloads the user systemd manager, and validates the selected units. It then
 reloads, restarts, or starts only the selected lifecycle units and their healthy
 gates instead of reconciling `webservices.target`.
+
+Component scope is direct by default: `--component homepage` targets the Compose
+files owned by `homepage`, not `core` and every runtime dependency. Use
+`--include-component-dependencies` when the dependency components themselves are
+part of the intended operational change.
 
 Scoped deploys are intentionally refused when global deployment inputs changed
 since the last completed deploy:

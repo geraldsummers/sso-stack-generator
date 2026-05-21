@@ -21,6 +21,7 @@ PROJECT_NAME="${PROJECT_NAME:-webservices}"
 PREFLIGHT_ONLY=0
 PARTIAL_DEPLOY=0
 PLAN_ONLY=0
+SCOPED_COMPONENT_DEPENDENCIES=0
 CURRENT_PHASE="initializing"
 SYSTEMD_RECONCILE_TIMEOUT_SECONDS="${SYSTEMD_RECONCILE_TIMEOUT_SECONDS:-1800}"
 SYSTEMD_PROGRESS_INTERVAL_SECONDS="${SYSTEMD_PROGRESS_INTERVAL_SECONDS:-5}"
@@ -35,7 +36,7 @@ usage() {
   cat <<'EOF_USAGE'
 Usage:
   ./scripts/deploy.sh [--preflight-only] [--plan-only]
-  ./scripts/deploy.sh [--component <name> ...] [--service <compose-service> ...] [--unit <systemd-unit-or-domain> ...]
+  ./scripts/deploy.sh [--component <name> ...] [--service <compose-service> ...] [--unit <systemd-unit-or-domain> ...] [--include-component-dependencies]
 
 Deploys the in-place bundle under ~/webservices by rendering runtime material into
 ~/webservices/runtime, installing pre-rendered systemd user units from ./build,
@@ -45,6 +46,10 @@ Scoped deploys render and install the same bundle, but only reload/start the
 selected lifecycle units and the dependency units required by systemd. Use them
 for small app/config updates where reconciling the whole webservices.target is
 unnecessary.
+
+Component scopes select only the component's own Compose files by default. Add
+--include-component-dependencies when you intentionally want dependency
+components in the scoped action.
 
 Scoped deploys are guarded by the last full deploy signature. If component
 selection, the systemd graph, or Docker network/volume metadata changed, the
@@ -64,6 +69,9 @@ while [ "$#" -gt 0 ]; do
       ;;
     --plan-only|--dry-run)
       PLAN_ONLY=1
+      ;;
+    --include-component-dependencies)
+      SCOPED_COMPONENT_DEPENDENCIES=1
       ;;
     --component)
       [ "$#" -ge 2 ] || die "--component requires a value"
@@ -238,22 +246,33 @@ component_compose_files() {
   local component="$1"
   local catalog="$BUNDLE_ROOT/stack.config/components.json"
 
-  jq -r --arg requested "$component" '
-    .components as $components
-    |
-    def walk_component($name):
-      if $components[$name] == null then
-        error("unknown component: " + $name)
-      else
-        [$name] + (($components[$name].dependencies // []) | map(walk_component(.)) | add // [])
-      end;
+  if [ "$SCOPED_COMPONENT_DEPENDENCIES" = "1" ]; then
+    jq -r --arg requested "$component" '
+      .components as $components
+      |
+      def walk_component($name):
+        if $components[$name] == null then
+          error("unknown component: " + $name)
+        else
+          [$name] + (($components[$name].dependencies // []) | map(walk_component(.)) | add // [])
+        end;
 
-    (walk_component($requested) | unique) as $selected
-    | $components
-    | keys_unsorted[] as $component
-    | select($selected | index($component) != null)
-    | $components[$component].composeFiles[]?
-  ' "$catalog"
+      (walk_component($requested) | unique) as $selected
+      | $components
+      | keys_unsorted[] as $component
+      | select($selected | index($component) != null)
+      | $components[$component].composeFiles[]?
+    ' "$catalog"
+  else
+    jq -r --arg requested "$component" '
+    .components as $components
+    | if $components[$requested] == null then
+        error("unknown component: " + $requested)
+      else
+        $components[$requested].composeFiles[]?
+      end
+    ' "$catalog"
+  fi
 }
 
 services_from_compose_file() {
@@ -419,6 +438,11 @@ emit_deploy_plan() {
     read_lines_into_array "$unit_output" units
     read_lines_into_array "$health_output" health_units
     deploy_log "deploy plan: mode=scoped"
+    if [ "$SCOPED_COMPONENT_DEPENDENCIES" = "1" ]; then
+      deploy_log "plan component dependency expansion: included"
+    else
+      deploy_log "plan component dependency expansion: direct-only"
+    fi
     if [ "${#services[@]}" -gt 0 ]; then
       deploy_log "plan compose services: $(join_array_limited "$SYSTEMD_PROGRESS_MAX_ITEMS" "${services[@]}")"
     else
