@@ -52,9 +52,9 @@ initializer with `--components` to opt into apps, observability, search, or the
 full stack.
 
 `.webservices-generator.json` pins the downstream generator fork used by the
-site. When this source checkout also has an `upstream` or `legacy` remote, the
-initializer records that original parent remote too, so `stack-update.sh` can
-report the fork's upstream parent while still updating from the downstream fork.
+site. When this source checkout also has an `upstream` remote, the initializer
+records that original parent remote too, so `stack-update.sh` can report the
+fork's upstream parent while still updating from the downstream fork.
 
 To check for upstream generator updates later:
 
@@ -68,7 +68,7 @@ cd /path/to/site-repo
 The build expects source to be in a known state.
 
 ```bash
-cd web-services
+cd sso-stack-generator
 git status --short
 ```
 

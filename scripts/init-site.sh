@@ -216,7 +216,7 @@ fi
 [ -n "$GENERATOR_REMOTE" ] || GENERATOR_REMOTE="$ROOT_DIR"
 generator_ref="$(git -C "$ROOT_DIR" symbolic-ref --quiet --short HEAD || printf 'HEAD')"
 generator_commit="$(git -C "$ROOT_DIR" rev-parse HEAD)"
-generator_upstream_remote="$(git -C "$ROOT_DIR" config --get remote.upstream.url || git -C "$ROOT_DIR" config --get remote.legacy.url || true)"
+generator_upstream_remote="$(git -C "$ROOT_DIR" config --get remote.upstream.url || true)"
 generator_upstream_ref="$(git -C "$ROOT_DIR" config --get webservices.upstreamRef || printf 'main')"
 
 component_json="$(printf '%s\n' "$COMPONENTS" | tr ',' '\n' | awk '{$1=$1; print}' | jq -R 'select(length > 0)' | jq -s '.')"
@@ -260,7 +260,19 @@ EOF_CONFIG
 plain_secrets="$(mktemp)"
 trap 'rm -f "$plain_secrets"' EXIT
 write_secret_json "$plain_secrets" "$(random_secret 36)"
-sops --encrypt --input-type json --output-type json "$plain_secrets" > "$target_dir/webservices.sops.json"
+if [ -n "$SOPS_AGE_RECIPIENT" ]; then
+  SOPS_AGE_RECIPIENTS="$SOPS_AGE_RECIPIENT" sops \
+    --encrypt \
+    --input-type json \
+    --output-type json \
+    "$plain_secrets" > "$target_dir/webservices.sops.json"
+else
+  sops \
+    --encrypt \
+    --input-type json \
+    --output-type json \
+    "$plain_secrets" > "$target_dir/webservices.sops.json"
+fi
 
 cat > "$target_dir/.webservices-generator.json" <<EOF_GENERATOR
 {

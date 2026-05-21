@@ -31,7 +31,7 @@ Site-specific inputs live outside this repo and are selected explicitly with a m
 Most operators only need this flow:
 
 ```bash
-cd web-services
+cd sso-stack-generator
 
 SITE_MANIFEST="/path/to/site/manifest.json"
 TARGET_HOST="user@example-host"
