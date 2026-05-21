@@ -175,7 +175,7 @@ load_site_values() {
       workspace_runtime_public_address="$workspace_runtime_resolved_host"
     elif command -v getent >/dev/null 2>&1; then
       workspace_runtime_public_address="$(
-        getent ahostsv4 "$workspace_runtime_resolved_host" 2>/dev/null | awk 'NR == 1 { print $1 }'
+        { getent ahostsv4 "$workspace_runtime_resolved_host" 2>/dev/null || true; } | awk 'NR == 1 { print $1 }'
       )"
     fi
   fi
