@@ -104,6 +104,13 @@ export BOOKSTACK_API_TOKEN_SECRET=component-test-secret
 export HOMEASSISTANT_TRUSTED_PROXY_SECRET=component-test-secret
 export KOPIA_PASSWORD=component-test-secret
 export MAIL_DOMAIN=example.test
+export MASTODON_ACTIVE_RECORD_ENCRYPTION_DETERMINISTIC_KEY=component-test-secret
+export MASTODON_ACTIVE_RECORD_ENCRYPTION_KEY_DERIVATION_SALT=component-test-secret
+export MASTODON_ACTIVE_RECORD_ENCRYPTION_PRIMARY_KEY=component-test-secret
+export MASTODON_OTP_SECRET=component-test-secret
+export MASTODON_SECRET_KEY_BASE=component-test-secret
+export MASTODON_VAPID_PRIVATE_KEY=component-test-secret
+export MASTODON_VAPID_PUBLIC_KEY=component-test-secret
 export MEDIA_WRITER_GID="$(id -g)"
 export MEDIA_WRITER_UID="$(id -u)"
 export NOCOW_DB_DIR="$host_paths_dir/nocow"
@@ -194,7 +201,9 @@ PATH="$fake_bin:$PATH" "$ROOT_DIR/scripts/deploy/render-runtime.sh" \
   --runtime-root "$runtime_root" \
   --skip-compose-validate >/dev/null
 
-docker compose --env-file "$runtime_env_file" -f "$bundle_root/docker-compose.yml" config --quiet --no-env-resolution --no-path-resolution >/dev/null
+rm -rf "$bundle_root/configs"
+copy_tree "$tmp_root/bundle/runtime/configs" "$bundle_root/configs"
+docker compose --env-file "$runtime_env_file" -f "$bundle_root/docker-compose.yml" config --quiet >/dev/null
 
 caddy_file="$tmp_root/bundle/runtime/configs/caddy/Caddyfile"
 keycloak_configure="$tmp_root/bundle/runtime/configs/keycloak/configure-runtime.sh"
@@ -231,7 +240,9 @@ PATH="$fake_bin:$PATH" "$ROOT_DIR/scripts/deploy/render-runtime.sh" \
   --runtime-root "$runtime_root" \
   --skip-compose-validate >/dev/null
 
-docker compose --env-file "$runtime_env_file" -f "$bundle_root/docker-compose.full.yml" config --quiet --no-env-resolution --no-path-resolution >/dev/null
+rm -rf "$bundle_root/configs"
+copy_tree "$tmp_root/bundle/runtime/configs" "$bundle_root/configs"
+docker compose --env-file "$runtime_env_file" -f "$bundle_root/docker-compose.full.yml" config --quiet >/dev/null
 
 assert_contains "$caddy_file" 'reverse_proxy vaultwarden:80' "full Vaultwarden route"
 assert_contains "$caddy_file" 'reverse_proxy homepage:3000' "full Homepage route"
