@@ -64,6 +64,9 @@ log "running scoped deploy planner checks"
 log "running env-file security checks"
 "$SCRIPT_DIR/test-env-file-security.sh" >&2
 
+log "running docs link checks"
+"$SCRIPT_DIR/test-docs.sh" >&2
+
 log "running Gradle tests and shadow jars"
 ./gradlew test shadowJar --no-daemon >&2
 

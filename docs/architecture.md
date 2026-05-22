@@ -2,7 +2,12 @@
 
 This repository is a stack generator. It does not run one app. It builds a whole platform from source templates plus a site manifest.
 
+If you only remember one thing: source produces a secret-free bundle, and the
+target host turns that bundle into runtime state.
+
 ## Mental Model
+
+![Build deploy verify flow](assets/build-deploy-verify.svg)
 
 The flow is:
 
@@ -104,6 +109,15 @@ The test runner is platform-owned. It can run:
 
 Deep browser checks need the deployed stack because they depend on real domains, Caddy, Keycloak, cookies, and app containers.
 
+### Partial Upgrades
+
+Deploys can be scoped by component, Compose service, or systemd unit when a
+small change does not need a full target reconcile. The scoped path still
+validates the global deploy signature, derives affected Compose services, builds
+selected images, and only then reloads/restarts the selected systemd units.
+
+The operator-facing details are in [systemd-graph.md](systemd-graph.md).
+
 ## Generated Versus Source
 
 Edit these as source:
@@ -125,3 +139,10 @@ Do not edit these as source:
 - rendered `runtime/stack.env`
 
 If generated output is wrong, fix the source that generated it.
+
+## Architecture Reading Order
+
+1. [Build System](build-system.md)
+2. [Security And Auth](security-and-auth.md)
+3. [Systemd Graph](systemd-graph.md)
+4. [Testing](testing.md)

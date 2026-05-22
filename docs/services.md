@@ -2,6 +2,8 @@
 
 This page explains what the user-facing services are for. The homepage catalog is generated from `stack.config/homepage/services.yaml`, so service names here should match the UI.
 
+![Sanitized platform homepage screenshot](assets/platform-home.svg)
+
 URLs are shown as `https://<subdomain>.<domain>`. Replace `<domain>` with the site domain from the manifest.
 
 ## AI And Development
@@ -81,4 +83,3 @@ New user-facing services should normally have:
 - documentation in this page when the service is user-facing
 
 See [service-standard.md](service-standard.md) for the full checklist.
-

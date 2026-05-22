@@ -4,6 +4,13 @@ This project is a self-hosted platform stack generator. It takes source template
 
 It is designed to show practical platform engineering rather than a toy demo. The stack includes identity, routing, secrets handling, app integration, observability, runtime provisioning, and automated validation.
 
+![Sanitized platform homepage screenshot](assets/platform-home.svg)
+
+## In One Sentence
+
+It turns a pile of useful self-hosted services into one generated platform with
+shared identity, routing, deployment, observability, and verification.
+
 ## Problem It Solves
 
 Small teams and individual operators often want the capabilities of a larger internal platform:
@@ -18,6 +25,10 @@ Small teams and individual operators often want the capabilities of a larger int
 - reliable deployment and verification
 
 Running those as unrelated containers becomes fragile quickly. This repo turns them into one generated, tested, documented platform.
+
+The design goal is not novelty. It is operational coherence: one identity
+source, one edge, one deploy contract, one place to add services, and one test
+runner that proves the resulting system.
 
 ## What It Demonstrates
 
@@ -59,6 +70,8 @@ Operational discipline:
 
 ## Why It Is Built This Way
 
+![Build deploy verify flow](assets/build-deploy-verify.svg)
+
 The repo separates build-time and deploy-time concerns.
 
 Local build:
@@ -77,6 +90,18 @@ Host deploy:
 - runs verification
 
 This keeps secrets off the development machine and makes the deploy artifact easy to inspect.
+
+## What Makes It Different From A Compose Folder
+
+This repository is intentionally more opinionated than a directory full of
+Compose files:
+
+- Components are selected through a manifest and locked into the bundle.
+- Service routes are generated into one Caddy edge.
+- Login and RBAC are Keycloak-backed by default.
+- Runtime secrets are rendered only on the deploy host.
+- `systemd --user` owns service lifecycle and readiness boundaries.
+- Verification exercises the deployed reality, not only static config.
 
 ## Technologies Used
 
@@ -121,6 +146,13 @@ The project favors:
 - Keycloak-backed access control over per-app drift
 - tests that exercise deployed reality
 - docs that explain how to operate and extend the stack
+
+## Where To Go Next
+
+- [Knowledgebase](README.md): choose a reader path.
+- [Quickstart](quickstart.md): build, deploy, verify.
+- [Architecture](architecture.md): understand the layers.
+- [Service Standard](service-standard.md): add or change a service.
 
 ## What This Is Not
 

@@ -2,6 +2,8 @@
 
 The repo has several test layers. Use the smallest layer that proves the change while iterating, then run broader checks before trusting a deployment.
 
+![Verification suite screenshot](assets/verification-suite.svg)
+
 ## Local Build Tests
 
 The normal build command runs source-local checks:
@@ -126,6 +128,9 @@ Common locations:
 ```
 
 Use screenshots and traces when debugging UI failures. They usually explain routing, login, theme, or layout problems faster than logs alone.
+
+Documentation screenshots are kept under [assets](assets/README.md). Public
+screenshots must be sanitized before commit.
 
 ## Choosing The Right Test
 

@@ -2,6 +2,10 @@
 
 This guide gets a new operator from a source checkout to a verified deployment.
 
+The whole path is deliberately short:
+
+![Build deploy verify flow](assets/build-deploy-verify.svg)
+
 The examples use placeholder values:
 
 - site: `example`
@@ -112,6 +116,10 @@ ssh "$TARGET_HOST" 'cd ~/webservices && ./verify.sh'
 
 `verify.sh` runs readiness checks and the blocking platform contract. Treat a failing verify as a deployment failure until investigated.
 
+The expected successful shape looks like this:
+
+![Verification suite screenshot](assets/verification-suite.svg)
+
 ## 7. Run Optional Tests
 
 After a deploy is up, use the bundled test runner from the host:
@@ -159,3 +167,9 @@ systemctl --user list-units 'webservices-*' --all --no-pager
 docker ps --format '{{.Names}} {{.Status}}'
 ./verify.sh
 ```
+
+## Next Reading
+
+- [Knowledgebase](README.md): choose the right docs path.
+- [Troubleshooting](troubleshooting.md): diagnose common failures.
+- [Testing](testing.md): choose targeted or full verification.

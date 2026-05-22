@@ -2,6 +2,10 @@
 
 The platform is designed around shared identity. Keycloak is the source of users, groups, login flows, and service access policy.
 
+Security is part of the platform contract, not an optional hardening pass. New
+services should enter through the same identity, routing, secret, and test
+model unless there is a documented reason they cannot.
+
 ## Keycloak
 
 Keycloak provides:

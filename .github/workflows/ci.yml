@@ -63,6 +63,9 @@ jobs:
       - name: Run env-file security checks
         run: ./scripts/test-env-file-security.sh
 
+      - name: Run documentation checks
+        run: ./scripts/test-docs.sh
+
   typescript-tests:
     name: TypeScript test runner
     runs-on: ubuntu-24.04

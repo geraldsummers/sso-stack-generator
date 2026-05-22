@@ -1,30 +1,69 @@
 # Web Services
 
-This repository builds and tests a self-hosted platform stack for authenticated shared web services. It demonstrates production-style platform engineering: identity, routing, secrets, observability, service integration, generated deployment artifacts, and an end-to-end validation suite.
+A self-hosted platform stack generator for authenticated internal web services.
 
-It is a stack generator, not a single application. You give it a site manifest, it builds a secret-free deploy bundle, and the target host deploys that bundle into Docker/systemd services.
+This repository does not ship one app. It builds a complete, tested platform:
+Caddy at the edge, Keycloak for identity and RBAC, Docker Compose for service
+runtime, `systemd --user` for supervision, SOPS-backed site secrets, and a
+verification suite that proves the deployed stack works.
 
-For a portfolio-level summary, read [docs/project-overview.md](docs/project-overview.md).
+![Sanitized platform homepage screenshot](docs/assets/platform-home.svg)
 
-## What This Repo Gives You
+## Why Engineers Care
 
-- One Caddy edge for service routing.
-- One Keycloak realm for shared login, groups, and RBAC.
-- Shared observability with Grafana, Prometheus, Loki, cAdvisor, and exporters.
-- Shared collaboration and productivity apps such as BookStack, Seafile, SOGo, Element, Planka, Vaultwarden, Donetick, ERPNext, and Home Assistant.
-- Media and utility apps such as Jellyfin, qBittorrent, Kopia, and Mastodon.
-- Agent and AI-facing services such as JupyterHub, Disposable Workspaces, Qdrant, search, knowledge ingestion, and the ChatGPT Connector.
-- A platform-owned test runner with contract, browser, auth, visual, and service checks.
+Running a dozen useful self-hosted apps is easy. Keeping them coherent is the
+hard part: one login model, one routing layer, one observability story, one
+deployment contract, and tests that catch auth or routing drift before users do.
 
-## What This Repo Does Not Own
+This repo turns that operating model into source:
 
-- Site-specific secrets.
-- Downstream app-specific business logic.
-- Downstream-only deploy scripts.
-- Downstream-only tests.
-- Generated output as source.
+- a site manifest selects components and site inputs
+- local build produces a secret-free deploy bundle
+- host deploy renders secrets only on the target machine
+- generated systemd units supervise Compose shards
+- Caddy and Keycloak provide shared access control
+- `./verify.sh` proves the deployed runtime before it is trusted
 
-Site-specific inputs live outside this repo and are selected explicitly with a manifest path.
+## The Shape Of The Platform
+
+![Build deploy verify flow](docs/assets/build-deploy-verify.svg)
+
+```text
+source templates + site manifest
+        |
+        v
+local build and tests
+        |
+        v
+secret-free dist/ bundle
+        |
+        v
+host deploy renders runtime secrets
+        |
+        v
+systemd user units start Compose shards
+        |
+        v
+verification proves the deployed stack
+```
+
+The split matters. The local build is inspectable and secret-free. The target
+host is the only place where encrypted site inputs are decrypted into runtime
+files.
+
+## What You Get
+
+| Area | Included capabilities |
+| --- | --- |
+| Edge and identity | Caddy, Keycloak, OIDC clients, forward auth, group-based RBAC |
+| App platform | Homepage catalog, service routing, health checks, generated config |
+| Collaboration | BookStack, Seafile, SOGo, Element, Planka, Vaultwarden |
+| Productivity and media | ERPNext, Donetick, Home Assistant, Jellyfin, qBittorrent, Mastodon |
+| AI and development | JupyterHub, disposable workspaces, Forgejo, Qdrant, search, knowledge ingestion, ChatGPT Connector |
+| Operations | Grafana, Prometheus, Loki, cAdvisor, exporters, Kopia backups |
+| Validation | Kotlin contract tests, TypeScript unit tests, Playwright browser checks, SSO/auth boundary tests, visual artifacts |
+
+The concrete catalog is in [docs/services.md](docs/services.md).
 
 ## Quick Start
 
@@ -45,126 +84,67 @@ ssh "$TARGET_HOST" 'cd ~/webservices && ./deploy.sh'
 ssh "$TARGET_HOST" 'cd ~/webservices && ./verify.sh'
 ```
 
-Read [docs/quickstart.md](docs/quickstart.md) for the same flow with explanations and troubleshooting.
+Read [docs/quickstart.md](docs/quickstart.md) when you want the same flow with
+operator notes and first-run troubleshooting.
 
-## How The Build Works
+## Verification
 
-1. `./build.sh --manifest <manifest.json>` runs locally.
-2. The build creates `dist/`.
-3. `dist/` is copied to the target host.
-4. `./deploy.sh` runs on the target host from `~/webservices`.
-5. `./verify.sh` checks readiness and the blocking platform contract.
+![Verification suite screenshot](docs/assets/verification-suite.svg)
 
-Important rule: the build bundle is secret-free. Secrets remain encrypted until `deploy.sh` renders runtime files on the target host.
+The test model is intentionally layered:
 
-See [docs/build-system.md](docs/build-system.md) for the detailed contract.
+- `./build.sh --manifest <manifest.json>` runs source-local checks.
+- `./verify.sh` runs readiness and the blocking deployed stack contract.
+- `./run-tests.sh all` runs the broader deployed suite when release confidence matters.
+
+See [docs/testing.md](docs/testing.md) for target names, browser requirements,
+and artifact locations.
+
+## Knowledgebase
+
+Start with [docs/README.md](docs/README.md). It gives engineers a path through
+the docs based on what they are trying to do.
+
+| Question | Best entry point |
+| --- | --- |
+| What is this project demonstrating? | [Project Overview](docs/project-overview.md) |
+| How is it put together? | [Architecture](docs/architecture.md) |
+| How do I deploy it? | [Quickstart](docs/quickstart.md) |
+| How are auth and secrets handled? | [Security And Auth](docs/security-and-auth.md) |
+| How do I add a service properly? | [Service Standard](docs/service-standard.md) |
+| How do I debug failures? | [Troubleshooting](docs/troubleshooting.md) |
 
 ## Repository Map
 
 | Path | Purpose |
 | --- | --- |
 | `stack.compose/` | Source Docker Compose shards for platform services. |
-| `stack.config/` | Source config templates, service entrypoints, Caddy config, Keycloak config, and app configs. |
+| `stack.config/` | Config templates, entrypoints, Caddy config, Keycloak config, and app configs. |
 | `stack.containers/` | Custom container build contexts. |
 | `stack.kotlin/` | Kotlin services and Kotlin test runner code. |
 | `stack.systemd/` | Source graph for generated systemd user units. |
-| `scripts/` | Build/deploy/render helper scripts. |
+| `scripts/` | Build, deploy, render, and validation helpers. |
 | `global.settings/` | Shared non-secret defaults and generated-bundle settings. |
 | `ops/host-admin/` | Destructive host-admin tooling such as purge scripts. |
-| `docs/` | Human documentation. |
-| `dist/` | Generated deploy bundle. Do not edit as source. |
-| `out/`, `build/`, Bazel/Gradle outputs | Generated outputs. Do not edit as source. |
+| `docs/` | Human documentation and GitHub-safe screenshots. |
+| `dist/`, `out/`, `build/` | Generated outputs. Do not edit as source. |
 
-## Public Commands
+## What This Repo Does Not Own
 
-Local source checkout:
+- plaintext site secrets
+- production-specific private values
+- downstream-only customizations
+- generated output treated as source
+- one-off host mutations outside the deploy contract
 
-```bash
-./build.sh --manifest /path/to/site/manifest.json
-./stack.containers/test-runner/run-tests.sh ts-unit
-./stack.containers/test-runner/run-tests.sh kt stack-contract
-```
-
-Target host, from `~/webservices` after syncing `dist/`:
-
-```bash
-./deploy.sh
-./verify.sh
-./run-tests.sh list
-./run-tests.sh plan all
-./run-tests.sh all
-```
-
-Use `./run-tests.sh all` when you really want every registered check. Use targeted tests while iterating.
-
-Granular test commands include `plan [target]`, `kt-tests [suite]`, `kt-plan [suite]`, `kt-one <id> [suite]`, `source-unit`, and `changed`.
-
-See [docs/testing.md](docs/testing.md).
-
-## Services
-
-The user-facing service catalog is documented in [docs/services.md](docs/services.md).
-
-Most services follow this standard:
-
-- Caddy route under `https://<service>.<domain>`.
-- Keycloak-backed authentication or Caddy forward-auth.
-- Keycloak groups for RBAC from day one.
-- Homepage entry.
-- Health check.
-- Contract or browser coverage.
-- Visual screenshot coverage when there is a web UI.
-
-## Auth Model
-
-Keycloak is the identity source. Services either:
-
-- use native OIDC against Keycloak, or
-- sit behind the Keycloak auth gateway at the Caddy edge.
-
-RBAC is group-based. Common groups include `users`, `operators`, `admins`, and service-specific groups when needed.
-
-See [docs/security-and-auth.md](docs/security-and-auth.md).
-
-## Testing Model
-
-The platform has three testing layers:
-
-- Source-local unit/config tests during `build.sh`.
-- Blocking deployed verification through `./verify.sh`.
-- Optional granular or exhaustive suites through `./run-tests.sh`.
-
-Browser and deep auth tests require a deployed runtime because they need real domains, Caddy, Keycloak, cookies, and service containers.
-
-## Adding Or Changing Services
-
-Start with [docs/service-standard.md](docs/service-standard.md). It explains the expected source files, routing, auth, homepage, health checks, generated docs, and test coverage.
-
-Do not patch generated output in `dist/`. Fix the source that generates it.
-
-## Docs Index
-
-- [docs/project-overview.md](docs/project-overview.md): public-facing summary of what this project demonstrates.
-- [docs/quickstart.md](docs/quickstart.md): first successful build, deploy, and verify.
-- [docs/architecture.md](docs/architecture.md): how the platform is put together.
-- [docs/services.md](docs/services.md): service catalog and ownership notes.
-- [docs/security-and-auth.md](docs/security-and-auth.md): Keycloak, RBAC, secrets, and runtime material.
-- [docs/testing.md](docs/testing.md): test commands and when to use each one.
-- [docs/service-standard.md](docs/service-standard.md): checklist for adding or changing services.
-- [docs/systemd-graph.md](docs/systemd-graph.md): generated systemd user unit graph contract.
-- [docs/troubleshooting.md](docs/troubleshooting.md): common failures and where to look.
-- [docs/glossary.md](docs/glossary.md): terms used in this repo.
-- [docs/build-system.md](docs/build-system.md): detailed build/deploy contract.
-- [docs/minimal-build-deploy-system.md](docs/minimal-build-deploy-system.md): compact operator contract.
-- [CONTRIBUTING.md](CONTRIBUTING.md): change workflow for contributors.
-- [SECURITY.md](SECURITY.md): security reporting and secret-handling policy.
-- [LICENSE](LICENSE): MIT license.
+Site-specific inputs live outside this repo and are selected explicitly with a
+manifest path.
 
 ## Safety Rules
 
 - Edit source, not generated output.
 - Keep secrets encrypted until host deploy.
 - Do not add repo-root `.env` files.
-- Do not commit `dist/`, `out/`, Gradle outputs, Bazel outputs, or rendered `runtime/` material.
+- Do not commit `dist/`, `out/`, Gradle outputs, Bazel outputs, or rendered runtime material.
 - Keep destructive host operations under `ops/host-admin/`.
 - Prefer targeted tests during development and `verify.sh` before trusting a deployment.
