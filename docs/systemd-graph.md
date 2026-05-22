@@ -131,6 +131,14 @@ reloads the user systemd manager, and validates the selected units. It then
 reloads, restarts, or starts only the selected lifecycle units and their healthy
 gates instead of reconciling `webservices.target`.
 
+Unit scope also resolves the selected lifecycle unit back to its Compose
+services before the build step. For example, `--unit autobattler` builds the
+`autobattler` image before reloading `webservices-autobattler.service`, and a
+multi-service lifecycle domain builds every service assigned to that domain.
+Target units are valid reconcile scopes but do not imply a Compose image build.
+Scoped unit names are restricted to systemd service/target references and are
+rejected before any filesystem lookup or `systemctl` invocation.
+
 Component scope is direct by default: `--component homepage` targets the Compose
 files owned by `homepage`, not `core` and every runtime dependency. Use
 `--include-component-dependencies` when the dependency components themselves are

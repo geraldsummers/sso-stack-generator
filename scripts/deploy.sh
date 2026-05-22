@@ -14,6 +14,8 @@ source "$SCRIPT_DIR/lib/runtime-state.sh"
 source "$SCRIPT_DIR/lib/env-file.sh"
 # shellcheck source=scripts/lib/deploy-state.sh
 source "$SCRIPT_DIR/lib/deploy-state.sh"
+# shellcheck source=scripts/lib/deploy-scope.sh
+source "$SCRIPT_DIR/lib/deploy-scope.sh"
 # shellcheck source=scripts/lib/systemd-user.sh
 source "$SCRIPT_DIR/lib/systemd-user.sh"
 # shellcheck source=scripts/lib/components.sh
@@ -310,8 +312,13 @@ read_lines_into_array() {
 
 resolve_scoped_services() {
   local services=()
-  local component compose_file service_name compose_output service_output
+  local component compose_file service_name compose_output service_output requested_unit unit_service_output
   local compose_files=() compose_services=()
+  local scoped_compose_config_json="" unit_services=()
+  local graph_file="$BUNDLE_ROOT/stack.systemd/graph.json"
+  local unit_prefix
+
+  unit_prefix="$(jq -r '.unitPrefix // "webservices"' "$graph_file")"
 
   for service_name in "${SCOPED_SERVICES[@]}"; do
     append_unique "$service_name" services
@@ -334,6 +341,25 @@ resolve_scoped_services() {
     done
   done
 
+  if [ "${#SCOPED_UNITS[@]}" -gt 0 ]; then
+    scoped_compose_config_json="$(mktemp "${TMPDIR:-/tmp}/webservices-scoped-compose.XXXXXX.json")"
+    COMPOSE_PROJECT_NAME="$PROJECT_NAME" run_compose_from_bundle \
+      "$BUNDLE_ROOT" \
+      "$DEPLOY_ROOT/runtime/stack.env" \
+      config --format json > "$scoped_compose_config_json"
+    for requested_unit in "${SCOPED_UNITS[@]}"; do
+      if ! unit_service_output="$(deploy_scope_services_for_unit "$requested_unit" "$unit_prefix" "$graph_file" "$scoped_compose_config_json")"; then
+        rm -f "$scoped_compose_config_json"
+        die "failed to resolve compose services for selected unit: $requested_unit"
+      fi
+      read_lines_into_array "$unit_service_output" unit_services
+      for service_name in "${unit_services[@]}"; do
+        append_unique "$service_name" services
+      done
+    done
+    rm -f "$scoped_compose_config_json"
+  fi
+
   for service_name in "${services[@]}"; do
     if ! compose_service_exists "$service_name"; then
       die "selected compose service is not present in this bundle: $service_name"
@@ -347,17 +373,7 @@ normalize_scoped_unit() {
   local prefix
 
   prefix="$(jq -r '.unitPrefix // "webservices"' "$BUNDLE_ROOT/stack.systemd/graph.json")"
-  case "$unit" in
-    *.service|*.target)
-      printf '%s\n' "$unit"
-      ;;
-    "$prefix"-*)
-      printf '%s.service\n' "$unit"
-      ;;
-    *)
-      printf '%s-%s.service\n' "$prefix" "$unit"
-      ;;
-  esac
+  deploy_scope_normalize_unit "$unit" "$prefix"
 }
 
 resolve_scoped_units() {
