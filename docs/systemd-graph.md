@@ -131,11 +131,13 @@ reloads the user systemd manager, and validates the selected units. It then
 reloads, restarts, or starts only the selected lifecycle units and their healthy
 gates instead of reconciling `webservices.target`.
 
-Unit scope also resolves the selected lifecycle unit back to its Compose
-services before the build step. For example, `--unit autobattler` builds the
-`autobattler` image before reloading `webservices-autobattler.service`, and a
-multi-service lifecycle domain builds every service assigned to that domain.
-Target units are valid reconcile scopes but do not imply a Compose image build.
+Unit scope also resolves the selected lifecycle unit or target back to its
+Compose services before the build step. For example, `--unit autobattler`
+builds the `autobattler` image before reloading
+`webservices-autobattler.service`, a multi-service lifecycle domain builds every
+service assigned to that domain, and `--unit webservices-apps.target` expands
+through the target graph before building and reconciling the selected app
+lifecycle units.
 Scoped unit names are restricted to systemd service/target references and are
 rejected before any filesystem lookup or `systemctl` invocation.
 

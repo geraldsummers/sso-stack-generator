@@ -57,6 +57,58 @@ deploy_scope_services_for_unit() {
   [ -f "$compose_config_json" ] || die "missing compose config JSON: $compose_config_json"
 
   unit_name="$(deploy_scope_normalize_unit "$requested_unit" "$unit_prefix")"
+  if [[ "$unit_name" == *.target ]]; then
+    jq -r --arg target "$unit_name" '
+      . as $graph
+      | ($compose[0]) as $composeConfig
+      | ($graph.lifecycleDomains // []) as $lifecycleDomains
+      | ($graph.onDemandServices // []) as $onDemandServices
+      | ($graph.onDemandDomains // []) as $onDemandDomains
+      | ($graph.excludedServices // []) as $excludedServices
+      | (([$graph.defaultTarget] + ($graph.auxiliaryTargets // [])) | map(select(. != null))) as $targets
+      | ($lifecycleDomains | map(.services[]?) | unique) as $assignedLifecycleServices
+      | ($composeConfig.services | keys) as $composeServices
+      | def target_by_name($name):
+          ([$targets[]? | select(.name == $name)] | first // null);
+        def lifecycle_domain_for_service($service):
+          ([$lifecycleDomains[]? | select(((.services // []) | index($service)) != null)] | first // null);
+        def lifecycle_domain_services($domain):
+          ([$lifecycleDomains[]? | select(.name == $domain) | .services] | first // []);
+        def service_domain_services($service):
+          (lifecycle_domain_for_service($service) | if . == null then [$service] else (.services // []) end);
+        def implicit_domain_services:
+          ($composeServices - $excludedServices - $assignedLifecycleServices);
+        def is_lifecycle_domain_on_demand($domain):
+          (($onDemandDomains | index($domain.name)) != null)
+          or (((($domain.services // []) - $onDemandServices) | length) == 0);
+        def default_direct_services:
+          (
+            ($lifecycleDomains | map(select(is_lifecycle_domain_on_demand(.) | not) | .services) | add // [])
+            + implicit_domain_services
+          );
+        def target_services($targetName; $seen):
+          if ($seen | index($targetName)) != null then
+            []
+          else
+            (target_by_name($targetName)) as $targetObject
+            | if $targetObject == null then
+                error("unknown target unit: " + $targetName)
+              else
+                (
+                  (($targetObject.services // []) | map(service_domain_services(.)) | add // [])
+                  + (($targetObject.domains // []) | map(lifecycle_domain_services(.)) | add // [])
+                  + (if (($targetObject.includeUnitsFromNonOnDemandDomains // false) == true) then default_direct_services else [] end)
+                  + (($targetObject.wantsTargets // []) | map(target_services(.; $seen + [$targetName])) | add // [])
+                )
+              end
+          end;
+        target_services($target; [])
+        | map(select(($composeConfig.services[.] // null) != null))
+        | unique[]
+    ' --slurpfile compose "$compose_config_json" "$graph_file" || return $?
+    return 0
+  fi
+
   domain_name="$(deploy_scope_unit_domain "$unit_name" "$unit_prefix")"
   [ -n "$domain_name" ] || return 0
 

@@ -14,6 +14,17 @@ compose_config_json="$tmp_dir/compose.json"
 cat > "$graph_file" <<'EOF_JSON'
 {
   "unitPrefix": "webservices",
+  "defaultTarget": {
+    "name": "webservices.target",
+    "wantsTargets": ["webservices-apps.target"]
+  },
+  "auxiliaryTargets": [
+    {
+      "name": "webservices-apps.target",
+      "domains": ["mastodon-runtime"],
+      "services": ["autobattler"]
+    }
+  ],
   "lifecycleDomains": [
     {
       "name": "mastodon-runtime",
@@ -27,6 +38,7 @@ cat > "$compose_config_json" <<'EOF_JSON'
 {
   "services": {
     "autobattler": {},
+    "homepage": {},
     "mastodon-web": {},
     "mastodon-streaming": {},
     "mastodon-sidekiq": {}
@@ -48,6 +60,14 @@ assert_rejects_unit() {
   local requested="$1"
   if ( deploy_scope_normalize_unit "$requested" webservices ) >/dev/null 2>"$tmp_dir/reject.log"; then
     printf '[deploy-scope-test] accepted invalid unit reference: %s\n' "$requested" >&2
+    exit 1
+  fi
+}
+
+assert_rejects_target_scope() {
+  local requested="$1"
+  if deploy_scope_services_for_unit "$requested" webservices "$graph_file" "$compose_config_json" >/dev/null 2>"$tmp_dir/reject-target.log"; then
+    printf '[deploy-scope-test] resolved unknown target scope: %s\n' "$requested" >&2
     exit 1
   fi
 }
@@ -74,12 +94,18 @@ assert_eq \
 
 assert_eq \
   "$(deploy_scope_services_for_unit webservices-apps.target webservices "$graph_file" "$compose_config_json")" \
-  "" \
-  "target service derivation"
+  $'autobattler\nmastodon-sidekiq\nmastodon-streaming\nmastodon-web' \
+  "auxiliary target service derivation"
+
+assert_eq \
+  "$(deploy_scope_services_for_unit webservices.target webservices "$graph_file" "$compose_config_json")" \
+  $'autobattler\nmastodon-sidekiq\nmastodon-streaming\nmastodon-web' \
+  "nested target service derivation"
 
 assert_rejects_unit "../evil.service"
 assert_rejects_unit "webservices-evil/escape.service"
 assert_rejects_unit $'webservices-evil\n.service'
 assert_rejects_unit "webservices-evil;systemctl.service"
+assert_rejects_target_scope "webservices-missing.target"
 
 printf '[deploy-scope-test] ok\n' >&2
