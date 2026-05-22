@@ -37,9 +37,14 @@ jobs:
           test -f CONTRIBUTING.md
           test -f LICENSE
           test -f SECURITY.md
+          test -f docs/README.md
           test -f docs/project-overview.md
+          test -f docs/evaluation-guide.md
           test -f docs/quickstart.md
           test -f docs/testing.md
+          test -f docs/assets/platform-home.svg
+          test -f docs/assets/trust-boundary.svg
+          test -f docs/assets/systemd-orchestration.svg
 
       - name: Check for private path leaks in public files
         run: |

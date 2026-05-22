@@ -79,6 +79,8 @@ The generated bundle turns those into Docker Compose files, systemd units, runti
 
 ### Systemd And Compose
 
+![Systemd orchestration screenshot](assets/systemd-orchestration.svg)
+
 The platform uses `systemd --user` as the host supervisor. Each service or service group has generated user units. Docker Compose is the per-service container backend.
 
 The Compose project name is intentionally stable:
@@ -92,6 +94,8 @@ Do not rename it casually. Tests, labels, purge tooling, and operational command
 The graph contract is documented in [systemd-graph.md](systemd-graph.md).
 
 ### Runtime Secrets
+
+![Trust boundary screenshot](assets/trust-boundary.svg)
 
 Secrets stay encrypted until host deploy. `./deploy.sh` renders decrypted runtime material under `~/webservices/runtime`.
 

@@ -6,6 +6,8 @@ Security is part of the platform contract, not an optional hardening pass. New
 services should enter through the same identity, routing, secret, and test
 model unless there is a documented reason they cannot.
 
+![Trust boundary screenshot](assets/trust-boundary.svg)
+
 ## Keycloak
 
 Keycloak provides:

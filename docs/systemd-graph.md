@@ -2,6 +2,8 @@
 
 `stack.systemd/graph.json` describes how generated `systemd --user` units are grouped from the merged Compose stack.
 
+![Systemd orchestration screenshot](assets/systemd-orchestration.svg)
+
 The renderer is:
 
 ```text

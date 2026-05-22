@@ -9,6 +9,22 @@ verification suite that proves the deployed stack works.
 
 ![Sanitized platform homepage screenshot](docs/assets/platform-home.svg)
 
+## Fast Evaluation
+
+If you are deciding whether this is serious platform engineering or just a
+Compose pile, inspect these first:
+
+| Signal | Where to look |
+| --- | --- |
+| Secret-free local build | [Build System](docs/build-system.md) |
+| Centralized identity and RBAC | [Security And Auth](docs/security-and-auth.md) |
+| Generated lifecycle graph | [Systemd Graph](docs/systemd-graph.md) |
+| Deployed verification suite | [Testing](docs/testing.md) |
+| Service integration standard | [Service Standard](docs/service-standard.md) |
+
+For a focused review path, use the
+[Engineering Evaluation Guide](docs/evaluation-guide.md).
+
 ## Why Engineers Care
 
 Running a dozen useful self-hosted apps is easy. Keeping them coherent is the
@@ -50,6 +66,22 @@ verification proves the deployed stack
 The split matters. The local build is inspectable and secret-free. The target
 host is the only place where encrypted site inputs are decrypted into runtime
 files.
+
+## Trust Boundary
+
+![Trust boundary screenshot](docs/assets/trust-boundary.svg)
+
+Client-provided identity headers are not trusted. Caddy and Keycloak establish
+identity, the auth gateway verifies access, and services receive only the
+claims that pass through that edge.
+
+## Runtime Orchestration
+
+![Systemd orchestration screenshot](docs/assets/systemd-orchestration.svg)
+
+The generated systemd graph gives operators a real service surface. Docker
+Compose still runs containers, but systemd owns grouping, readiness, restarts,
+and partial upgrades.
 
 ## What You Get
 
@@ -108,6 +140,7 @@ the docs based on what they are trying to do.
 | Question | Best entry point |
 | --- | --- |
 | What is this project demonstrating? | [Project Overview](docs/project-overview.md) |
+| Is this worth adopting or extending? | [Engineering Evaluation Guide](docs/evaluation-guide.md) |
 | How is it put together? | [Architecture](docs/architecture.md) |
 | How do I deploy it? | [Quickstart](docs/quickstart.md) |
 | How are auth and secrets handled? | [Security And Auth](docs/security-and-auth.md) |

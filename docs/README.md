@@ -9,6 +9,7 @@ operate or extend it without guessing.
 | Goal | Read |
 | --- | --- |
 | Understand the project quickly | [Project Overview](project-overview.md) |
+| Evaluate the engineering model | [Engineering Evaluation Guide](evaluation-guide.md) |
 | Deploy it once end to end | [Quickstart](quickstart.md) |
 | Understand the architecture | [Architecture](architecture.md) |
 | Add or change a service | [Service Standard](service-standard.md) |
@@ -28,6 +29,16 @@ identity, and the homepage is the user-facing catalog.
 The core operational contract is deliberately small: build a secret-free
 bundle, sync it to the host, deploy in place, and verify the deployed runtime.
 
+![Trust boundary screenshot](assets/trust-boundary.svg)
+
+Authentication and authorization are part of the platform boundary. Services
+should not trust identity directly from clients.
+
+![Systemd orchestration screenshot](assets/systemd-orchestration.svg)
+
+Generated systemd user units make the running stack inspectable and give
+operators safe scopes for full or partial deploys.
+
 ![Verification suite screenshot](assets/verification-suite.svg)
 
 The stack is treated as untrusted until `./verify.sh` proves readiness,
@@ -39,6 +50,7 @@ authentication boundaries, service health, and core application behavior.
 
 Start with:
 
+- [Engineering Evaluation Guide](evaluation-guide.md)
 - [Project Overview](project-overview.md)
 - [Services](services.md)
 - [Security And Auth](security-and-auth.md)
@@ -116,6 +128,7 @@ gate.
 ## Documentation Map
 
 - [Project Overview](project-overview.md): public summary and evaluation frame.
+- [Engineering Evaluation Guide](evaluation-guide.md): adoption-oriented proof points.
 - [Architecture](architecture.md): layers and source/generated boundaries.
 - [Quickstart](quickstart.md): first successful build, deploy, and verify.
 - [Build System](build-system.md): build/deploy artifact contract.

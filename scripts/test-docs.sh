@@ -7,10 +7,13 @@ required_files=(
   "README.md"
   "docs/README.md"
   "docs/project-overview.md"
+  "docs/evaluation-guide.md"
   "docs/quickstart.md"
   "docs/testing.md"
   "docs/assets/platform-home.svg"
   "docs/assets/build-deploy-verify.svg"
+  "docs/assets/trust-boundary.svg"
+  "docs/assets/systemd-orchestration.svg"
   "docs/assets/verification-suite.svg"
 )
 

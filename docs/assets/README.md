@@ -10,3 +10,11 @@ When adding a new screenshot:
 - do not include real usernames, tokens, emails, private paths, or production data
 - prefer source-controlled SVG for diagrams and static product shots
 - use live Playwright screenshots only when they are scrubbed before commit
+
+Current assets:
+
+- `platform-home.svg`: homepage/catalog view
+- `build-deploy-verify.svg`: operator flow
+- `trust-boundary.svg`: auth and secret boundary
+- `systemd-orchestration.svg`: generated systemd graph
+- `verification-suite.svg`: verification output

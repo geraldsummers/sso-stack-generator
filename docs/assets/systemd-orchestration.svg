@@ -1,0 +1,59 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="680" viewBox="0 0 1200 680" role="img" aria-labelledby="title desc">
+  <title id="title">Systemd orchestration screenshot</title>
+  <desc id="desc">A sanitized screenshot-style diagram of generated systemd targets, lifecycle domains, healthy gates, and Docker Compose shards.</desc>
+  <rect width="1200" height="680" fill="#f7f8fb"/>
+  <rect x="54" y="48" width="1092" height="584" rx="18" fill="#ffffff" stroke="#d7dce8"/>
+  <text x="86" y="104" font-family="Inter, Arial, sans-serif" font-size="32" font-weight="700" fill="#172033">Generated Systemd Graph</text>
+  <text x="86" y="136" font-family="Inter, Arial, sans-serif" font-size="16" fill="#62708a">Docker Compose remains the container backend. systemd owns lifecycle, grouping, readiness, and operator state.</text>
+
+  <g font-family="Inter, Arial, sans-serif">
+    <rect x="86" y="190" width="250" height="378" rx="12" fill="#172033"/>
+    <text x="118" y="232" font-size="21" font-weight="700" fill="#ffffff">Targets</text>
+    <rect x="118" y="266" width="186" height="42" rx="8" fill="#243047"/>
+    <text x="138" y="292" font-size="14" fill="#dbeafe">webservices.target</text>
+    <rect x="118" y="326" width="186" height="42" rx="8" fill="#243047"/>
+    <text x="138" y="352" font-size="14" fill="#dbeafe">core.target</text>
+    <rect x="118" y="386" width="186" height="42" rx="8" fill="#243047"/>
+    <text x="138" y="412" font-size="14" fill="#dbeafe">apps.target</text>
+    <rect x="118" y="446" width="186" height="42" rx="8" fill="#243047"/>
+    <text x="138" y="472" font-size="14" fill="#dbeafe">pipeline.target</text>
+
+    <rect x="430" y="190" width="308" height="378" rx="12" fill="#fbfcff" stroke="#cfd6e6"/>
+    <text x="462" y="232" font-size="21" font-weight="700" fill="#172033">Lifecycle Domains</text>
+    <rect x="462" y="266" width="228" height="46" rx="8" fill="#e8f3ff"/>
+    <text x="482" y="295" font-size="15" fill="#2463a6">webservices-caddy.service</text>
+    <rect x="462" y="332" width="228" height="46" rx="8" fill="#e8f3ff"/>
+    <text x="482" y="361" font-size="15" fill="#2463a6">webservices-keycloak.service</text>
+    <rect x="462" y="398" width="228" height="46" rx="8" fill="#e8f3ff"/>
+    <text x="482" y="427" font-size="15" fill="#2463a6">webservices-mastodon-runtime</text>
+    <rect x="462" y="464" width="228" height="46" rx="8" fill="#e8f3ff"/>
+    <text x="482" y="493" font-size="15" fill="#2463a6">webservices-homepage.service</text>
+
+    <rect x="832" y="190" width="250" height="378" rx="12" fill="#fbfcff" stroke="#cfd6e6"/>
+    <text x="864" y="232" font-size="21" font-weight="700" fill="#172033">Compose Shards</text>
+    <rect x="864" y="266" width="174" height="42" rx="8" fill="#edf7ed"/>
+    <text x="884" y="292" font-size="14" fill="#2a6d3f">caddy.compose.json</text>
+    <rect x="864" y="326" width="174" height="42" rx="8" fill="#edf7ed"/>
+    <text x="884" y="352" font-size="14" fill="#2a6d3f">keycloak.compose.json</text>
+    <rect x="864" y="386" width="174" height="42" rx="8" fill="#edf7ed"/>
+    <text x="884" y="412" font-size="14" fill="#2a6d3f">mastodon-runtime.json</text>
+    <rect x="864" y="446" width="174" height="42" rx="8" fill="#edf7ed"/>
+    <text x="884" y="472" font-size="14" fill="#2a6d3f">homepage.compose.json</text>
+  </g>
+
+  <g stroke="#8da0ba" stroke-width="3" fill="none">
+    <path d="M336 407h84"/>
+    <path d="M738 407h84"/>
+    <path d="M336 287h84"/>
+    <path d="M738 287h84"/>
+  </g>
+  <g fill="#8da0ba">
+    <path d="M420 407l-12-8v16z"/>
+    <path d="M822 407l-12-8v16z"/>
+    <path d="M420 287l-12-8v16z"/>
+    <path d="M822 287l-12-8v16z"/>
+  </g>
+
+  <rect x="86" y="602" width="996" height="38" rx="8" fill="#f1f5f9"/>
+  <text x="112" y="626" font-family="SFMono-Regular, Consolas, monospace" font-size="15" fill="#334155">Partial deploys derive affected services, build selected images, then reconcile the smallest safe systemd scope.</text>
+</svg>

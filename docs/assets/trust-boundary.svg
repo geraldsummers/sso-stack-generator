@@ -1,0 +1,63 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="680" viewBox="0 0 1200 680" role="img" aria-labelledby="title desc">
+  <title id="title">Trust boundary screenshot</title>
+  <desc id="desc">A sanitized architecture screenshot showing how public traffic, Caddy, Keycloak, runtime secrets, and service containers are separated.</desc>
+  <rect width="1200" height="680" fill="#f7f8fb"/>
+  <rect x="54" y="48" width="1092" height="584" rx="18" fill="#ffffff" stroke="#d7dce8"/>
+  <text x="86" y="104" font-family="Inter, Arial, sans-serif" font-size="32" font-weight="700" fill="#172033">Security Model</text>
+  <text x="86" y="136" font-family="Inter, Arial, sans-serif" font-size="16" fill="#62708a">Shared identity and deploy-time secret rendering are first-class platform boundaries.</text>
+
+  <g font-family="Inter, Arial, sans-serif">
+    <rect x="86" y="190" width="214" height="112" rx="12" fill="#fbfcff" stroke="#cfd6e6"/>
+    <text x="118" y="232" font-size="20" font-weight="700" fill="#172033">Browser</text>
+    <text x="118" y="260" font-size="14" fill="#526078">User requests</text>
+    <text x="118" y="282" font-size="14" fill="#526078">No trusted headers</text>
+
+    <rect x="384" y="190" width="214" height="112" rx="12" fill="#172033"/>
+    <text x="416" y="232" font-size="20" font-weight="700" fill="#ffffff">Caddy Edge</text>
+    <text x="416" y="260" font-size="14" fill="#cbd5e1">TLS and routing</text>
+    <text x="416" y="282" font-size="14" fill="#cbd5e1">Forward auth checks</text>
+
+    <rect x="682" y="190" width="214" height="112" rx="12" fill="#fbfcff" stroke="#cfd6e6"/>
+    <text x="714" y="232" font-size="20" font-weight="700" fill="#172033">Keycloak</text>
+    <text x="714" y="260" font-size="14" fill="#526078">OIDC sessions</text>
+    <text x="714" y="282" font-size="14" fill="#526078">Groups and RBAC</text>
+
+    <rect x="384" y="394" width="214" height="112" rx="12" fill="#fbfcff" stroke="#cfd6e6"/>
+    <text x="416" y="436" font-size="20" font-weight="700" fill="#172033">Runtime Secrets</text>
+    <text x="416" y="464" font-size="14" fill="#526078">SOPS decrypted on host</text>
+    <text x="416" y="486" font-size="14" fill="#526078">Never committed</text>
+
+    <rect x="682" y="394" width="214" height="112" rx="12" fill="#fbfcff" stroke="#cfd6e6"/>
+    <text x="714" y="436" font-size="20" font-weight="700" fill="#172033">Services</text>
+    <text x="714" y="464" font-size="14" fill="#526078">Native OIDC or edge auth</text>
+    <text x="714" y="486" font-size="14" fill="#526078">Verified routes</text>
+
+    <rect x="956" y="190" width="126" height="316" rx="12" fill="#eef7f2" stroke="#b7e4c7"/>
+    <text x="984" y="238" font-size="18" font-weight="700" fill="#21513d">Tests</text>
+    <text x="984" y="276" font-size="14" fill="#21513d">Auth</text>
+    <text x="984" y="306" font-size="14" fill="#21513d">RBAC</text>
+    <text x="984" y="336" font-size="14" fill="#21513d">Routes</text>
+    <text x="984" y="366" font-size="14" fill="#21513d">Health</text>
+    <text x="984" y="396" font-size="14" fill="#21513d">SSO</text>
+  </g>
+
+  <g stroke="#8da0ba" stroke-width="3" fill="none">
+    <path d="M300 246h76"/>
+    <path d="M598 246h76"/>
+    <path d="M789 302v82"/>
+    <path d="M598 450h76"/>
+    <path d="M896 450h52"/>
+    <path d="M491 302v82"/>
+  </g>
+  <g fill="#8da0ba">
+    <path d="M376 246l-12-8v16z"/>
+    <path d="M674 246l-12-8v16z"/>
+    <path d="M789 384l8-12h-16z"/>
+    <path d="M674 450l-12-8v16z"/>
+    <path d="M948 450l-12-8v16z"/>
+    <path d="M491 384l8-12h-16z"/>
+  </g>
+
+  <rect x="86" y="558" width="996" height="42" rx="8" fill="#f1f5f9"/>
+  <text x="112" y="584" font-family="SFMono-Regular, Consolas, monospace" font-size="15" fill="#334155">Rule: user identity is trusted only after Caddy + Keycloak verification, never from arbitrary client headers.</text>
+</svg>
