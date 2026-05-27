@@ -235,6 +235,7 @@ class TestArchitectureTest {
                 "build-artifact.sh",
                 "deploy.sh",
                 "init-site.sh",
+                "security-audit.sh",
                 "test-component-selection.sh",
                 "verify.sh",
             ),

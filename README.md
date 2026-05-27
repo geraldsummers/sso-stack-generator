@@ -152,14 +152,19 @@ The test model is intentionally layered:
 - `./build.sh --manifest <manifest.json>` runs source-local checks.
 - `./verify.sh` runs readiness and the blocking deployed stack contract.
 - `./run-tests.sh all` runs the broader deployed suite when release confidence matters.
+- `./run-tests.sh` supports `list`, `plan [target]`, `changed`, `source-unit`,
+  `kt-tests [suite]`, `kt-plan [suite]`, and `kt-one <id> [suite]` for
+  targeted iteration; `all` runs the exhaustive suite.
+- `./scripts/security-audit.sh` runs the lightweight local security drift checks.
 
 See [docs/testing.md](docs/testing.md) for target names, browser requirements,
 and artifact locations.
 
 ## Knowledgebase
 
-Start with [docs/README.md](docs/README.md). It gives engineers a path through
-the docs based on what they are trying to do.
+Start with [docs/service-standard.md](docs/service-standard.md) for the service
+contract, then [docs/README.md](docs/README.md) for the broader documentation
+map.
 
 | Question | Best entry point |
 | --- | --- |
