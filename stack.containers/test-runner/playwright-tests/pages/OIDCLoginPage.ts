@@ -10,7 +10,7 @@
 
 import { Page } from '@playwright/test';
 import { defaultIdentityProvider } from '../utils/identity-provider';
-import { logPageTelemetry } from '../utils/telemetry';
+import { logPageTelemetry, redactUrlForLogs } from '../utils/telemetry';
 
 export type OIDCClickOptions = {
   requireAuthRedirect?: boolean;
@@ -160,7 +160,7 @@ export class OIDCLoginPage {
     ).then(() => true).catch(() => false);
 
     if (!redirectedToAuth && requireAuthRedirect) {
-      throw new Error(`OIDC click for "${buttonText}" did not redirect to Keycloak. Current URL: ${this.page.url()}`);
+      throw new Error(`OIDC click for "${buttonText}" did not redirect to Keycloak. Current URL: ${redactUrlForLogs(this.page.url())}`);
     }
 
     if (!redirectedToAuth) {
@@ -168,7 +168,7 @@ export class OIDCLoginPage {
     }
 
     if (defaultIdentityProvider.isAuthUrl(this.page.url())) {
-      console.log(`   ✓ Redirected to Keycloak: ${this.page.url()}\n`);
+      console.log(`   ✓ Redirected to Keycloak: ${redactUrlForLogs(this.page.url())}\n`);
     }
   }
 

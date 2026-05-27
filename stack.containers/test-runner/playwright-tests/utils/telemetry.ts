@@ -8,6 +8,46 @@ import { Page } from '@playwright/test';
 import * as fs from 'fs';
 import * as path from 'path';
 
+const SENSITIVE_QUERY_KEY = /(token|code|state|session|credential|client_data|secret|password|pass|jwt|assertion|ticket|signature|sig|key|nonce|identifier)/i;
+
+function redactSearchParams(searchParams: URLSearchParams): void {
+  for (const key of Array.from(searchParams.keys())) {
+    if (SENSITIVE_QUERY_KEY.test(key)) {
+      searchParams.set(key, 'REDACTED');
+    }
+  }
+}
+
+function redactUrlHash(hash: string): string {
+  if (!hash.includes('?')) {
+    return hash;
+  }
+
+  const [fragmentPath, fragmentQueryAndSuffix] = hash.split('?', 2);
+  const [fragmentQuery, fragmentSuffix = ''] = fragmentQueryAndSuffix.split('#', 2);
+  const fragmentSearchParams = new URLSearchParams(fragmentQuery);
+  redactSearchParams(fragmentSearchParams);
+  const suffix = fragmentSuffix ? `#${fragmentSuffix}` : '';
+  return `${fragmentPath}?${fragmentSearchParams.toString()}${suffix}`;
+}
+
+/**
+ * Redact token-like URL parameters before writing test telemetry.
+ */
+export function redactUrlForLogs(rawUrl: string): string {
+  try {
+    const url = new URL(rawUrl);
+    redactSearchParams(url.searchParams);
+    url.hash = redactUrlHash(url.hash);
+    return url.toString();
+  } catch {
+    return rawUrl.replace(
+      /([?&#][^=&#]*(?:token|code|state|session|credential|client_data|secret|password|pass|jwt|assertion|ticket|signature|sig|key|nonce|identifier)[^=&#]*=)[^&#]*/gi,
+      '$1REDACTED'
+    );
+  }
+}
+
 /**
  * Log comprehensive page telemetry
  */
@@ -17,7 +57,7 @@ export async function logPageTelemetry(page: Page, title: string = 'Page') {
 
   try {
     // Basic page info
-    const url = page.url();
+    const url = redactUrlForLogs(page.url());
     const pageTitle = await page.title();
     console.log(`   URL:   ${url}`);
     console.log(`   Title: "${pageTitle}"`);
@@ -136,7 +176,8 @@ async function logLinkElements(page: Page) {
       const text = await link.textContent() || '';
 
       if (text.trim()) {
-        console.log(`     [${i}] "${text.trim().substring(0, 40)}" → ${href.substring(0, 50)}`);
+        const safeHref = redactUrlForLogs(href);
+        console.log(`     [${i}] "${text.trim().substring(0, 40)}" → ${safeHref.substring(0, 50)}`);
       }
     } catch (e) {
       // Skip
@@ -218,13 +259,13 @@ export async function savePageHTML(page: Page, filename: string) {
 export function setupNetworkLogging(page: Page, prefix: string = '') {
   page.on('request', (request) => {
     if (request.resourceType() === 'document') {
-      console.log(`   → ${prefix} REQUEST: ${request.method()} ${request.url()}`);
+      console.log(`   → ${prefix} REQUEST: ${request.method()} ${redactUrlForLogs(request.url())}`);
     }
   });
 
   page.on('response', (response) => {
     if (response.request().resourceType() === 'document') {
-      console.log(`   ← ${prefix} RESPONSE: ${response.status()} ${response.url()}`);
+      console.log(`   ← ${prefix} RESPONSE: ${response.status()} ${redactUrlForLogs(response.url())}`);
     }
   });
 }

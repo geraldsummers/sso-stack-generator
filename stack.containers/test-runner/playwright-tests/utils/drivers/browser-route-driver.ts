@@ -6,6 +6,7 @@ import { OIDCLoginPage } from '../../pages/OIDCLoginPage';
 import { defaultIdentityProvider } from '../identity-provider';
 import type { BrowserTestUser } from '../auth-artifacts';
 import { findRoute, routeUrl, routeUrlPattern } from '../route-catalog';
+import { redactUrlForLogs } from '../telemetry';
 
 import type { AnonymousContract, BrowserRoute, SmokeContract, VisualContract } from '../route-catalog';
 
@@ -201,7 +202,7 @@ async function waitForSmokeReady(page: Page, smoke: SmokeContract, route: Browse
   }
 
   const summary = lastContent.trim().replace(/\s+/g, ' ').slice(0, 240) || '<empty page>';
-  throw new Error(`${route.label} authenticated page did not satisfy smoke contract at ${page.url()}; content: ${summary}`);
+  throw new Error(`${route.label} authenticated page did not satisfy smoke contract at ${redactUrlForLogs(page.url())}; content: ${summary}`);
 }
 
 function smokePathForUser(smoke: SmokeContract, user: BrowserTestUser): string | undefined {

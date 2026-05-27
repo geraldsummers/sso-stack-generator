@@ -1,7 +1,7 @@
 import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
-import { logPageTelemetry, savePageHTML, setupNetworkLogging } from '../../utils/telemetry';
+import { logPageTelemetry, redactUrlForLogs, savePageHTML, setupNetworkLogging } from '../../utils/telemetry';
 
 type FakeElementOptions = {
   attributes?: Record<string, string>;
@@ -292,6 +292,22 @@ describe('telemetry', () => {
     expect(output).toContain('AUTH RESPONSE: 302 https://keycloak-auth.datamancy.net/');
     expect(output).not.toContain('logo.svg');
     expect(output).not.toContain('/api');
+  });
+
+  it('redacts token-like URL parameters from telemetry output', () => {
+    const safeUrl = redactUrlForLogs(
+      'https://vaultwarden.datamancy.net/identity/connect/authorize?client_id=web&ssoToken=jwt-value&state=opaque&code_challenge=pkce-secret#%2Fcallback?loginToken=fragment-token'
+    );
+
+    expect(safeUrl).toContain('client_id=web');
+    expect(safeUrl).toContain('ssoToken=REDACTED');
+    expect(safeUrl).toContain('state=REDACTED');
+    expect(safeUrl).toContain('code_challenge=REDACTED');
+    expect(safeUrl).toContain('loginToken=REDACTED');
+    expect(safeUrl).not.toContain('jwt-value');
+    expect(safeUrl).not.toContain('opaque');
+    expect(safeUrl).not.toContain('pkce-secret');
+    expect(safeUrl).not.toContain('fragment-token');
   });
 
   it('uses the default empty prefix for network logging', () => {

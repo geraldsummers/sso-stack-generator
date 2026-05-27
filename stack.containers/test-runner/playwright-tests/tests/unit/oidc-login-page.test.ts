@@ -1,5 +1,6 @@
 jest.mock('../../utils/telemetry', () => ({
   logPageTelemetry: jest.fn(async () => undefined),
+  redactUrlForLogs: jest.fn((url: string) => url),
 }));
 
 import { OIDCLoginPage } from '../../pages/OIDCLoginPage';

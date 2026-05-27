@@ -4,6 +4,7 @@ import { removeJupyterContainersForUsers } from '../utils/jupyterhub-cleanup';
 import { KeycloakClient } from '../utils/keycloak-client';
 import { defaultIdentityProvider } from '../utils/identity-provider';
 import { serviceUrl, stackDomain } from '../utils/stack-urls';
+import { redactUrlForLogs } from '../utils/telemetry';
 import { KeycloakLoginPage } from '../pages/KeycloakLoginPage';
 
 function requireEnv(name: string): string {
@@ -99,24 +100,24 @@ async function keycloakGlobalSetup() {
 
   try {
     const providerUrl = identityProvider.authUrl(protectedUrl);
-    console.log(`   Connecting to ${identityProvider.label}: ${providerUrl}`);
+    console.log(`   Connecting to ${identityProvider.label}: ${redactUrlForLogs(providerUrl)}`);
     const response = await page.goto(providerUrl, { waitUntil: 'domcontentloaded', timeout: 30000 });
     console.log(`   Response status: ${response?.status()}`);
-    console.log(`   Current URL: ${page.url()}`);
+    console.log(`   Current URL: ${redactUrlForLogs(page.url())}`);
     await page.waitForLoadState('networkidle', { timeout: 10000 }).catch(() => {
       console.log('   Network idle timeout, continuing...');
     });
 
     if (!identityProvider.isAuthUrl(page.url())) {
       await page.screenshot({ path: `test-results/no-${identityProvider.id}-redirect.png`, fullPage: true });
-      throw new Error(`Forward auth redirect to ${identityProvider.label} did not occur; current URL=${page.url()}`);
+      throw new Error(`Forward auth redirect to ${identityProvider.label} did not occur; current URL=${redactUrlForLogs(page.url())}`);
     }
 
     const keycloakLogin = new KeycloakLoginPage(page);
     await keycloakLogin.login(testUser.username, testUser.password);
     await page.waitForLoadState('networkidle', { timeout: 15000 }).catch(() => {});
     if (identityProvider.isAuthUrl(page.url())) {
-      throw new Error(`Keycloak login did not leave the auth boundary; current URL=${page.url()}`);
+      throw new Error(`Keycloak login did not leave the auth boundary; current URL=${redactUrlForLogs(page.url())}`);
     }
 
     const bodyText = (await page.textContent('body').catch(() => '')) || '';

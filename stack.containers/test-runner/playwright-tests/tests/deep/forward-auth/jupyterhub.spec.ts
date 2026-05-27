@@ -13,7 +13,7 @@ import {
 } from '../shared/forward-auth';
 import { removeJupyterContainersForUsers } from '../../../utils/jupyterhub-cleanup';
 import { serviceUrl } from '../../../utils/stack-urls';
-import { logPageTelemetry, setupNetworkLogging } from '../../../utils/telemetry';
+import { logPageTelemetry, redactUrlForLogs, setupNetworkLogging } from '../../../utils/telemetry';
 
 test.use({ storageState: authenticatedSessionState });
 
@@ -112,7 +112,7 @@ async function dismissJupyterNewsPrompt(page: import('@playwright/test').Page): 
             await page.waitForURL(/\/user\/[^/]+\/(lab|tree)/, { timeout: 120000 }).catch(() => {});
             const userBaseMatch = page.url().match(/^https:\/\/[^/]+\/user\/[^/]+/);
             if (!userBaseMatch) {
-              throw new Error(`Could not determine Jupyter user base URL from ${page.url()}`);
+              throw new Error(`Could not determine Jupyter user base URL from ${redactUrlForLogs(page.url())}`);
             }
             const userBase = userBaseMatch[0];
 

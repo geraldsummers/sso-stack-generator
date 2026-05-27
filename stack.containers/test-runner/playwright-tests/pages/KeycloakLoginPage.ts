@@ -1,6 +1,6 @@
 import { Locator, Page } from '@playwright/test';
 import { keycloakIdentityProvider } from '../utils/identity-provider';
-import { logPageTelemetry } from '../utils/telemetry';
+import { logPageTelemetry, redactUrlForLogs } from '../utils/telemetry';
 
 export class KeycloakLoginPage {
   readonly page: Page;
@@ -71,6 +71,6 @@ export class KeycloakLoginPage {
       }
     }
 
-    console.log(`   ✓ Redirected to: ${this.page.url()}\n`);
+    console.log(`   ✓ Redirected to: ${redactUrlForLogs(this.page.url())}\n`);
   }
 }
