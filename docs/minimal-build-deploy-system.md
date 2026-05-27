@@ -59,7 +59,9 @@ Minimal manifest schema:
    - ensures `~/webservices/runtime` points at `/run/user/$UID/webservices-runtime`
    - decrypts with `sops`
    - renders runtime env and config files into the runtime dir only
-   - runs `docker compose up -d --build --force-recreate --remove-orphans` from `~/webservices/build/`
+   - installs generated `systemd --user` units
+   - refreshes Docker network and volume metadata
+   - asks systemd to reconcile `webservices.target` or the selected scoped units
 
 4. `verify.sh`
    - runs readiness
@@ -78,6 +80,9 @@ ops/host-admin/
 ```
 
 `purge-webservices-stack.sh` removes user systemd units, webservices compose resources, runtime material, configured storage targets, and labware workspace containers/volumes by stack labels. Use `--print-only` first when validating a purge plan. Use `--skip-labware-runtime` only when workspace/labware cleanup must be deferred.
+
+Use [Operations](operations.md) for routine checks and [Recovery](recovery.md)
+for failed deploys, restore drills, purges, and rollbacks.
 
 ## Why This Is Simpler
 

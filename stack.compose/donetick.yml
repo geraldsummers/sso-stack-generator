@@ -1,6 +1,6 @@
 services:
   donetick:
-    image: donetick/donetick:latest
+    image: donetick/donetick:v0.1.75@sha256:5c207a86e5425052e9ffe5286f96f71babfe57337760d303a5fb56a856790d11
     container_name: donetick
     restart: unless-stopped
     networks:

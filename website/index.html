@@ -1,0 +1,215 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Private Open-Source Infrastructure For Small Teams</title>
+    <meta
+      name="description"
+      content="Client-owned open-source infrastructure with SSO, docs, files, passwords, monitoring, backups, automation, and AI-ready workspaces."
+    >
+    <link rel="stylesheet" href="styles.css">
+  </head>
+  <body>
+    <header class="site-header">
+      <nav class="nav" aria-label="Primary">
+        <a class="brand" href="#top">SSO Stack Generator</a>
+        <div class="nav-links">
+          <a href="#packages">Packages</a>
+          <a href="#proof">Proof</a>
+          <a href="#fit">Fit</a>
+          <a href="#next">Next Step</a>
+        </div>
+      </nav>
+
+      <section class="hero" id="top">
+        <div class="hero-copy">
+          <p class="eyebrow">Client-owned open-source infrastructure</p>
+          <h1>Private open-source infrastructure for small teams.</h1>
+          <p class="lede">
+            Replace scattered SaaS tools with a client-owned stack: SSO, docs,
+            files, passwords, monitoring, backups, automation, and AI-ready
+            workspaces.
+          </p>
+          <p class="mission">Make small groups powerful without making them dependent.</p>
+          <div class="actions" aria-label="Calls to action">
+            <a class="button primary" href="https://github.com/geraldsummers/sso-stack-generator">View proof repo</a>
+            <a class="button" href="../docs/packages.md">See packages</a>
+            <a class="button" href="../docs/client-intake.md">Request stack audit</a>
+          </div>
+        </div>
+        <img class="hero-image" src="assets/platform-home.svg" alt="Sanitized platform homepage screenshot">
+      </section>
+    </header>
+
+    <main>
+      <section class="band">
+        <div class="section-grid">
+          <div>
+            <p class="eyebrow">The problem</p>
+            <h2>Small teams inherit enterprise-shaped problems without enterprise leverage.</h2>
+          </div>
+          <p>
+            Small teams often end up with too many SaaS subscriptions,
+            fragmented logins, weak access control, poor backups, vendor
+            lock-in, and operational knowledge scattered across tools they do
+            not control.
+          </p>
+        </div>
+        <ul class="pill-list" aria-label="Common pain points">
+          <li>Too many subscriptions</li>
+          <li>Fragmented accounts</li>
+          <li>Weak offboarding</li>
+          <li>Unclear backups</li>
+          <li>Unclear ownership</li>
+          <li>Platform lock-in</li>
+          <li>Private data spread across vendors</li>
+          <li>No coherent internal operating system</li>
+        </ul>
+      </section>
+
+      <section class="band quiet">
+        <div class="section-grid">
+          <div>
+            <p class="eyebrow">The offer</p>
+            <h2>A generated, tested private platform your team owns.</h2>
+          </div>
+          <div class="stacked-copy">
+            <p>
+              I deploy and adapt private open-source business platforms using a
+              generated, tested stack: Caddy, Keycloak, Docker Compose, systemd
+              user services, SOPS-backed secrets, observability, backups, and
+              verification.
+            </p>
+            <p>
+              You get a private platform your team owns, with shared login,
+              useful apps, monitoring, backups, and documentation.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <section class="band" id="packages">
+        <div class="section-heading">
+          <p class="eyebrow">Packages</p>
+          <h2>Choose the smallest useful platform.</h2>
+        </div>
+        <div class="cards">
+          <article class="card">
+            <h3>Secure Core</h3>
+            <p class="fit">For owners, private operators, tiny teams, households, and small orgs.</p>
+            <ul>
+              <li>Caddy and Keycloak</li>
+              <li>Service homepage/catalog</li>
+              <li>Vaultwarden and BookStack</li>
+              <li>Basic monitoring</li>
+              <li>Backups and verification</li>
+            </ul>
+          </article>
+          <article class="card">
+            <h3>Ops Platform</h3>
+            <p class="fit">For small teams replacing scattered SaaS tools.</p>
+            <ul>
+              <li>Everything in Secure Core</li>
+              <li>Files and project boards</li>
+              <li>Mail, calendar, and contacts</li>
+              <li>Chat and Git hosting</li>
+              <li>Operational docs and deeper observability</li>
+            </ul>
+          </article>
+          <article class="card">
+            <h3>AI Sovereign Lab</h3>
+            <p class="fit">For technical teams, data-heavy operators, and agent-assisted workflows.</p>
+            <ul>
+              <li>Everything in Ops Platform</li>
+              <li>JupyterHub</li>
+              <li>Disposable workspaces</li>
+              <li>Qdrant and search</li>
+              <li>Connector and ingestion workflows where applicable</li>
+            </ul>
+          </article>
+        </div>
+      </section>
+
+      <section class="band proof" id="proof">
+        <div class="section-heading">
+          <p class="eyebrow">Proof</p>
+          <h2>This is not a loose collection of containers.</h2>
+          <p>
+            The stack is generated, deployed as a secret-free bundle,
+            supervised by systemd, protected by SSO/RBAC, and verified after
+            deployment.
+          </p>
+        </div>
+        <div class="proof-grid">
+          <a class="proof-card" href="../docs/build-system.md">
+            <img src="assets/build-deploy-verify.svg" alt="">
+            <span>Build System</span>
+          </a>
+          <a class="proof-card" href="../docs/security-and-auth.md">
+            <img src="assets/trust-boundary.svg" alt="">
+            <span>Security And Auth</span>
+          </a>
+          <a class="proof-card" href="../docs/systemd-graph.md">
+            <img src="assets/systemd-orchestration.svg" alt="">
+            <span>Systemd Graph</span>
+          </a>
+          <a class="proof-card" href="../docs/testing.md">
+            <img src="assets/verification-suite.svg" alt="">
+            <span>Testing And Verification</span>
+          </a>
+        </div>
+        <div class="proof-links" aria-label="More proof links">
+          <a href="../docs/service-standard.md">Service Standard</a>
+          <a href="../docs/services.md">Service Catalog</a>
+          <a href="../docs/restore-drill.md">Restore Drill</a>
+          <a href="../docs/threat-model.md">Threat Model</a>
+          <a href="../docs/update-and-rollback.md">Update And Rollback</a>
+          <a href="../docs/service-maturity.md">Service Maturity</a>
+        </div>
+      </section>
+
+      <section class="band" id="fit">
+        <div class="columns">
+          <div>
+            <p class="eyebrow">Good fit</p>
+            <h2>Teams that want ownership with visible operations.</h2>
+            <ul class="check-list">
+              <li>Privacy-conscious small teams</li>
+              <li>Small businesses reducing SaaS costs</li>
+              <li>Open-source-friendly operators</li>
+              <li>Technical founders</li>
+              <li>Makerspaces, co-ops, and community groups</li>
+              <li>Clients willing to operate the stack or retain support</li>
+            </ul>
+          </div>
+          <div>
+            <p class="eyebrow">Poor fit</p>
+            <h2>Projects that need hidden complexity or instant emergency service.</h2>
+            <ul class="check-list muted">
+              <li>One-click desktop app expectations</li>
+              <li>No ongoing care expectations</li>
+              <li>Urgent same-day managed service expectations</li>
+              <li>Regulated compliance without process or legal review</li>
+              <li>Teams unwilling to own domain, DNS, or admin decisions</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <section class="cta" id="next">
+        <p class="eyebrow">Next step</p>
+        <h2>Start with a stack audit.</h2>
+        <p>
+          Send me your current SaaS/tool list. I will tell you what can be
+          replaced, what should stay SaaS, and what a private stack would look
+          like.
+        </p>
+        <div class="actions centered">
+          <a class="button primary" href="../docs/client-intake.md">Prepare a tool-list audit</a>
+          <a class="button" href="../docs/buyer-overview.md">Read buyer overview</a>
+        </div>
+      </section>
+    </main>
+  </body>
+</html>

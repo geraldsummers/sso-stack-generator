@@ -28,6 +28,7 @@ For a normal user-facing web service, include:
 - homepage entry
 - health check
 - backup/storage decision
+- recovery decision
 - logs and metrics decision
 - tests
 - screenshots if it has a web UI
@@ -68,6 +69,10 @@ Decide whether data is:
 - external site-specific storage
 
 Document unusual paths. If the service owns user data, include it in backup or purge decisions.
+
+Also document restore coupling. For example, a service that uses both a database
+and a filesystem path must say whether those states need to be restored from the
+same point in time.
 
 ## Health Checks
 
@@ -110,6 +115,8 @@ Update:
 - [services.md](services.md) for user-facing services
 - [security-and-auth.md](security-and-auth.md) for unusual auth behavior
 - [testing.md](testing.md) for new test groups or important commands
+- [operations.md](operations.md) or [recovery.md](recovery.md) for new runbooks,
+  restore requirements, or non-obvious repair steps
 - service-specific docs if the service has operational quirks
 
 ## Purge And Rebuild
@@ -123,4 +130,3 @@ ops/host-admin/
 ```
 
 Do not add destructive cleanup to the normal deploy path.
-

@@ -1,0 +1,113 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd -P)"
+
+have() {
+  command -v "$1" >/dev/null 2>&1
+}
+
+section() {
+  printf '\n== %s ==\n' "$1"
+}
+
+cd "$ROOT_DIR"
+
+section "Repository"
+git status --short
+if have docker; then
+  docker version --format '[docker] Client={{.Client.Version}} Server={{.Server.Version}}' || true
+fi
+
+section "Secret-like files"
+if have rg; then
+  secret_files=()
+  while IFS= read -r secret_file; do
+    secret_files+=("$secret_file")
+  done < <(
+    rg -l -i \
+      --glob '!**/.git/**' \
+      --glob '!**/.gradle/**' \
+      --glob '!**/build/**' \
+      --glob '!**/dist/**' \
+      --glob '!**/node_modules/**' \
+      --glob '!**/out/**' \
+      '(password|passwd|secret|token|api[_-]?key|private[_-]?key|BEGIN .*PRIVATE KEY|client_secret|jwt|cookie|session)' \
+      . || true
+  )
+  printf '[secret-like] %s files matched; values are not printed\n' "${#secret_files[@]}"
+  for secret_file in "${secret_files[@]:0:80}"; do
+    printf '%s\n' "$secret_file"
+  done
+  if [ "${#secret_files[@]}" -gt 80 ]; then
+    printf '[secret-like] output truncated; rerun rg locally to inspect all path-only matches\n'
+  fi
+else
+  printf '[skip] rg is not installed; secret-like scan not run\n'
+fi
+
+section "Mutable image tags"
+if have rg; then
+  rg -n '^\s*image:\s*\S+:latest(\s|$)' stack.compose global.settings stack.config 2>/dev/null || true
+  rg -n '^FROM\s+\S+:latest(\s|$)' stack.containers stack.config 2>/dev/null || true
+else
+  printf '[skip] rg is not installed; image tag scan not run\n'
+fi
+
+section "High-risk container options"
+if have rg; then
+  rg -n '^\s*(privileged:\s*true|network_mode:\s*host|-\s*/var/run/docker\.sock:|-\s*/run/docker-labware/docker\.sock:)' stack.compose global.settings 2>/dev/null || true
+else
+  printf '[skip] rg is not installed; container option scan not run\n'
+fi
+
+section "Compose syntax"
+if have docker && docker compose version >/dev/null 2>&1; then
+  compose_args=()
+  while IFS= read -r compose_file; do
+    compose_args+=("-f" "$compose_file")
+  done < <(find stack.compose -maxdepth 1 -type f -name '*.yml' | sort)
+  docker compose "${compose_args[@]}" config --no-interpolate >/dev/null
+  printf '[compose] ok\n'
+else
+  printf '[skip] docker compose is not available\n'
+fi
+
+section "Shell syntax"
+shell_files=()
+while IFS= read -r -d '' shell_file; do
+  shell_files+=("$shell_file")
+done < <(find . \( -path '*/.git' -o -path '*/.gradle' -o -path '*/build' -o -path '*/dist' -o -path '*/node_modules' -o -path '*/out' \) -prune -o -type f -name '*.sh' -print0)
+if [ "${#shell_files[@]}" -gt 0 ]; then
+  bash -n "${shell_files[@]}"
+  printf '[bash -n] ok\n'
+fi
+
+section "Language dependency audits"
+if have npm; then
+  npm_locks=()
+  while IFS= read -r -d '' npm_lock; do
+    npm_locks+=("$npm_lock")
+  done < <(find . \( -path '*/.git' -o -path '*/.gradle' -o -path '*/build' -o -path '*/dist' -o -path '*/node_modules' -o -path '*/out' \) -prune -o -type f -name 'package-lock.json' -print0)
+  for npm_lock in "${npm_locks[@]}"; do
+    npm_dir="$(dirname "$npm_lock")"
+    printf '[npm audit] %s\n' "$npm_dir"
+    (cd "$npm_dir" && npm audit --audit-level=moderate)
+  done
+else
+  printf '[skip] npm is not installed\n'
+fi
+if have osv-scanner; then
+  osv-scanner -r .
+else
+  printf '[skip] osv-scanner is not installed\n'
+fi
+
+section "Optional security tools"
+for tool in trivy grype gitleaks shellcheck hadolint yamllint pip-audit cargo-audit govulncheck; do
+  if have "$tool"; then
+    printf '[found] %s\n' "$tool"
+  else
+    printf '[missing] %s\n' "$tool"
+  fi
+done

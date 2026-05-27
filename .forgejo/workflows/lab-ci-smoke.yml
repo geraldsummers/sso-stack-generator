@@ -20,9 +20,11 @@ jobs:
           set -euo pipefail
           test -f MODULE.bazel
           test -f build.sh
-          test -f sync.sh
           test -f scripts/deploy.sh
           test -f scripts/verify.sh
+          test -f scripts/build-artifact.sh
+          test -f scripts/security-audit.sh
+          test -f scripts/test-env-file-security.sh
           test -f scripts/lib/wait-ready.sh
           test -d stack.compose
           test -d stack.containers
@@ -35,7 +37,7 @@ jobs:
           test ! -e site-config
           test -f scripts/lib/site-manifest.sh
           test ! -f scripts/lib/site-config.sh
-          bash -n build.sh sync.sh scripts/deploy.sh scripts/verify.sh scripts/lib/wait-ready.sh scripts/lib/site-manifest.sh
+          bash -n build.sh scripts/deploy.sh scripts/verify.sh scripts/build-artifact.sh scripts/security-audit.sh scripts/test-env-file-security.sh scripts/lib/wait-ready.sh scripts/lib/site-manifest.sh
 
       - name: Emit Probe Token
         shell: bash

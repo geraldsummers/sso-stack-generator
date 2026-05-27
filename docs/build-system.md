@@ -73,7 +73,9 @@ These files are rendered just in time by `deploy.sh` and should not be committed
 
 - `./deploy.sh`
   - Runs on the host from the deployed `~/webservices/` directory.
-  - Renders runtime state and runs `docker compose up -d --build --force-recreate --remove-orphans`.
+  - Renders runtime state, installs the pre-rendered `systemd --user` units,
+    refreshes Docker network/volume metadata, and asks systemd to reconcile
+    `webservices.target` or the selected scoped units.
 
 - `./verify.sh`
   - Runs readiness, then blocking verification.

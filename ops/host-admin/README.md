@@ -12,6 +12,26 @@ cd ~/webservices
 
 Use these host-admin scripts only when intentionally resetting or repairing a host.
 
+## When To Use These
+
+Use normal deploy recovery first:
+
+```bash
+cd ~/webservices
+./deploy.sh
+./verify.sh
+```
+
+Use host-admin purge only when one of these is true:
+
+- the host should be reset to a fresh stack state
+- generated user units or Docker resources are badly stale
+- labware/workspace runtime resources need destructive cleanup
+- storage is being intentionally deleted or restored from backup
+
+Do not use purge as the first response to a failed health check. Inspect the
+failed unit and preserve data first.
+
 ## Scripts
 
 `purge-webservices-stack.sh`
@@ -28,6 +48,15 @@ Destructive execution requires both a matching `EXPECTED_HOSTNAME` and the expli
 
 ```bash
 EXPECTED_HOSTNAME=<host> ./ops/host-admin/purge-webservices-stack.sh --yes-delete-webservices-stack
+```
+
+After a stack purge, rebuild, sync, deploy, and verify from the generator
+checkout:
+
+```bash
+./build.sh --manifest /path/to/site/manifest.json
+rsync -av --no-group --delete ./dist/ <user@host>:~/webservices/
+ssh <user@host> 'cd ~/webservices && ./deploy.sh && ./verify.sh'
 ```
 
 `purge-site-storage-dirs.sh`
@@ -50,4 +79,3 @@ Before using `purge-site-storage-dirs.sh` on a new site:
 4. Review the output before using `--yes-delete-site-storage`.
 
 Do not add broad paths such as `/mnt`, `/var`, or a user home directory.
-

@@ -1,12 +1,36 @@
 # webservices Stack Troubleshooting Guide
 
+## Operator Control Surface
+
+The deployed stack is supervised by `systemd --user`. Docker Compose is the
+container backend, but systemd owns start order, readiness, restarts, and scoped
+deploys.
+
+Start every incident from the deployed bundle:
+
+```bash
+cd ~/webservices
+systemctl --user status webservices.target --no-pager -l
+systemctl --user --failed --no-pager
+systemctl --user list-units 'webservices-*' --all --no-pager
+./verify.sh --ready-only
+```
+
+Use `docker ps`, `docker logs`, `docker inspect`, and `docker exec` for
+inspection. Do not use `docker compose down`, `docker compose up`, or
+`docker compose restart` as the normal recovery path; use `./deploy.sh`,
+`./deploy.sh --unit ...`, or `./deploy.sh --component ...` so systemd and
+deploy-state stay consistent.
+
 ## Service Won't Start
 
 ### Symptom: Container exits immediately
 
 **Check logs**:
 ```bash
-docker compose logs service-name
+systemctl --user status webservices-service-name.service --no-pager -l
+journalctl --user -u webservices-service-name.service -n 160 --no-pager
+docker logs --since 10m service-name
 ```
 
 **Common causes**:
@@ -24,7 +48,7 @@ docker compose logs service-name
    **Fix**: Check what's using the port
    ```bash
    sudo netstat -tlnp | grep :PORT
-   docker compose ps | grep PORT
+   docker ps --format '{{.Names}} {{.Ports}}' | grep PORT
    ```
 
 3. **Volume permission issues**
@@ -43,15 +67,15 @@ docker compose logs service-name
    ```
    **Fix**: Check dependency health
    ```bash
-   docker compose ps postgres
-   docker compose logs postgres
+   systemctl --user status webservices-postgres.service --no-pager -l
+   docker logs --since 10m postgres
    ```
 
 ### Symptom: Container in restart loop
 
 **Check restart count**:
 ```bash
-docker compose ps
+docker ps --format '{{.Names}}\t{{.Status}}' | sort
 # Look for "Restarting (1)" or high restart counts
 ```
 
@@ -80,14 +104,15 @@ docker compose ps
 
 1. **Check if service is running**
    ```bash
-   docker compose ps service-name
+   systemctl --user status webservices-service-name.service --no-pager -l
+   docker ps --format '{{.Names}}\t{{.Status}}' | grep service-name
    # Should show "Up" status
    ```
 
 2. **Check if port is exposed**
    ```bash
-   docker compose port service-name internal-port
-   # Should show host:port mapping
+   docker port service-name
+   # Should show expected host:port mapping when the service publishes a port
    ```
 
 3. **Test internal connectivity**
@@ -97,7 +122,7 @@ docker compose ps
 
 4. **Check Caddy configuration**
    ```bash
-   docker compose logs caddy | grep service-name
+   docker logs caddy | grep service-name
    # Look for routing errors
    ```
 
@@ -133,10 +158,11 @@ curl -fsS "https://keycloak.${DOMAIN}/realms/webservices/.well-known/openid-conf
 **Diagnostic**:
 ```bash
 # Check if service is healthy
-docker compose ps service-name
+systemctl --user status webservices-service-name.service --no-pager -l
+docker ps --format '{{.Names}}\t{{.Status}}' | grep service-name
 
 # Check service logs
-docker compose logs service-name | tail -50
+docker logs --tail=50 service-name
 
 # Test service directly
 docker exec caddy curl http://service-name:port/health
@@ -182,7 +208,7 @@ agent-codex-doctor
 The destructive purge entrypoint lives outside the bundled deploy UX:
 
 ```bash
-ops/host-admin/purge-webservices-stack.sh --print-only
+EXPECTED_HOSTNAME=<host> ops/host-admin/purge-webservices-stack.sh --print-only
 ```
 
 The current purge script covers user systemd units, compose resources, runtime material, storage targets, and labware containers/volumes labelled by workspace or test tenant. Use `--skip-labware-runtime` only when labware cleanup needs to be handled separately.
@@ -196,10 +222,11 @@ The current purge script covers user systemd units, compose resources, runtime m
 **Diagnostic**:
 ```bash
 # Check if PostgreSQL is running
-docker compose ps postgres
+systemctl --user status webservices-postgres.service --no-pager -l
+docker ps --format '{{.Names}}\t{{.Status}}' | grep postgres
 
 # Check logs for errors
-docker compose logs postgres | grep ERROR
+docker logs postgres | grep ERROR
 
 # Test connection
 docker exec postgres psql -U postgres -c "SELECT version();"
@@ -250,7 +277,8 @@ docker exec postgres psql -U postgres -c "SELECT version();"
 **Diagnostic**:
 ```bash
 # Check if Qdrant is running
-docker compose ps qdrant
+systemctl --user status webservices-qdrant.service --no-pager -l
+docker ps --format '{{.Names}}\t{{.Status}}' | grep qdrant
 
 # Test connection
 curl http://localhost:6333/collections
@@ -272,20 +300,21 @@ curl http://localhost:6333/collections
      -d '{"vectors": {"size": 1024, "distance": "Cosine"}}'
    ```
 
-## LLM/AI Service Issues
+## AI And Search Service Issues
 
-### Inference Gateway Not Responding
+### Embedding Service Not Responding
 
 **Diagnostic**:
 ```bash
-# Check if the inference gateway is running
-docker compose ps inference-gateway
+# Check if the embedding service is running
+systemctl --user status webservices-embedding-gpu.service --no-pager -l
+docker ps --format '{{.Names}}\t{{.Status}}' | grep embedding-gpu
 
 # Check logs
-docker compose logs inference-gateway | tail -100
+docker logs embedding-gpu | tail -100
 
 # Test health
-curl http://inference-gateway:8111/health
+curl http://embedding-gpu:8080/health
 ```
 
 **Common issues**:
@@ -294,19 +323,21 @@ curl http://inference-gateway:8111/health
    ```
    Error: Model not found
    ```
-   **Fix**: Check vLLM service is running
+   **Fix**: redeploy the embedding service after checking image build output.
    ```bash
-   docker compose ps vllm
-   docker compose logs vllm
+   cd ~/webservices
+   ./deploy.sh --unit webservices-embedding-gpu.service
    ```
 
 2. **Out of memory**
    ```
    Error: CUDA out of memory
    ```
-   **Fix**: Restart vLLM or reduce model load
+   **Fix**: reduce embedding service load or redeploy after adjusting resource
+   settings.
    ```bash
-   docker compose restart vllm
+   cd ~/webservices
+   ./deploy.sh --unit webservices-embedding-gpu.service
    ```
 
 ### Workspace Provisioner Issues
@@ -314,10 +345,11 @@ curl http://inference-gateway:8111/health
 **Diagnostic**:
 ```bash
 # Check if workspace-provisioner is running
-docker compose ps workspace-provisioner
+systemctl --user status webservices-workspace-provisioner.service --no-pager -l
+docker ps --format '{{.Names}}\t{{.Status}}' | grep workspace-provisioner
 
 # Check logs
-docker compose logs workspace-provisioner | tail -100
+docker logs workspace-provisioner | tail -100
 
 # Test health
 curl http://workspace-provisioner:8120/health
@@ -343,10 +375,11 @@ curl http://workspace-provisioner:8120/api/oidc/discovery
 **Diagnostic**:
 ```bash
 # Check if search-service is running
-docker compose ps search-service
+systemctl --user status webservices-search-service.service --no-pager -l
+docker ps --format '{{.Names}}\t{{.Status}}' | grep search-service
 
 # Check logs
-docker compose logs search-service | tail -100
+docker logs search-service | tail -100
 
 # Test health
 curl http://search-service:8098/health
@@ -424,7 +457,7 @@ docker exec container-name top
 ```
 
 **Common culprits**:
-- vLLM during model inference
+- embedding-gpu during model inference
 - Pipeline during data ingestion
 - Postgres during complex queries
 
@@ -442,7 +475,7 @@ docker stats
 ```
 
 **Common culprits**:
-- vLLM (models are large)
+- embedding-gpu (models are large)
 - PostgreSQL (large datasets)
 - Qdrant (vector indices)
 
@@ -456,10 +489,10 @@ docker stats
 **Diagnostic**:
 ```bash
 # Check service logs for slow queries
-docker compose logs service-name | grep -i slow
+docker logs service-name | grep -i slow
 
 # Check if database is the bottleneck
-docker compose logs postgres | grep duration
+docker logs postgres | grep duration
 
 # Check Qdrant query times
 curl http://qdrant:6333/collections/collection_name
@@ -538,29 +571,33 @@ docker exec keycloak /opt/keycloak/bin/kcadm.sh get users -r webservices -q user
 ### Complete Stack Restart
 ```bash
 cd ~/webservices
-docker compose down
-docker compose up -d
+./deploy.sh
+./verify.sh --ready-only
 ```
 
 ### Restart Single Service
 ```bash
-docker compose restart service-name
+cd ~/webservices
+./deploy.sh --plan-only --unit webservices-service-name.service
+./deploy.sh --unit webservices-service-name.service
+./verify.sh --ready-only
 ```
 
 ### View Real-Time Logs
 ```bash
-docker compose logs -f service-name
+journalctl --user -u webservices-service-name.service -f
 ```
 
 ### Check All Service Health
 ```bash
-docker compose ps
+docker ps --format '{{.Names}}\t{{.Status}}' | sort
 # Look for "unhealthy" or "restarting" status
 ```
 
 ### Force Recreate Service
 ```bash
-docker compose up -d --force-recreate service-name
+cd ~/webservices
+./deploy.sh --unit webservices-service-name.service
 ```
 
 ### Clean Docker System (Careful!)
@@ -583,10 +620,10 @@ docker network prune -f
 ### Collect Diagnostic Info
 ```bash
 # Service status
-docker compose ps > diagnostics.txt
+systemctl --user list-units 'webservices-*' --all --no-pager > diagnostics.txt
 
 # Logs for all services
-docker compose logs --tail=100 >> diagnostics.txt
+journalctl --user -u 'webservices-*' -n 100 --no-pager >> diagnostics.txt
 
 # System resources
 docker stats --no-stream >> diagnostics.txt

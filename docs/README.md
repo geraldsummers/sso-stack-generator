@@ -1,101 +1,82 @@
 # Knowledgebase
 
-This knowledgebase explains the platform as an engineer would evaluate it:
-what it is, why it exists, how it is built, how it is secured, and how to
-operate or extend it without guessing.
+This knowledgebase is organized by audience. The core idea is simple: private,
+client-owned, open-source infrastructure for small teams that need capability
+without vendor dependency.
 
-## Start Here
+## Buyer Path
 
-| Goal | Read |
-| --- | --- |
-| Understand the project quickly | [Project Overview](project-overview.md) |
-| Evaluate the engineering model | [Engineering Evaluation Guide](evaluation-guide.md) |
-| Deploy it once end to end | [Quickstart](quickstart.md) |
-| Understand the architecture | [Architecture](architecture.md) |
-| Add or change a service | [Service Standard](service-standard.md) |
-| Debug a failing deploy | [Troubleshooting](troubleshooting.md) |
-| Choose the right tests | [Testing](testing.md) |
+Start here when evaluating the offer rather than the implementation details:
 
-## Visual Tour
+- [Buyer Overview](buyer-overview.md)
+- [Packages](packages.md)
+- [Host Sizing](host-sizing.md)
+- [Service Maturity](service-maturity.md)
+- [Support Boundaries](support-boundaries.md)
+- [Client Intake](client-intake.md)
 
-![Sanitized platform homepage screenshot](assets/platform-home.svg)
+## Engineering Evaluation Path
 
-The generated platform is meant to feel like one internal web surface, not a
-collection of unrelated containers. Caddy owns the edge, Keycloak owns
-identity, and the homepage is the user-facing catalog.
+Use this path to inspect whether the project is serious platform engineering:
 
-![Build deploy verify flow](assets/build-deploy-verify.svg)
-
-The core operational contract is deliberately small: build a secret-free
-bundle, sync it to the host, deploy in place, and verify the deployed runtime.
-
-![Trust boundary screenshot](assets/trust-boundary.svg)
-
-Authentication and authorization are part of the platform boundary. Services
-should not trust identity directly from clients.
-
-![Systemd orchestration screenshot](assets/systemd-orchestration.svg)
-
-Generated systemd user units make the running stack inspectable and give
-operators safe scopes for full or partial deploys.
-
-![Verification suite screenshot](assets/verification-suite.svg)
-
-The stack is treated as untrusted until `./verify.sh` proves readiness,
-authentication boundaries, service health, and core application behavior.
-
-## Reader Paths
-
-### Evaluating The Platform
-
-Start with:
-
-- [Engineering Evaluation Guide](evaluation-guide.md)
 - [Project Overview](project-overview.md)
-- [Services](services.md)
-- [Security And Auth](security-and-auth.md)
-
-You should come away knowing whether this operating model fits your team:
-source templates, explicit site manifests, SOPS-encrypted site inputs, generated
-systemd user units, Docker Compose shards, and a deployed verification suite.
-
-### Operating A Deployment
-
-Start with:
-
-- [Quickstart](quickstart.md)
+- [Engineering Evaluation Guide](evaluation-guide.md)
+- [Architecture](architecture.md)
 - [Build System](build-system.md)
 - [Systemd Graph](systemd-graph.md)
+- [Testing](testing.md)
+
+## Operator Path
+
+Use this path to deploy and operate the stack:
+
+- [Quickstart](quickstart.md)
+- [Minimal Build + Deploy System](minimal-build-deploy-system.md)
+- [Operations](operations.md)
 - [Troubleshooting](troubleshooting.md)
+- [Host Sizing](host-sizing.md)
 
-The most important invariant is the split between local build and host deploy.
-Local build produces a secret-free `dist/`; host deploy renders runtime config
-and starts services from `~/webservices`.
+Normal operation is systemd-first: use `systemctl --user`, `./deploy.sh`, and
+`./verify.sh` before dropping to raw Docker commands.
 
-### Extending The Stack
+## Security Path
 
-Start with:
+Use this path to inspect identity, secrets, caveats, and compliance posture:
+
+- [Security And Auth](security-and-auth.md)
+- [Threat Model](threat-model.md)
+- [Compliance Posture](compliance-posture.md)
+- [Service Maturity](service-maturity.md)
+- [Security Policy](../SECURITY.md)
+
+## Recovery Path
+
+Use this path when planning restore, update, rollback, or incident response:
+
+- [Recovery](recovery.md)
+- [Restore Drill](restore-drill.md)
+- [Update And Rollback](update-and-rollback.md)
+- [Troubleshooting](troubleshooting.md)
+- [Testing](testing.md)
+
+## Service Development Path
+
+Use this path when adding or changing platform services:
 
 - [Service Standard](service-standard.md)
+- [Services](services.md)
 - [Architecture](architecture.md)
 - [Testing](testing.md)
 - [Contributing](../CONTRIBUTING.md)
 
-New services should arrive as platform citizens: route, auth, RBAC, homepage
-entry, storage decision, health check, tests, screenshots, and docs.
+## Mission Path
 
-### Reviewing Security
+Use this path to understand the larger pattern without turning the docs into a
+manifesto:
 
-Start with:
-
-- [Security And Auth](security-and-auth.md)
-- [Keycloak Identity Cutover](keycloak-identity-cutover.md)
-- [Minimal Build + Deploy System](minimal-build-deploy-system.md)
-- [Security Policy](../SECURITY.md)
-
-The trust model is intentionally visible: encrypted site inputs stay outside
-this repo, runtime secrets are rendered on the host, and access policy comes
-from Keycloak groups instead of per-app drift.
+- [Mission](mission.md)
+- [Buyer Overview](buyer-overview.md)
+- [Packages](packages.md)
 
 ## Core Concepts
 
@@ -127,12 +108,27 @@ gate.
 
 ## Documentation Map
 
+- [Buyer Overview](buyer-overview.md): plain-language offer and next step.
+- [Mission](mission.md): grounded sovereignty-infrastructure thesis.
+- [Packages](packages.md): buyer package tiers and scope boundaries.
+- [Client Intake](client-intake.md): repeatable pre-engagement questions.
+- [Host Sizing](host-sizing.md): starting host profiles and caveats.
+- [Support Boundaries](support-boundaries.md): response expectations and client responsibilities.
+- [Service Maturity](service-maturity.md): conservative maturity matrix.
+- [Threat Model](threat-model.md): risks, mitigations, residual risks, and checks.
+- [Compliance Posture](compliance-posture.md): compliance support without overclaims.
+- [Restore Drill](restore-drill.md): restore procedure and acceptance checklist.
+- [Update And Rollback](update-and-rollback.md): pins, updates, verification, and rollback caveats.
+- [Demo Script](demo-script.md): buyer-safe walkthrough outline.
+- [Proof Checklist](proof-checklist.md): proof completeness checklist.
 - [Project Overview](project-overview.md): public summary and evaluation frame.
 - [Engineering Evaluation Guide](evaluation-guide.md): adoption-oriented proof points.
 - [Architecture](architecture.md): layers and source/generated boundaries.
 - [Quickstart](quickstart.md): first successful build, deploy, and verify.
 - [Build System](build-system.md): build/deploy artifact contract.
 - [Minimal Build + Deploy System](minimal-build-deploy-system.md): compact operator contract.
+- [Operations](operations.md): routine checks, deploy patterns, diagnostics, and purge boundaries.
+- [Recovery](recovery.md): incident runbooks, restore drills, rollback, and post-recovery checks.
 - [Systemd Graph](systemd-graph.md): generated unit graph and partial deploys.
 - [Services](services.md): service catalog.
 - [Security And Auth](security-and-auth.md): Keycloak, RBAC, edge auth, and secrets.
