@@ -9,6 +9,7 @@ filegroup(
             "stack.compose/**",
             "stack.config/**",
             "stack.containers/**",
+            "stack.kotlin/progression/src/main/resources/static/**",
             "stack.systemd/**",
         ],
         exclude = [

@@ -82,6 +82,17 @@ else
   artifact_path="$execution_root/$artifact_rel"
 fi
 
+required_artifact_paths=(
+  "./stack.config/progression/tasks/bookstack-mvp.json"
+  "./stack.config/progression/dashboards/bookstack-mvp.json"
+  "./stack.kotlin/progression/src/main/resources/static/index.html"
+)
+for required_artifact_path in "${required_artifact_paths[@]}"; do
+  if ! tar -tf "$artifact_path" | grep -Fxq "$required_artifact_path"; then
+    die "release artifact missing required test-runner fixture: $required_artifact_path"
+  fi
+done
+
 mkdir -p "$SOURCE_ROOT/out"
 write_source_build_metadata_json "$SOURCE_ROOT" "$SOURCE_ROOT/out/latest-build.json"
 printf '%s\n' "$artifact_path"
