@@ -7,92 +7,238 @@
     <style>
       :root {
         color-scheme: light;
-        --bg: #f7f8fb;
+        --bg: #f5f6f8;
         --panel: #ffffff;
+        --panel-soft: #f8fafc;
         --ink: #172033;
         --muted: #667085;
-        --line: #d7dce5;
-        --accent: #0f766e;
-        --accent-soft: #d9f3ef;
-        --warn: #9a3412;
-        --warn-soft: #fff4e8;
+        --line: #d8dee8;
+        --teal: #0f766e;
+        --teal-soft: #dff5f1;
+        --indigo: #3730a3;
+        --indigo-soft: #e8e7ff;
+        --amber: #a15c07;
+        --amber-soft: #fff2d8;
+        --green: #166534;
+        --green-soft: #dcfce7;
+        --shadow: 0 18px 48px rgba(25, 35, 58, 0.08);
       }
+
       * { box-sizing: border-box; }
+
       body {
         margin: 0;
         font: 15px/1.5 Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-        background: var(--bg);
+        background:
+          linear-gradient(180deg, #ffffff 0, var(--bg) 280px),
+          var(--bg);
         color: var(--ink);
       }
+
+      button {
+        appearance: none;
+        border: 1px solid var(--teal);
+        background: var(--teal);
+        color: white;
+        border-radius: 6px;
+        padding: 9px 12px;
+        font: inherit;
+        font-weight: 700;
+        line-height: 1.1;
+        cursor: pointer;
+      }
+
+      button.secondary {
+        background: #fff;
+        color: var(--teal);
+      }
+
+      button:focus-visible,
+      summary:focus-visible {
+        outline: 3px solid #93c5fd;
+        outline-offset: 3px;
+      }
+
       header {
-        padding: 24px clamp(18px, 4vw, 48px);
-        border-bottom: 1px solid var(--line);
-        background: #fff;
+        padding: 26px clamp(18px, 4vw, 52px) 20px;
       }
-      h1, h2, h3 { margin: 0; line-height: 1.15; letter-spacing: 0; }
-      h1 { font-size: clamp(28px, 4vw, 44px); }
-      h2 { font-size: 20px; }
+
+      h1,
+      h2,
+      h3,
+      p {
+        margin-top: 0;
+      }
+
+      h1,
+      h2,
+      h3 {
+        line-height: 1.15;
+        letter-spacing: 0;
+      }
+
+      h1 {
+        margin-bottom: 8px;
+        font-size: clamp(30px, 4vw, 46px);
+      }
+
+      h2 { font-size: 22px; }
       h3 { font-size: 16px; }
+
       main {
-        width: min(1280px, calc(100% - 32px));
-        margin: 24px auto 48px;
+        width: min(1220px, calc(100% - 32px));
+        margin: 0 auto 48px;
         display: grid;
-        gap: 16px;
+        gap: 18px;
       }
+
       .subhead {
-        margin-top: 8px;
-        max-width: 820px;
+        max-width: 760px;
         color: var(--muted);
+        font-size: 16px;
       }
-      .grid {
-        display: grid;
-        grid-template-columns: minmax(0, 1.1fr) minmax(320px, 0.9fr);
+
+      .topline {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
         gap: 16px;
-        align-items: start;
+        flex-wrap: wrap;
       }
-      .panel {
-        background: var(--panel);
-        border: 1px solid var(--line);
-        border-radius: 8px;
-        padding: 16px;
-      }
-      .task-list, .dashboard-list, .claims {
-        display: grid;
-        gap: 8px;
-        margin-top: 12px;
-      }
-      .row {
-        display: grid;
-        grid-template-columns: 112px minmax(0, 1fr);
-        gap: 10px;
-        align-items: start;
-        padding: 10px;
-        border: 1px solid var(--line);
-        border-radius: 8px;
-        background: #fff;
-      }
-      .status {
+
+      .status-chip,
+      .status-pill,
+      .risk-chip {
         display: inline-flex;
         align-items: center;
         justify-content: center;
         min-height: 28px;
-        padding: 3px 8px;
         border-radius: 999px;
         border: 1px solid var(--line);
+        padding: 4px 10px;
         font-size: 12px;
-        font-weight: 700;
+        font-weight: 800;
+        letter-spacing: 0;
+        text-transform: uppercase;
+        white-space: nowrap;
+      }
+
+      .status-chip {
+        color: var(--teal);
+        background: var(--teal-soft);
+        border-color: #9bd8cf;
+      }
+
+      .complete {
+        color: var(--green);
+        background: var(--green-soft);
+        border-color: #a7e4b9;
+      }
+
+      .available {
+        color: var(--amber);
+        background: var(--amber-soft);
+        border-color: #f6d7a4;
+      }
+
+      .blocked {
+        color: #475467;
+        background: #eef2f6;
+      }
+
+      .hero-grid {
+        display: grid;
+        grid-template-columns: minmax(0, 1.25fr) minmax(300px, 0.75fr);
+        gap: 18px;
+        align-items: stretch;
+      }
+
+      .panel,
+      .dashboard-card {
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        box-shadow: var(--shadow);
+      }
+
+      .panel {
+        padding: clamp(18px, 3vw, 26px);
+      }
+
+      .next-action {
+        border-color: #9bd8cf;
+        background:
+          linear-gradient(180deg, rgba(223, 245, 241, 0.72), rgba(255, 255, 255, 0.92) 42%),
+          #fff;
+      }
+
+      .eyebrow {
+        margin-bottom: 12px;
+        color: var(--teal);
+        font-size: 12px;
+        font-weight: 800;
         text-transform: uppercase;
       }
-      .complete { background: var(--accent-soft); color: var(--accent); border-color: #9fd7cd; }
-      .available { background: var(--warn-soft); color: var(--warn); border-color: #fed7aa; }
-      .blocked { background: #f3f4f6; color: #4b5563; }
-      .primary {
-        border-color: #9fd7cd;
-        background: linear-gradient(180deg, #fff, #f4fbfa);
+
+      .muted { color: var(--muted); }
+      .small { font-size: 13px; }
+
+      .action-copy {
+        max-width: 780px;
+        margin-bottom: 16px;
+        font-size: 17px;
       }
+
+      .why {
+        max-width: 780px;
+        color: var(--muted);
+      }
+
+      .evidence-list,
+      .reward-list,
+      .task-path {
+        display: grid;
+        gap: 8px;
+        margin-top: 14px;
+      }
+
+      .evidence-item,
+      .reward-item,
+      .task-row {
+        display: grid;
+        grid-template-columns: auto minmax(0, 1fr);
+        gap: 10px;
+        align-items: start;
+        padding: 10px 0;
+        border-top: 1px solid var(--line);
+      }
+
+      .evidence-dot {
+        width: 10px;
+        height: 10px;
+        margin-top: 7px;
+        border-radius: 999px;
+        background: var(--amber);
+      }
+
+      .reward-dot {
+        width: 10px;
+        height: 10px;
+        margin-top: 7px;
+        border-radius: 999px;
+        background: var(--green);
+      }
+
+      .actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        margin-top: 18px;
+      }
+
       .command {
-        margin-top: 8px;
-        padding: 10px;
+        margin-top: 14px;
+        padding: 12px;
         border-radius: 6px;
         background: #111827;
         color: #e5e7eb;
@@ -100,61 +246,194 @@
         font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
         font-size: 13px;
       }
-      .muted { color: var(--muted); }
-      .small { font-size: 13px; }
-      ul { padding-left: 18px; }
-      button {
-        appearance: none;
-        border: 1px solid #0f766e;
-        background: #0f766e;
-        color: white;
-        border-radius: 6px;
-        padding: 8px 10px;
+
+      code {
+        border-radius: 5px;
+        padding: 1px 5px;
+        background: #eef2f7;
+        color: #1f2937;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+        font-size: 0.92em;
+      }
+
+      .posture-metric {
+        display: grid;
+        gap: 6px;
+        padding: 14px 0;
+        border-top: 1px solid var(--line);
+      }
+
+      .dashboard-band {
+        display: grid;
+        gap: 12px;
+      }
+
+      .section-heading {
+        display: flex;
+        align-items: end;
+        justify-content: space-between;
+        gap: 16px;
+      }
+
+      .dashboard-grid {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 14px;
+      }
+
+      .dashboard-card {
+        min-height: 176px;
+        padding: 16px;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        box-shadow: none;
+      }
+
+      .dashboard-card.foregrounded {
+        border-color: #b6b7ff;
+        background: linear-gradient(180deg, var(--indigo-soft), #fff 48%);
+      }
+
+      .panel-list {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        margin-top: 14px;
+      }
+
+      .panel-chip {
+        border-radius: 999px;
+        border: 1px solid var(--line);
+        padding: 4px 8px;
+        color: #394150;
+        background: var(--panel-soft);
+        font-size: 12px;
         font-weight: 700;
+      }
+
+      details.panel {
+        padding: 0;
+      }
+
+      details.panel summary {
         cursor: pointer;
+        list-style: none;
+        padding: 18px 22px;
+        font-weight: 800;
       }
-      button.secondary {
-        background: #fff;
-        color: #0f766e;
+
+      details.panel summary::-webkit-details-marker {
+        display: none;
       }
-      .actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
-      @media (max-width: 880px) {
-        .grid { grid-template-columns: 1fr; }
-        .row { grid-template-columns: 1fr; }
+
+      .drawer-body {
+        padding: 0 22px 22px;
+      }
+
+      .expert-note {
+        margin-top: 14px;
+        color: var(--muted);
+      }
+
+      [hidden] {
+        display: none !important;
+      }
+
+      @media (max-width: 920px) {
+        .hero-grid,
+        .dashboard-grid {
+          grid-template-columns: 1fr;
+        }
+
+        .dashboard-card {
+          min-height: 0;
+        }
+      }
+
+      @media (max-width: 520px) {
+        main {
+          width: min(100% - 24px, 1220px);
+          gap: 14px;
+        }
+
+        header {
+          padding: 20px 12px 14px;
+        }
+
+        h1 { font-size: 30px; }
+        h2 { font-size: 20px; }
+        .panel { padding: 16px; }
+        .actions button { width: 100%; }
+        .status-pill,
+        .status-chip,
+        .risk-chip {
+          white-space: normal;
+          text-align: center;
+        }
       }
     </style>
   </head>
   <body>
     <header>
-      <h1>Sovereign Compute Progression</h1>
-      <p class="subhead">A calm operating layer for learning the real stack. Rewards are unlocked only by verified evidence.</p>
+      <div class="topline">
+        <div>
+          <h1>Sovereign Compute Progression</h1>
+          <p class="subhead">A calm operating layer for learning the real stack. Rewards unlock only when evidence proves capability.</p>
+        </div>
+        <span class="status-chip" data-testid="stack-status-chip">Stack healthy</span>
+      </div>
     </header>
+
     <main>
-      <section class="grid">
-        <article class="panel primary" id="next-panel">
-          <h2>Next Action</h2>
-          <p class="muted">Loading current progression state...</p>
+      <section class="hero-grid" aria-label="Current progression">
+        <article class="panel next-action" data-testid="primary-next-action" data-visual-card="primary">
+          <p class="eyebrow">Next action</p>
+          <div id="next-panel">
+            <p class="muted">Loading current progression state...</p>
+          </div>
         </article>
-        <aside class="panel">
-          <h2>Unlocked Capabilities</h2>
-          <div id="rewards" class="claims"></div>
+
+        <aside class="panel" data-testid="capability-panel" data-visual-card="secondary">
+          <h2>Capability Proof</h2>
+          <p class="muted">Unlocked capabilities come from verified stack state.</p>
+          <div id="rewards" class="reward-list"></div>
+          <div class="posture-metric">
+            <span class="small muted">Access proof</span>
+            <strong id="access-proof">Pending evidence</strong>
+          </div>
+          <div class="posture-metric">
+            <span class="small muted">Restore proof</span>
+            <strong id="restore-proof">Pending evidence</strong>
+          </div>
           <div class="actions">
-            <button type="button" id="refresh">Refresh</button>
-            <button type="button" class="secondary" id="scan">Run scanner</button>
+            <button type="button" id="refresh" class="secondary">Refresh</button>
+            <button type="button" id="scan">Run scanner</button>
           </div>
         </aside>
       </section>
-      <section class="grid">
-        <article class="panel">
-          <h2>Ownership Path</h2>
-          <div id="tasks" class="task-list"></div>
-        </article>
-        <aside class="panel">
-          <h2>Dashboards</h2>
-          <div id="dashboards" class="dashboard-list"></div>
-        </aside>
+
+      <section class="dashboard-band" aria-labelledby="foregrounded-dashboards">
+        <div class="section-heading">
+          <div>
+            <h2 id="foregrounded-dashboards">Foregrounded Dashboards</h2>
+            <p class="muted">The dashboard ladder stays available, while the current work stays prominent.</p>
+          </div>
+          <span class="risk-chip" id="dashboard-count" data-testid="dashboard-count">Loading</span>
+        </div>
+        <div id="dashboards" class="dashboard-grid"></div>
       </section>
+
+      <details class="panel" data-testid="task-path-drawer">
+        <summary>Show full ownership path</summary>
+        <div class="drawer-body">
+          <p class="muted">The full path is available without taking focus away from the next verified capability.</p>
+          <div id="tasks" class="task-path"></div>
+          <p class="expert-note small">Expert state and commands stay hidden until a command is explicitly revealed.</p>
+        </div>
+      </details>
     </main>
+
     <script>
       async function fetchJson(path, options) {
         const response = await fetch(path, options || {});
@@ -166,52 +445,163 @@
         return status === 'complete' ? 'complete' : status === 'available' ? 'available' : 'blocked';
       }
 
-      function renderTask(task) {
-        const command = (task.commands.guided || [])[0];
-        const missing = (task.missingEvidence || []).slice(0, 4);
+      function humanize(value) {
+        return String(value || '')
+          .replace(/[_-]+/g, ' ')
+          .replace(/\b\w/g, letter => letter.toUpperCase())
+          .replace(/\bBookstack\b/g, 'BookStack')
+          .replace(/\bOidc\b/g, 'OIDC')
+          .replace(/\bOauth\b/g, 'OAuth')
+          .replace(/\bCli\b/g, 'CLI')
+          .replace(/\bStackctl\b/g, 'stackctl')
+          .replace(/\bSso\b/g, 'SSO')
+          .replace(/\bTls\b/g, 'TLS');
+      }
+
+      function escapeHtml(value) {
+        return String(value || '')
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;')
+          .replace(/'/g, '&#39;');
+      }
+
+      function formatInline(value) {
+        return escapeHtml(value).replace(/`([^`]+)`/g, '<code>$1</code>');
+      }
+
+      function evidenceLabel(value) {
+        return humanize(String(value || '').replace(/^(actual|verified)\./, '').replace(/\./g, ' '));
+      }
+
+      function renderMissingEvidence(task) {
+        const missing = (task.missingEvidence || []).slice(0, 3);
+        if (!missing.length) {
+          return '<p class="muted">Evidence is complete for this step.</p>';
+        }
+        const overflow = task.missingEvidence.length > missing.length
+          ? `<p class="small muted">And ${task.missingEvidence.length - missing.length} more evidence claim(s).</p>`
+          : '';
         return `
-          <div class="row">
-            <span class="status ${statusClass(task.status)}">${task.status}</span>
+          <div class="evidence-list" aria-label="Missing evidence">
+            ${missing.map(item => `
+              <div class="evidence-item">
+                <span class="evidence-dot" aria-hidden="true"></span>
+                <span>${formatInline(evidenceLabel(item))}</span>
+              </div>
+            `).join('')}
+          </div>
+          ${overflow}
+        `;
+      }
+
+      function renderRisk(task) {
+        const entries = Object.entries(task.riskReduction || {});
+        if (!entries.length) return '';
+        return `<div class="panel-list">${entries.map(([area, level]) => `<span class="risk-chip">${humanize(area)}: ${humanize(level)}</span>`).join('')}</div>`;
+      }
+
+      function renderNextTask(task) {
+        const command = (task.commands.guided || [])[0];
+        return `
+          <span class="status-pill ${statusClass(task.status)}">${task.status}</span>
+          <h2>${escapeHtml(task.title)}</h2>
+          <p class="action-copy">${formatInline(task.surfaces.now)}</p>
+          <p class="why">${formatInline(task.surfaces.why)}</p>
+          ${renderRisk(task)}
+          ${renderMissingEvidence(task)}
+          <div class="actions">
+            ${command ? '<button type="button" id="reveal-command" class="secondary">Show command</button>' : ''}
+            <button type="button" id="show-deeper" class="secondary">Show deeper detail</button>
+          </div>
+          ${command ? `<div class="command" data-testid="revealed-command" hidden>${escapeHtml(command)}</div>` : ''}
+          <div id="deeper-detail" class="expert-note" hidden>
+            ${(task.surfaces.deeper || []).map(item => `<p>${formatInline(item)}</p>`).join('')}
+          </div>
+        `;
+      }
+
+      function renderTaskPathTask(task) {
+        return `
+          <div class="task-row">
+            <span class="status-pill ${statusClass(task.status)}">${task.status}</span>
             <div>
-              <h3>${task.title}</h3>
-              <div class="muted small">${task.id}</div>
-              <p>${task.surfaces.now}</p>
-              <p class="muted">${task.surfaces.why}</p>
-              ${missing.length ? `<div class="small"><strong>Missing evidence:</strong><ul>${missing.map(item => `<li>${item}</li>`).join('')}</ul></div>` : ''}
-              ${command ? `<div class="command">${command}</div>` : ''}
+              <h3>${escapeHtml(task.title)}</h3>
+              <p class="muted small">${formatInline(task.summary)}</p>
             </div>
           </div>
         `;
       }
 
       function renderDashboard(dashboard) {
+        const panels = (dashboard.panels.beginner || []).slice(0, 3);
         return `
-          <div class="row">
-            <span class="status ${dashboard.foregrounded ? 'available' : 'blocked'}">${dashboard.density}</span>
+          <article class="dashboard-card ${dashboard.foregrounded ? 'foregrounded' : ''}" data-visual-card="secondary">
             <div>
-              <h3>${dashboard.title}</h3>
-              <div class="muted small">${dashboard.id} · ${dashboard.stage}</div>
-              <p class="small">Beginner panels: ${(dashboard.panels.beginner || []).join(', ') || 'none'}</p>
-              ${(dashboard.commands || [])[0] ? `<div class="command">${dashboard.commands[0]}</div>` : ''}
+              <span class="status-pill ${dashboard.foregrounded ? 'available' : 'blocked'}">${dashboard.density}</span>
+              <h3>${escapeHtml(dashboard.title)}</h3>
+              <p class="muted small">${humanize(dashboard.stage)}</p>
             </div>
-          </div>
+            <div class="panel-list">
+              ${panels.map(panel => `<span class="panel-chip">${humanize(panel)}</span>`).join('')}
+            </div>
+          </article>
         `;
+      }
+
+      function summarizeProof(tasks, taskId) {
+        const task = tasks.find(item => item.id === taskId);
+        if (!task) return 'Not present';
+        return task.status === 'complete' ? 'Proven' : 'Pending evidence';
+      }
+
+      function renderRewards(rewards) {
+        if (!rewards.length) {
+          return '<p class="muted">No capabilities unlocked yet.</p>';
+        }
+        return rewards.slice(-4).reverse().map(reward => `
+          <div class="reward-item">
+            <span class="reward-dot" aria-hidden="true"></span>
+            <strong>${escapeHtml(reward)}</strong>
+          </div>
+        `).join('');
+      }
+
+      function bindDisclosure() {
+        const commandButton = document.getElementById('reveal-command');
+        const commandBlock = document.querySelector('[data-testid="revealed-command"]');
+        if (commandButton && commandBlock) {
+          commandButton.addEventListener('click', () => {
+            commandBlock.hidden = !commandBlock.hidden;
+          });
+        }
+
+        const deeperButton = document.getElementById('show-deeper');
+        const deeperDetail = document.getElementById('deeper-detail');
+        if (deeperButton && deeperDetail) {
+          deeperButton.addEventListener('click', () => {
+            deeperDetail.hidden = !deeperDetail.hidden;
+          });
+        }
       }
 
       async function render() {
         const data = await fetchJson('/api/progress');
         const next = data.primaryNextTask;
-        document.getElementById('next-panel').innerHTML = next ? `
-          <h2>Next Action</h2>
-          ${renderTask(next)}
-        ` : '<h2>Next Action</h2><p>All current progression tasks are complete.</p>';
+        document.getElementById('next-panel').innerHTML = next
+          ? renderNextTask(next)
+          : '<h2>Current slice complete</h2><p>All current BookStack progression tasks are complete.</p>';
 
-        document.getElementById('rewards').innerHTML = data.rewardsUnlocked.length
-          ? data.rewardsUnlocked.map(reward => `<div class="row"><span class="status complete">Done</span><div>${reward}</div></div>`).join('')
-          : '<p class="muted">No rewards unlocked yet. Run the scanner or complete the first evidence-backed task.</p>';
-
-        document.getElementById('tasks').innerHTML = data.tasks.map(renderTask).join('');
-        document.getElementById('dashboards').innerHTML = data.dashboards.map(renderDashboard).join('');
+        const foregrounded = data.dashboards.filter(dashboard => dashboard.foregrounded);
+        const visibleDashboards = foregrounded.length ? foregrounded.slice(0, 3) : data.dashboards.slice(0, 3);
+        document.getElementById('dashboard-count').textContent = `${data.dashboards.length} available`;
+        document.getElementById('dashboards').innerHTML = visibleDashboards.map(renderDashboard).join('');
+        document.getElementById('rewards').innerHTML = renderRewards(data.rewardsUnlocked || []);
+        document.getElementById('access-proof').textContent = summarizeProof(data.tasks, 'access.protect_bookstack');
+        document.getElementById('restore-proof').textContent = summarizeProof(data.tasks, 'recovery.prove_bookstack_restore');
+        document.getElementById('tasks').innerHTML = data.tasks.map(renderTaskPathTask).join('');
+        bindDisclosure();
       }
 
       document.getElementById('refresh').addEventListener('click', render);
@@ -220,7 +610,7 @@
         await render();
       });
       render().catch(error => {
-        document.getElementById('next-panel').innerHTML = `<h2>Next Action</h2><p>${error.message}</p>`;
+        document.getElementById('next-panel').innerHTML = `<h2>Progress unavailable</h2><p>${error.message}</p>`;
       });
     </script>
   </body>

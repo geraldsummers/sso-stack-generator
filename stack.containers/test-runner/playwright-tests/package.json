@@ -17,6 +17,7 @@
     "test:e2e:deep:forward-auth": "PW_WORKERS=1 ./scripts/with-runtime-env.sh playwright test tests/deep/forward-auth",
     "test:e2e:deep:oidc": "PW_WORKERS=1 ./scripts/with-runtime-env.sh playwright test tests/deep/oidc",
     "test:e2e:visual": "PW_WORKERS=1 ./scripts/with-runtime-env.sh ./scripts/run-visual-suite.sh",
+    "test:e2e:progression-visual": "PW_SKIP_GLOBAL_SETUP=1 PW_WORKERS=1 playwright test tests/visual/progression-dashboard.spec.ts",
     "test:e2e:workflow": "npm run test:e2e:deep",
     "test:e2e:all": "npm run test:e2e && npm run test:e2e:workflow && npm run test:e2e:visual",
     "test:e2e:one": "./scripts/with-runtime-env.sh playwright test",

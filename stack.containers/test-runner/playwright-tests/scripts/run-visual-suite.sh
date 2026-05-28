@@ -66,6 +66,7 @@ preflight_visual_stack() {
     mastodon-sidekiq \
     ntfy \
     planka \
+    progression \
     prometheus \
     search-service \
     seafile \
