@@ -310,6 +310,20 @@ describe('telemetry', () => {
     expect(safeUrl).not.toContain('fragment-token');
   });
 
+  it('redacts token-like URL parameters from bare hash callback fragments', () => {
+    const safeUrl = redactUrlForLogs(
+      'https://planka.datamancy.net/oidc-callback#state=opaque-state&session_state=opaque-session&code=auth-code&safe=value'
+    );
+
+    expect(safeUrl).toContain('safe=value');
+    expect(safeUrl).toContain('state=REDACTED');
+    expect(safeUrl).toContain('session_state=REDACTED');
+    expect(safeUrl).toContain('code=REDACTED');
+    expect(safeUrl).not.toContain('opaque-state');
+    expect(safeUrl).not.toContain('opaque-session');
+    expect(safeUrl).not.toContain('auth-code');
+  });
+
   it('uses the default empty prefix for network logging', () => {
     const page = createPage();
     setupNetworkLogging(page as never);

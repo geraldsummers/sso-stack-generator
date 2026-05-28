@@ -19,8 +19,19 @@ function redactSearchParams(searchParams: URLSearchParams): void {
 }
 
 function redactUrlHash(hash: string): string {
-  if (!hash.includes('?')) {
+  if (!hash) {
     return hash;
+  }
+
+  if (!hash.includes('?')) {
+    if (!hash.includes('=')) {
+      return hash;
+    }
+
+    const hashPrefix = hash.startsWith('#') ? '#' : '';
+    const fragmentSearchParams = new URLSearchParams(hash.slice(hashPrefix.length));
+    redactSearchParams(fragmentSearchParams);
+    return `${hashPrefix}${fragmentSearchParams.toString()}`;
   }
 
   const [fragmentPath, fragmentQueryAndSuffix] = hash.split('?', 2);
