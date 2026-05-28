@@ -1,0 +1,227 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Sovereign Compute Progression</title>
+    <style>
+      :root {
+        color-scheme: light;
+        --bg: #f7f8fb;
+        --panel: #ffffff;
+        --ink: #172033;
+        --muted: #667085;
+        --line: #d7dce5;
+        --accent: #0f766e;
+        --accent-soft: #d9f3ef;
+        --warn: #9a3412;
+        --warn-soft: #fff4e8;
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        font: 15px/1.5 Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        background: var(--bg);
+        color: var(--ink);
+      }
+      header {
+        padding: 24px clamp(18px, 4vw, 48px);
+        border-bottom: 1px solid var(--line);
+        background: #fff;
+      }
+      h1, h2, h3 { margin: 0; line-height: 1.15; letter-spacing: 0; }
+      h1 { font-size: clamp(28px, 4vw, 44px); }
+      h2 { font-size: 20px; }
+      h3 { font-size: 16px; }
+      main {
+        width: min(1280px, calc(100% - 32px));
+        margin: 24px auto 48px;
+        display: grid;
+        gap: 16px;
+      }
+      .subhead {
+        margin-top: 8px;
+        max-width: 820px;
+        color: var(--muted);
+      }
+      .grid {
+        display: grid;
+        grid-template-columns: minmax(0, 1.1fr) minmax(320px, 0.9fr);
+        gap: 16px;
+        align-items: start;
+      }
+      .panel {
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        padding: 16px;
+      }
+      .task-list, .dashboard-list, .claims {
+        display: grid;
+        gap: 8px;
+        margin-top: 12px;
+      }
+      .row {
+        display: grid;
+        grid-template-columns: 112px minmax(0, 1fr);
+        gap: 10px;
+        align-items: start;
+        padding: 10px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: #fff;
+      }
+      .status {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 28px;
+        padding: 3px 8px;
+        border-radius: 999px;
+        border: 1px solid var(--line);
+        font-size: 12px;
+        font-weight: 700;
+        text-transform: uppercase;
+      }
+      .complete { background: var(--accent-soft); color: var(--accent); border-color: #9fd7cd; }
+      .available { background: var(--warn-soft); color: var(--warn); border-color: #fed7aa; }
+      .blocked { background: #f3f4f6; color: #4b5563; }
+      .primary {
+        border-color: #9fd7cd;
+        background: linear-gradient(180deg, #fff, #f4fbfa);
+      }
+      .command {
+        margin-top: 8px;
+        padding: 10px;
+        border-radius: 6px;
+        background: #111827;
+        color: #e5e7eb;
+        overflow-wrap: anywhere;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+        font-size: 13px;
+      }
+      .muted { color: var(--muted); }
+      .small { font-size: 13px; }
+      ul { padding-left: 18px; }
+      button {
+        appearance: none;
+        border: 1px solid #0f766e;
+        background: #0f766e;
+        color: white;
+        border-radius: 6px;
+        padding: 8px 10px;
+        font-weight: 700;
+        cursor: pointer;
+      }
+      button.secondary {
+        background: #fff;
+        color: #0f766e;
+      }
+      .actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+      @media (max-width: 880px) {
+        .grid { grid-template-columns: 1fr; }
+        .row { grid-template-columns: 1fr; }
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>Sovereign Compute Progression</h1>
+      <p class="subhead">A calm operating layer for learning the real stack. Rewards are unlocked only by verified evidence.</p>
+    </header>
+    <main>
+      <section class="grid">
+        <article class="panel primary" id="next-panel">
+          <h2>Next Action</h2>
+          <p class="muted">Loading current progression state...</p>
+        </article>
+        <aside class="panel">
+          <h2>Unlocked Capabilities</h2>
+          <div id="rewards" class="claims"></div>
+          <div class="actions">
+            <button type="button" id="refresh">Refresh</button>
+            <button type="button" class="secondary" id="scan">Run scanner</button>
+          </div>
+        </aside>
+      </section>
+      <section class="grid">
+        <article class="panel">
+          <h2>Ownership Path</h2>
+          <div id="tasks" class="task-list"></div>
+        </article>
+        <aside class="panel">
+          <h2>Dashboards</h2>
+          <div id="dashboards" class="dashboard-list"></div>
+        </aside>
+      </section>
+    </main>
+    <script>
+      async function fetchJson(path, options) {
+        const response = await fetch(path, options || {});
+        if (!response.ok) throw new Error(`${path} returned ${response.status}`);
+        return response.json();
+      }
+
+      function statusClass(status) {
+        return status === 'complete' ? 'complete' : status === 'available' ? 'available' : 'blocked';
+      }
+
+      function renderTask(task) {
+        const command = (task.commands.guided || [])[0];
+        const missing = (task.missingEvidence || []).slice(0, 4);
+        return `
+          <div class="row">
+            <span class="status ${statusClass(task.status)}">${task.status}</span>
+            <div>
+              <h3>${task.title}</h3>
+              <div class="muted small">${task.id}</div>
+              <p>${task.surfaces.now}</p>
+              <p class="muted">${task.surfaces.why}</p>
+              ${missing.length ? `<div class="small"><strong>Missing evidence:</strong><ul>${missing.map(item => `<li>${item}</li>`).join('')}</ul></div>` : ''}
+              ${command ? `<div class="command">${command}</div>` : ''}
+            </div>
+          </div>
+        `;
+      }
+
+      function renderDashboard(dashboard) {
+        return `
+          <div class="row">
+            <span class="status ${dashboard.foregrounded ? 'available' : 'blocked'}">${dashboard.density}</span>
+            <div>
+              <h3>${dashboard.title}</h3>
+              <div class="muted small">${dashboard.id} · ${dashboard.stage}</div>
+              <p class="small">Beginner panels: ${(dashboard.panels.beginner || []).join(', ') || 'none'}</p>
+              ${(dashboard.commands || [])[0] ? `<div class="command">${dashboard.commands[0]}</div>` : ''}
+            </div>
+          </div>
+        `;
+      }
+
+      async function render() {
+        const data = await fetchJson('/api/progress');
+        const next = data.primaryNextTask;
+        document.getElementById('next-panel').innerHTML = next ? `
+          <h2>Next Action</h2>
+          ${renderTask(next)}
+        ` : '<h2>Next Action</h2><p>All current progression tasks are complete.</p>';
+
+        document.getElementById('rewards').innerHTML = data.rewardsUnlocked.length
+          ? data.rewardsUnlocked.map(reward => `<div class="row"><span class="status complete">Done</span><div>${reward}</div></div>`).join('')
+          : '<p class="muted">No rewards unlocked yet. Run the scanner or complete the first evidence-backed task.</p>';
+
+        document.getElementById('tasks').innerHTML = data.tasks.map(renderTask).join('');
+        document.getElementById('dashboards').innerHTML = data.dashboards.map(renderDashboard).join('');
+      }
+
+      document.getElementById('refresh').addEventListener('click', render);
+      document.getElementById('scan').addEventListener('click', async () => {
+        await fetchJson('/api/scan', { method: 'POST' });
+        await render();
+      });
+      render().catch(error => {
+        document.getElementById('next-panel').innerHTML = `<h2>Next Action</h2><p>${error.message}</p>`;
+      });
+    </script>
+  </body>
+</html>

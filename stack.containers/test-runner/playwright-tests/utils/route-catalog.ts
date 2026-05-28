@@ -322,6 +322,25 @@ export const browserRouteCatalog: BrowserRoute[] = [
     ownership: { route: true, smoke: true, visual: true, deep: true },
   },
   {
+    host: 'progress',
+    label: 'Progression',
+    kind: 'forward_auth',
+    anonymous: { kind: 'forward_auth' },
+    smoke: {
+      matcher: /Sovereign Compute Progression|Ownership Path|Next Action/i,
+      selector: 'text=/Sovereign Compute Progression|Ownership Path|Next Action/i',
+      disallowMatcher: /\bSign in to your account\b|\b503 Service Unavailable\b/i,
+    },
+    visual: {
+      fileStem: 'progression-authenticated',
+      matcher: /Sovereign Compute Progression|Ownership Path|Next Action/i,
+      selector: 'text=/Sovereign Compute Progression|Ownership Path|Next Action/i',
+      disallowMatcher: /\bSign in to your account\b|\b503 Service Unavailable\b/i,
+      quality: 85,
+    },
+    ownership: { route: true, smoke: true, visual: true, deep: false },
+  },
+  {
     host: 'keycloak',
     label: 'Keycloak Portal',
     kind: 'non_ui',

@@ -11,6 +11,7 @@ Experimental, Unknown, and Not applicable.
 | Workspaces | Partial | Experimental | Partial | Not applicable | AI Sovereign Lab | Disposable workspace runtime has more moving parts. |
 | Search Service | Partial | Partial | Partial | Not applicable | AI Sovereign Lab | Depends on ingestion and vector storage quality. |
 | BookStack | Good | Partial | Good | Not applicable | Secure Core | Strong docs fit; restore should include app data and database. |
+| Progression | Good | Partial | Partial | Not applicable | Secure Core | Evidence-backed apprenticeship layer; MVP focuses on BookStack ownership. |
 | SOGo | Partial | Partial | Partial | Good | Ops Platform | Mail/calendar clients add configuration and deliverability caveats. |
 | Planka | Good | Partial | Partial | Not applicable | Ops Platform | Project data should be included in backup scope. |
 | Element | Good | Partial | Partial | Partial | Ops Platform | Matrix/native client behavior needs planned identity handling. |

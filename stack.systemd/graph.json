@@ -132,7 +132,8 @@
         "synapse",
         "synapse-room-bootstrap",
         "workspace-provisioner",
-        "chatgpt-connector"
+        "chatgpt-connector",
+        "progression"
       ]
     }
   ],

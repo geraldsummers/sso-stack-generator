@@ -124,6 +124,13 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
 export DIST_DIR="$SCRIPT_DIR/build"
 exec "$SCRIPT_DIR/build/stack.containers/test-runner/run-tests.sh" "$@"
 EOF_RUN_TESTS
+
+  cat > "$DIST_DIR/stackctl" <<'EOF_STACKCTL'
+#!/usr/bin/env bash
+set -euo pipefail
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
+exec "$SCRIPT_DIR/build/scripts/stackctl.sh" "$@"
+EOF_STACKCTL
 else
   cat > "$DIST_DIR/deploy.sh" <<'EOF_DEPLOY'
 #!/usr/bin/env bash
@@ -146,9 +153,16 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
 export DIST_DIR="$SCRIPT_DIR/build"
 exec "$SCRIPT_DIR/build/stack.containers/test-runner/run-tests.sh" "$@"
 EOF_RUN_TESTS
+
+  cat > "$DIST_DIR/stackctl" <<'EOF_STACKCTL'
+#!/usr/bin/env bash
+set -euo pipefail
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
+exec "$SCRIPT_DIR/build/scripts/stackctl.sh" "$@"
+EOF_STACKCTL
 fi
 
-chmod +x "$DIST_DIR/deploy.sh" "$DIST_DIR/verify.sh" "$DIST_DIR/run-tests.sh"
+chmod +x "$DIST_DIR/deploy.sh" "$DIST_DIR/verify.sh" "$DIST_DIR/run-tests.sh" "$DIST_DIR/stackctl"
 
 if [ "$BUILD_PROFILE" = "testdev" ]; then
   cat > "$DIST_DIR/testdev-up.sh" <<'EOF_TESTDEV_UP'

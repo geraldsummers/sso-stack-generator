@@ -62,6 +62,10 @@
         description: Social Network
 
 - System:
+    - Progression:
+        href: https://progress.{{DOMAIN}}
+        description: Evidence-backed stack apprenticeship
+
     - Grafana:
         href: https://grafana.{{DOMAIN}}
         description: Monitoring Dashboard

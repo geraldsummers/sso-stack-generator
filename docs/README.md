@@ -75,6 +75,7 @@ Use this path to understand the larger pattern without turning the docs into a
 manifesto:
 
 - [Mission](mission.md)
+- [Sovereign Compute Progression Layer](product/sovereign-compute-progression-layer.md)
 - [Buyer Overview](buyer-overview.md)
 - [Packages](packages.md)
 
@@ -110,6 +111,7 @@ gate.
 
 - [Buyer Overview](buyer-overview.md): plain-language offer and next step.
 - [Mission](mission.md): grounded sovereignty-infrastructure thesis.
+- [Sovereign Compute Progression Layer](product/sovereign-compute-progression-layer.md): serious-game apprenticeship layer and implementation model.
 - [Packages](packages.md): buyer package tiers and scope boundaries.
 - [Client Intake](client-intake.md): repeatable pre-engagement questions.
 - [Host Sizing](host-sizing.md): starting host profiles and caveats.

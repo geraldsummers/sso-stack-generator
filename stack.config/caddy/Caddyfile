@@ -637,6 +637,17 @@ api.mastodon.{$DOMAIN}, api.social.{$DOMAIN} {
 }
 # webservices-component-end homepage
 
+# Sovereign compute progression layer.
+# webservices-component-start progression
+progress.{$DOMAIN} {
+	import access_observability
+	route {
+		import keycloak_auth progression
+		reverse_proxy progression:8130
+	}
+}
+# webservices-component-end progression
+
 # Homepage - www redirects to apex
 www.{$DOMAIN} {
 	import access_observability

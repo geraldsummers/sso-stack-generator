@@ -167,6 +167,7 @@ preflight() {
   docker compose version >/dev/null 2>&1 || die "docker compose plugin is unavailable"
   resolve_site_manifest_file "$site_manifest_path" >/dev/null
   ensure_runtime_links "$DEPLOY_ROOT" >/dev/null
+  mkdir -p "$DEPLOY_ROOT/runtime/progression"
   ensure_user_systemd_env
   deploy_log "preflight ok (bundle=$BUNDLE_ROOT siteManifestPath=$site_manifest_path)"
 }

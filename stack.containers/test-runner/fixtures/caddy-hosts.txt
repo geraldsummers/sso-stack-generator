@@ -30,6 +30,7 @@ mastodon
 api.mastodon
 apex
 homepage
+progress
 workspaces
 www
 mail

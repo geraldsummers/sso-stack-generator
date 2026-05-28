@@ -1,0 +1,38 @@
+services:
+  progression:
+    image: webservices/progression:local-build
+    build:
+      context: .
+      dockerfile: ./stack.containers/progression/Dockerfile
+    container_name: progression
+    restart: unless-stopped
+    user: "${DOCKER_USER_ID:-1000}:${DOCKER_GROUP_ID:-1000}"
+    networks:
+      - caddy
+    depends_on:
+      caddy:
+        condition: service_started
+      keycloak-auth-gateway:
+        condition: service_started
+    environment:
+      PROGRESSION_PORT: 8130
+      PROGRESSION_BUNDLE_ROOT: /bundle
+      PROGRESSION_DEPLOY_ROOT: /deploy
+      PROGRESSION_RUNTIME_DIR: /runtime/progression
+    volumes:
+      - ./docker-compose.yml:/bundle/docker-compose.yml:ro
+      - ./build-info.json:/bundle/build-info.json:ro
+      - ./site/manifest.json:/bundle/site/manifest.json:ro
+      - ./stack.config/progression:/bundle/stack.config/progression:ro
+      - ./stack.config/caddy/Caddyfile:/bundle/stack.config/caddy/Caddyfile:ro
+      - ./stack.config/keycloak/configure-runtime.sh:/bundle/stack.config/keycloak/configure-runtime.sh:ro
+      - ./stack.systemd:/bundle/stack.systemd:ro
+      - ${SYSTEMD_USER_RUNTIME_DIR:?SYSTEMD_USER_RUNTIME_DIR is required}/webservices-runtime/progression:/runtime/progression
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - wget --quiet --tries=1 --timeout=3 -O- http://127.0.0.1:8130/health | grep -q ok
+      interval: 15s
+      timeout: 5s
+      retries: 20
+      start_period: 60s

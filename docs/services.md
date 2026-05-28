@@ -49,6 +49,7 @@ URLs are shown as `https://<subdomain>.<domain>`. Replace `<domain>` with the si
 
 | Service | URL | Purpose |
 | --- | --- | --- |
+| Progression | `https://progress.<domain>` | Evidence-backed apprenticeship dashboard and `stackctl` mirror. |
 | Grafana | `https://grafana.<domain>` | Monitoring dashboards. |
 | Kopia | `https://kopia.<domain>` | Backups. |
 | Home Assistant | `https://homeassistant.<domain>` | Home automation. |

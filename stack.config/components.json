@@ -61,6 +61,12 @@
       "dependencies": ["core"],
       "composeFiles": ["bookstack.yml"]
     },
+    "progression": {
+      "name": "Sovereign compute progression",
+      "description": "Evidence-backed dashboard and stackctl apprenticeship layer.",
+      "dependencies": ["bookstack"],
+      "composeFiles": ["progression.yml"]
+    },
     "chatgpt-connector": {
       "name": "ChatGPT connector",
       "description": "Model-context connector backed by search and workspace APIs.",
@@ -218,7 +224,8 @@
         "chatgpt-connector",
         "forgejo-runner",
         "observability",
-        "pipeline"
+        "pipeline",
+        "progression"
       ],
       "composeFiles": []
     }

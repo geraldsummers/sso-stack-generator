@@ -1,0 +1,58 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://webservices.local/schema/progression-task.schema.json",
+  "type": "object",
+  "required": ["tasks"],
+  "properties": {
+    "tasks": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "track", "stage", "title", "summary", "surfaces", "evidence", "reward"],
+        "properties": {
+          "id": { "type": "string", "pattern": "^[a-z0-9_.-]+$" },
+          "track": { "type": "string" },
+          "stage": { "type": "string" },
+          "title": { "type": "string" },
+          "summary": { "type": "string" },
+          "requires": { "type": "array", "items": { "type": "string" } },
+          "surfaces": {
+            "type": "object",
+            "required": ["now", "why"],
+            "properties": {
+              "now": { "type": "string" },
+              "why": { "type": "string" },
+              "deeper": { "type": "array", "items": { "type": "string" } }
+            }
+          },
+          "commands": {
+            "type": "object",
+            "properties": {
+              "guided": { "type": "array", "items": { "type": "string" } },
+              "verify": { "type": "array", "items": { "type": "string" } }
+            }
+          },
+          "evidence": {
+            "type": "object",
+            "required": ["required"],
+            "properties": {
+              "required": { "type": "array", "items": { "type": "string" } }
+            }
+          },
+          "reward": {
+            "type": "object",
+            "required": ["name", "capability"],
+            "properties": {
+              "name": { "type": "string" },
+              "capability": { "type": "string" }
+            }
+          },
+          "riskReduction": {
+            "type": "object",
+            "additionalProperties": { "type": "string" }
+          }
+        }
+      }
+    }
+  }
+}
