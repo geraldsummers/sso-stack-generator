@@ -20,10 +20,10 @@ test.use({ storageState: authenticatedSessionState });
       page,
       'qBittorrent',
       serviceUrl('qbittorrent'),
-      /qBittorrent.*WebUI|\bUsername\b|\bPassword\b|JavaScript Required/i,
+      /qBittorrent.*WebUI|Add Torrent|Transfers|Downloading|Seeding|\bUsername\b|\bPassword\b|JavaScript Required/i,
       {
         requireUI: true,
-        waitForSelectorVisible: 'input[name="username"], input[type="password"], #loginButton',
+        waitForSelectorVisible: '#mainWindow, #desktop, #torrentsTable, input[name="username"], input[type="password"], #loginButton',
         waitForSelectorTimeoutMs: 30000,
         disallowPatterns: [
           /Invalid Username or Password/i,
@@ -34,8 +34,9 @@ test.use({ storageState: authenticatedSessionState });
         onAfterLoad: async (page) => {
           await expect(page).toHaveTitle(/qBittorrent.*WebUI/i);
           await expect(page).not.toHaveURL(/keycloak|keycloak-auth|:9091/i);
+          const fullWebUi = page.locator('#mainWindow, #desktop, #torrentsTable').first();
           const loginInputs = page.locator('input[name="username"], input[type="password"], #loginButton');
-          await expect(loginInputs.first()).toBeVisible({ timeout: 30000 });
+          await expect(fullWebUi.or(loginInputs.first())).toBeVisible({ timeout: 30000 });
           await expect(page.locator('body')).not.toContainText(/Invalid Username or Password/i);
         },
       }

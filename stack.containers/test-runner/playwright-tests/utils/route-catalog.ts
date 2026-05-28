@@ -471,9 +471,9 @@ export const browserRouteCatalog: BrowserRoute[] = [
     kind: 'forward_auth',
     anonymous: { kind: 'forward_auth' },
     smoke: {
-      // qBittorrent keeps its native WebUI auth gate behind edge SSO.
-      matcher: /qBittorrent.*WebUI|\bUsername\b|\bPassword\b|JavaScript Required/i,
-      selector: 'input[name="username"], input[type="password"], #loginButton',
+      // qBittorrent may either keep its native WebUI auth gate or trust the Caddy proxy.
+      matcher: /qBittorrent.*WebUI|Add Torrent|Transfers|Downloading|Seeding|\bUsername\b|\bPassword\b|JavaScript Required/i,
+      selector: '#mainWindow, #desktop, #torrentsTable, input[name="username"], input[type="password"], #loginButton, text=/Transfers|Add Torrent|JavaScript Required/i',
       disallowMatcher: /Invalid Username or Password/im,
       disallowUrlMatcher: /keycloak|keycloak-auth/i,
     },
