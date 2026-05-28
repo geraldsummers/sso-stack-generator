@@ -247,7 +247,6 @@ storage:
   media_writer_uid: "1000"
   media_writer_gid: "1000"
   custom:
-    qbittorrent_data: "/mnt/media/qbittorrent"
     seafile_media: "/mnt/media/seafile-media"
     jellyfin_media: "/mnt/media/jellyfin-media"
 

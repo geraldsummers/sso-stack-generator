@@ -14,12 +14,11 @@ Automated pattern matching can give:
 
 | Test Status | Visual Reality | Why Pattern Failed |
 |-------------|----------------|-------------------|
-| ❌ FAILED | ✅ qBittorrent working | Pattern didn't match UI elements |
 | ❌ FAILED | ✅ Kopia working | Pattern too strict for title |
 | ❌ FAILED | ✅ Prometheus working | Timing issue before pattern check |
 | ✅ PASSED | ❌ Shows error page | Error page has content > 10 chars |
 
-**Result:** Without screenshots, we would have thought 3 working services were broken!
+**Result:** Without screenshots, we would have thought working services were broken.
 
 ---
 
@@ -137,13 +136,6 @@ URL: prometheus.datamancy.net
 Title: "Prometheus"
 ```
 
-**qBittorrent:**
-```
-Shows: Sidebar with categories, torrent list (empty ok), top menu
-URL: qbittorrent.datamancy.net
-Title: "qBittorrent WebUI"
-```
-
 ### ❌ Bad: Service Broken
 
 **Cloudflare SSL Error:**
@@ -181,10 +173,10 @@ If screenshot shows service working but test fails:
 **Example Fix:**
 ```typescript
 // Before: Too strict
-/qBittorrent WebUI/i
+/KopiaUI/i
 
 // After: More flexible
-/qBittorrent|Add Torrent|Transfers/i
+/Kopia|Snapshots|Policies|Repository/i
 ```
 
 ---

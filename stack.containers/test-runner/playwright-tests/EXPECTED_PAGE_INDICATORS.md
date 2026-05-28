@@ -19,7 +19,6 @@ The browser tests verify that protected routes land on the intended service UI, 
 - Seafile: `/Seafile|Libraries|My Libraries|Shared with me|Favorites|Shared Links|Devices|Wiki/i`
 - ntfy: `/ntfy/i`
 - Search: `/webservices Search|Search Knowledge Base|Hybrid|Semantic|Keyword/i`
-- qBittorrent: `/qBittorrent.*WebUI|Add Torrent|Transfers|Downloading|Seeding/i`
 - Home Assistant: `/Overview|Developer Tools|History|Logbook|Automations|Devices|Areas|Integrations|Energy/i`
 - Kopia: `/KopiaUI/i`
 - Pipeline Monitor: `/webservices Pipeline Monitor|Pipeline Readiness|Sources|Status|Data Pipeline/i`

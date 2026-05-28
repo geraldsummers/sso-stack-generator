@@ -9,7 +9,6 @@ import java.io.File
 data class PipelineConfig(
     val rss: RssConfig = RssConfig(),
     val cve: CveConfig = CveConfig(),
-    val torrents: TorrentsConfig = TorrentsConfig(),
     val binance: BinanceConfig = BinanceConfig(),
     val market: MarketConfig = MarketConfig(),
     val openDota: OpenDotaConfig = OpenDotaConfig(),
@@ -112,14 +111,6 @@ data class PipelineConfig(
                     scheduleMinutes = getEnvOrPropertyInt("CVE_SCHEDULE_MINUTES", 1440, min = 1),
                     maxResults = getEnvOrPropertyInt("CVE_MAX_RESULTS", 2000, min = 1)
                 ),
-                torrents = TorrentsConfig(
-                    enabled = getEnvOrPropertyBoolean("TORRENTS_ENABLED", true),
-                    dataPath = getEnvOrProperty("TORRENTS_DATA_PATH")
-                        ?: "https://codeberg.org/heretic/torrents-csv-data/raw/branch/main/torrents.csv",
-                    scheduleMinutes = getEnvOrPropertyInt("TORRENTS_SCHEDULE_MINUTES", 10080, min = 1),
-                    maxResults = getEnvOrPropertyInt("TORRENTS_MAX_RESULTS", Int.MAX_VALUE, min = 1),
-                    startLine = getEnvOrPropertyLong("TORRENTS_START_LINE", 0)
-                ),
                 binance = BinanceConfig(
                     enabled = getEnvOrPropertyBoolean("BINANCE_ENABLED", false),
                     symbols = getEnvOrProperty("BINANCE_SYMBOLS")?.split(",")?.filter { it.isNotBlank() } ?: emptyList(),
@@ -202,7 +193,6 @@ data class PipelineConfig(
                     apiKey = getEnvOrProperty("QDRANT_API_KEY") ?: "",
                     rssCollection = getEnvOrProperty("QDRANT_RSS_COLLECTION") ?: "rss_feeds",
                     cveCollection = getEnvOrProperty("QDRANT_CVE_COLLECTION") ?: "cve",
-                    torrentsCollection = getEnvOrProperty("QDRANT_TORRENTS_COLLECTION") ?: "torrents",
                     marketCollection = getEnvOrProperty("QDRANT_MARKET_COLLECTION") ?: "market_data",
                     openDotaCollection = getEnvOrProperty("QDRANT_OPEN_DOTA_COLLECTION") ?: "opendota_matches",
                     poeNinjaCollection = getEnvOrProperty("QDRANT_POE_NINJA_COLLECTION") ?: "poe_ninja_prices",
@@ -309,15 +299,6 @@ data class CveConfig(
 )
 
 @Serializable
-data class TorrentsConfig(
-    val enabled: Boolean = false,
-    val dataPath: String = "https://codeberg.org/heretic/torrents-csv-data/raw/branch/main/torrents.csv",  
-    val scheduleMinutes: Int = 10080,  
-    val maxResults: Int = Int.MAX_VALUE,
-    val startLine: Long = 0  
-)
-
-@Serializable
 data class BinanceConfig(
     val enabled: Boolean = false,
     val symbols: List<String> = emptyList(),
@@ -333,7 +314,6 @@ data class QdrantConfig(
     val apiKey: String = "",
     val rssCollection: String = "rss_feeds",
     val cveCollection: String = "cve",
-    val torrentsCollection: String = "torrents",
     val marketCollection: String = "market_data",
     val openDotaCollection: String = "opendota_matches",
     val poeNinjaCollection: String = "poe_ninja_prices",

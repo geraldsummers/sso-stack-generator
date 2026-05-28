@@ -135,7 +135,7 @@ List available collections.
 **Response**:
 ```json
 {
-  "collections": ["rss_feeds", "cve", "torrents", "wikipedia", "australian_laws", "linux_docs"]
+  "collections": ["rss_feeds", "cve", "wikipedia", "australian_laws", "linux_docs"]
 }
 ```
 
@@ -231,18 +231,6 @@ Combines vector and BM25 search, merging and re-ranking results.
 ```
 
 **Content**: CVE entries, security advisories
-
-### Torrents
-```json
-{
-  "query": "ubuntu linux distribution iso",
-  "mode": "hybrid",
-  "collections": ["torrents"],
-  "limit": 10
-}
-```
-
-**Content**: Torrent metadata (legal content only)
 
 ### Wikipedia
 ```json

@@ -74,19 +74,6 @@ class RealDataIntegrationTest {
     }
 
     @Test
-    fun `Torrents source should be properly formatted`() {
-        
-        
-        
-        println("⊘ Torrents: Skipped (199MB CSV + flow short-circuit issue)")
-
-        
-        val source = TorrentsStandardizedSource(maxTorrents = 10)
-        assertTrue(source.name == "torrents")
-        assertTrue(!source.needsChunking())
-    }
-
-    @Test
     fun `Debian Wiki should fetch and validate pages if available`() = runBlocking {
         
         val source = DebianWikiStandardizedSource(maxPages = 5, categories = emptyList())

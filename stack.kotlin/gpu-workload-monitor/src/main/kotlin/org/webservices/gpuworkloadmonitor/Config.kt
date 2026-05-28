@@ -12,7 +12,7 @@ fun loadConfig(): WorkloadMonitorConfig {
         postgresPassword = System.getenv("POSTGRES_PASSWORD") ?: "",
         sourceIds = env(
             "GPU_WORKLOAD_MONITOR_SOURCE_IDS",
-            "rss,cve,torrents,wikipedia,australian_laws,linux_docs,debian_wiki,arch_wiki"
+            "rss,cve,wikipedia,australian_laws,linux_docs,debian_wiki,arch_wiki"
         ).split(',').mapNotNull { it.trim().takeIf(String::isNotEmpty) }.distinct(),
         knowledgeIngestionReadinessBaseUrl = env(
             "GPU_WORKLOAD_MONITOR_READINESS_BASE_URL",

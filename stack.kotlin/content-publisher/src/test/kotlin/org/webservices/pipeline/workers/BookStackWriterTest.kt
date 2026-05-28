@@ -244,22 +244,6 @@ class BookStackWriterTest {
         assertTrue(rss.pageContent.contains("Summary"))
         assertTrue(rss.tags["feed"] == "Web Services")
 
-        val torrent = invoke<BookStackDocument>(
-            writer,
-            "toBookStackDocument",
-            doc(
-                source = "torrents",
-                metadata = mapOf(
-                    "infohash" to "deadbeef",
-                    "sizeBytes" to "1048576",
-                    "seeders" to "10",
-                    "leechers" to "2"
-                )
-            )
-        )
-        assertEquals("Torrent Index", torrent.bookName)
-        assertTrue(torrent.pageContent.contains("magnet:?xt=urn:btih:deadbeef"))
-
         val wikipedia = invoke<BookStackDocument>(
             writer,
             "toBookStackDocument",

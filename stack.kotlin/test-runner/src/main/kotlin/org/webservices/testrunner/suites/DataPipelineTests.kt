@@ -165,26 +165,6 @@ suspend fun TestRunner.dataPipelineTests() = suite("Data Pipeline Tests") {
         )
     }
 
-    fun sampleTorrentQuery(): String {
-        val title = postgresScalar(
-            """
-            SELECT COALESCE(metadata::json->>'name', metadata::json->>'title')
-            FROM document_staging
-            WHERE collection = 'torrents'
-              AND embedding_status = 'COMPLETED'
-              AND COALESCE(metadata::json->>'name', metadata::json->>'title') IS NOT NULL
-            ORDER BY created_at DESC
-            LIMIT 1
-            """.trimIndent(),
-            timeoutSeconds = 15
-        ) ?: error(
-            "No searchable torrent title found in document_staging within 15s; " +
-                "check idx_staging_collection_status_created and document_staging load"
-        )
-        return normalizeKeywordQuery(title)
-    }
-
-
     suspend fun getPipelineResponse(path: String): HttpResponse? {
         val suffix = if (path.startsWith("/")) path else "/$path"
         val candidateBases = buildList {
@@ -314,7 +294,7 @@ suspend fun TestRunner.dataPipelineTests() = suite("Data Pipeline Tests") {
 
     test("Qdrant has expected pipeline collections") {
         val expectedCollections = listOf(
-            "rss_feeds", "cve", "torrents",
+            "rss_feeds", "cve",
             "wikipedia", "australian_laws", "linux_docs"
         )
 
@@ -419,7 +399,7 @@ suspend fun TestRunner.dataPipelineTests() = suite("Data Pipeline Tests") {
     }
 
     test("Vector dimensions are consistent") {
-        val collections = listOf("rss_feeds", "cve", "torrents", "wikipedia", "australian_laws", "linux_docs")
+        val collections = listOf("rss_feeds", "cve", "wikipedia", "australian_laws", "linux_docs")
         val dimensions = mutableMapOf<String, Long>()
 
         for (collection in collections) {
@@ -497,65 +477,6 @@ suspend fun TestRunner.dataPipelineTests() = suite("Data Pipeline Tests") {
     test("CVE: Pipeline tracks processing stats") {
         assertSourceStats("cve", "cve", "CVE")
     }
-
-    
-    
-    
-
-    test("Torrents: Pipeline source is enabled") {
-        val status = getSourceStatus("torrents")
-        require(status != null) { "Torrents source status not available" }
-
-        val enabled = status["enabled"]?.jsonPrimitive?.boolean
-        enabled shouldBe true
-        println("      ✓ Torrents pipeline is enabled")
-    }
-
-    test("Torrents: Collection is created") {
-        val info = getQdrantCollectionInfo("torrents")
-        require(info != null) { "Torrents collection not found in Qdrant" }
-        println("      ✓ Torrents collection exists in Qdrant")
-    }
-
-    test("Torrents: Data is being ingested") {
-        delay(10000)
-
-        val count = getVectorCount("torrents")
-        require(count > 0) { "Torrents collection exists but has no data" }
-        println("      ✓ Torrents collection has $count vectors")
-    }
-
-    test("Torrents: Search returns torrent-specific metadata") {
-        requireSourceSearchReady(runner, searchReadinessCache, "torrents", "Torrent search corpus")
-        val results = searchInCollection("torrents", sampleTorrentQuery(), limit = 5)
-        require(results != null && results.isNotEmpty()) { "No torrent data available for search test" }
-        val firstResult = results.first().jsonObject
-        val metadata = firstResult["metadata"]?.jsonObject
-
-        val hasTorrentFields = metadata?.containsKey("infohash") == true ||
-                              metadata?.containsKey("seeders") == true ||
-                              metadata?.containsKey("sizeBytes") == true
-
-        hasTorrentFields shouldBe true
-        println("      ✓ Torrent results contain expected metadata")
-    }
-
-    test("Torrents: Checkpoint tracking works") {
-        val status = getSourceStatus("torrents")
-        require(status != null) { "Torrents source status not available" }
-
-        val checkpoint = status["checkpointData"]?.jsonObject
-        require(checkpoint != null) { "Torrents checkpoint data missing" }
-        println("      ✓ Torrents checkpoint: ${checkpoint}")
-    }
-
-    test("Torrents: Pipeline tracks processing stats") {
-        assertSourceStats("torrents", "torrents", "Torrents")
-    }
-
-    
-    
-    
 
     test("Wikipedia: Pipeline source is enabled") {
         val status = getSourceStatus("wikipedia")
@@ -773,7 +694,6 @@ suspend fun TestRunner.dataPipelineTests() = suite("Data Pipeline Tests") {
         val initialCounts = mapOf(
             "rss_feeds" to getVectorCount("rss_feeds"),
             "cve" to getVectorCount("cve"),
-            "torrents" to getVectorCount("torrents"),
             "wikipedia" to getVectorCount("wikipedia"),
             "australian_laws" to getVectorCount("australian_laws"),
             "linux_docs" to getVectorCount("linux_docs")
@@ -781,7 +701,7 @@ suspend fun TestRunner.dataPipelineTests() = suite("Data Pipeline Tests") {
 
         println("      ✓ Baseline vector counts recorded")
         println("      ℹ️  RSS: ${initialCounts["rss_feeds"]}, CVE: ${initialCounts["cve"]}, " +
-                "Torrents: ${initialCounts["torrents"]}, Wiki: ${initialCounts["wikipedia"]}, " +
+                "Wiki: ${initialCounts["wikipedia"]}, " +
                 "AU Laws: ${initialCounts["australian_laws"]}, Linux: ${initialCounts["linux_docs"]}")
         require(initialCounts.values.any { it > 0 }) { "No pipeline vectors found to validate deduplication" }
     }
@@ -816,19 +736,6 @@ suspend fun TestRunner.dataPipelineTests() = suite("Data Pipeline Tests") {
             println("      ✓ CVE checkpoint: nextIndex = $nextIndex")
         } else {
             println("      ✓ CVE checkpoint fields: ${checkpoint.keys.joinToString()}")
-        }
-    }
-
-    test("Checkpoint: Torrents pipeline tracks next line") {
-        val status = getSourceStatus("torrents")
-        require(status != null) { "Torrents source status not available for checkpoint validation" }
-        val checkpoint = status["checkpointData"]?.jsonObject
-        require(checkpoint != null) { "Torrents checkpoint data missing" }
-        if (checkpoint.containsKey("nextLine")) {
-            val nextLine = checkpoint["nextLine"]?.jsonPrimitive?.content
-            println("      ✓ Torrents checkpoint: nextLine = $nextLine")
-        } else {
-            println("      ✓ Torrents checkpoint fields: ${checkpoint.keys.joinToString()}")
         }
     }
 
@@ -1225,7 +1132,7 @@ suspend fun TestRunner.dataPipelineTests() = suite("Data Pipeline Tests") {
             val sources = json["sources"]?.jsonArray
 
             require(sources != null && sources.size >= 10) {
-                "Expected at least 10 pipeline sources, found: ${sources?.size}"
+                "Expected at least 9 pipeline sources, found: ${sources?.size}"
             }
 
             val sourceNames = sources.mapNotNull {
@@ -1233,7 +1140,7 @@ suspend fun TestRunner.dataPipelineTests() = suite("Data Pipeline Tests") {
             }
 
             val expectedSources = listOf(
-                "rss", "cve", "torrents", "wikipedia",
+                "rss", "cve", "wikipedia",
                 "australian_laws", "linux_docs", "opendota_matches", "poe_ninja_prices",
                 "debian_wiki", "arch_wiki"
             )
@@ -1250,7 +1157,7 @@ suspend fun TestRunner.dataPipelineTests() = suite("Data Pipeline Tests") {
 
     test("All Qdrant collections have consistent dimensions") {
         val collections = listOf(
-            "rss_feeds", "cve", "torrents", "wikipedia",
+            "rss_feeds", "cve", "wikipedia",
             "australian_laws", "linux_docs", "opendota_matches", "poe_ninja_prices",
             "debian_wiki", "arch_wiki"
         )

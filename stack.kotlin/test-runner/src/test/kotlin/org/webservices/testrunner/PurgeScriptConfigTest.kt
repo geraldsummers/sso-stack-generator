@@ -37,7 +37,6 @@ class PurgeScriptConfigTest {
             "/mnt/raid/docker/nocow/postgres",
             "/mnt/raid/docker/nocow/mariadb",
             "/mnt/labware/vectors/qdrant",
-            "/mnt/media/qbittorrent",
             "/mnt/media/seafile-media",
         ).forEach { path ->
             assertTrue(purge.contains("\"$path\""), "storage purge should include $path")

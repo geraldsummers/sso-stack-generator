@@ -14,7 +14,6 @@ TARGET_DIRS=(
   "/mnt/raid/docker/nocow/postgres"
   "/mnt/raid/docker/nocow/mariadb"
   "/mnt/labware/vectors/qdrant"
-  "/mnt/media/qbittorrent"
   "/mnt/media/seafile-media"
 )
 
@@ -49,7 +48,6 @@ validate_target_dir() {
     /mnt/raid/docker/nocow/postgres|\
     /mnt/raid/docker/nocow/mariadb|\
     /mnt/labware/vectors/qdrant|\
-    /mnt/media/qbittorrent|\
     /mnt/media/seafile-media)
       ;;
     *)

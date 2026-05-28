@@ -6,8 +6,6 @@ collections:
     description: RSS/Atom feed articles from various sources
   - name: cve
     description: Common Vulnerabilities and Exposures from NVD
-  - name: torrents
-    description: Torrent metadata from DHT network
   - name: wikipedia
     description: Wikipedia article extracts and content
   - name: australian_laws

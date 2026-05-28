@@ -973,7 +973,7 @@ restart_post_reconcile_units() {
 
 reload_deploy_sensitive_units() {
   local unit_name units=()
-  local configured_units="${DEPLOY_RELOAD_UNITS:-webservices-caddy.service webservices-onboarding.service webservices-synapse.service webservices-forgejo.service webservices-homeassistant.service webservices-qbittorrent.service webservices-sogo.service webservices-jellyfin.service webservices-jellyfin-profile-proxy.service webservices-donetick.service webservices-erpnext-backend.service webservices-erpnext-websocket.service webservices-erpnext-queue-short.service webservices-erpnext-queue-long.service webservices-erpnext-scheduler.service webservices-erpnext.service webservices-workspace-provisioner.service webservices-chatgpt-connector.service}"
+  local configured_units="${DEPLOY_RELOAD_UNITS:-webservices-caddy.service webservices-onboarding.service webservices-synapse.service webservices-forgejo.service webservices-homeassistant.service webservices-sogo.service webservices-jellyfin.service webservices-jellyfin-profile-proxy.service webservices-donetick.service webservices-erpnext-backend.service webservices-erpnext-websocket.service webservices-erpnext-queue-short.service webservices-erpnext-queue-long.service webservices-erpnext-scheduler.service webservices-erpnext.service webservices-workspace-provisioner.service webservices-chatgpt-connector.service}"
 
   for unit_name in $configured_units; do
     [ -f "$BUNDLE_ROOT/systemd-user/$unit_name" ] || continue

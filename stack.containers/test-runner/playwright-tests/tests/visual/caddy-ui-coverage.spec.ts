@@ -13,7 +13,6 @@ const explicitVisualCoverageHosts = [
   'ntfy',
   'planka',
   'prometheus',
-  'qbittorrent',
   'search',
   'seafile',
   'vaultwarden',

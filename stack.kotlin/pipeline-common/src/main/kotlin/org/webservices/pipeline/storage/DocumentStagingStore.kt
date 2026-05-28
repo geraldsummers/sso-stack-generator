@@ -189,7 +189,6 @@ class DocumentStagingStore(
         private val FULLTEXT_INDEX_COLLECTIONS = listOf(
             "rss_feeds",
             "cve",
-            "torrents",
             "australian_laws",
             "linux_docs",
             "stack_knowledge",
@@ -250,8 +249,7 @@ class DocumentStagingStore(
             "stack_knowledge",
             "debian_wiki",
             "arch_wiki",
-            "wikipedia",
-            "torrents"
+            "wikipedia"
         )
 
         private fun fullTextIndexName(collection: String): String =
@@ -340,22 +338,6 @@ class DocumentStagingStore(
             """.trimIndent()
             "wikipedia" -> """
                 setweight(to_tsvector('english', COALESCE(metadata::json->>'title', '')), 'A') ||
-                setweight(to_tsvector('english', text), 'B')
-            """.trimIndent()
-            "torrents" -> """
-                setweight(
-                    to_tsvector(
-                        'english',
-                        regexp_replace(
-                            COALESCE(metadata::json->>'name', '') || ' ' ||
-                            COALESCE(metadata::json->>'title', ''),
-                            '[^[:alnum:]]+',
-                            ' ',
-                            'g'
-                        )
-                    ),
-                    'A'
-                ) ||
                 setweight(to_tsvector('english', text), 'B')
             """.trimIndent()
             else -> """
@@ -824,7 +806,6 @@ class DocumentStagingStore(
                     add("substring(")
                     add("regexp_replace(")
                 }
-                "torrents" -> add("regexp_replace(")
             }
         }
         return requiredFragments.any { it !in normalized }

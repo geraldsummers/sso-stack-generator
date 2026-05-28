@@ -16,7 +16,6 @@ class ConfigTest {
         
         assertTrue(config.rss.enabled)
         assertFalse(config.cve.enabled)
-        assertTrue(config.torrents.enabled)
         assertEquals("http://inference-gateway:8111", config.embedding.serviceUrl)
         assertEquals("qdrant", config.qdrant.host)
         assertEquals(6334, config.qdrant.port)
@@ -62,25 +61,6 @@ class ConfigTest {
         ) {
             val config = PipelineConfig.fromEnv()
             assertNull(config.cve.apiKey)
-        }
-    }
-
-    @Test
-    fun `fromEnv parses torrents configuration from environment`() {
-        withEnvironment(
-            "TORRENTS_ENABLED" to "false",
-            "TORRENTS_DATA_PATH" to "/custom/path/torrents.csv",
-            "TORRENTS_SCHEDULE_MINUTES" to "20160",
-            "TORRENTS_MAX_RESULTS" to "10000",
-            "TORRENTS_START_LINE" to "1000"
-        ) {
-            val config = PipelineConfig.fromEnv()
-
-            assertFalse(config.torrents.enabled)
-            assertEquals("/custom/path/torrents.csv", config.torrents.dataPath)
-            assertEquals(20160, config.torrents.scheduleMinutes)
-            assertEquals(10000, config.torrents.maxResults)
-            assertEquals(1000L, config.torrents.startLine)
         }
     }
 
@@ -238,8 +218,7 @@ class ConfigTest {
             "QDRANT_HOST" to "custom-qdrant",
             "QDRANT_PORT" to "7333",
             "QDRANT_RSS_COLLECTION" to "custom_rss",
-            "QDRANT_CVE_COLLECTION" to "custom_cve",
-            "QDRANT_TORRENTS_COLLECTION" to "custom_torrents"
+            "QDRANT_CVE_COLLECTION" to "custom_cve"
         ) {
             val config = PipelineConfig.fromEnv()
 
@@ -247,7 +226,6 @@ class ConfigTest {
             assertEquals(7333, config.qdrant.port)
             assertEquals("custom_rss", config.qdrant.rssCollection)
             assertEquals("custom_cve", config.qdrant.cveCollection)
-            assertEquals("custom_torrents", config.qdrant.torrentsCollection)
             assertEquals("opendota_matches", config.qdrant.openDotaCollection)
             assertEquals("poe_ninja_prices", config.qdrant.poeNinjaCollection)
         }
@@ -382,17 +360,6 @@ class ConfigTest {
     }
 
     @Test
-    fun `TorrentsConfig supports both URL and file path`() {
-        
-        val urlConfig = TorrentsConfig(dataPath = "https://example.com/torrents.csv")
-        assertTrue(urlConfig.dataPath.startsWith("http"))
-
-        
-        val fileConfig = TorrentsConfig(dataPath = "/local/path/torrents.csv")
-        assertTrue(fileConfig.dataPath.startsWith("/"))
-    }
-
-    @Test
     fun `WikiConfig filters blank categories`() {
         withEnvironment(
             "WIKI_CATEGORIES" to "system,,network, ,security"
@@ -434,7 +401,6 @@ class ConfigTest {
         val config = PipelineConfig()
 
         assertEquals(2000, config.cve.maxResults)
-        assertEquals(Int.MAX_VALUE, config.torrents.maxResults)
         assertEquals(Int.MAX_VALUE, config.wikipedia.maxArticles)
         assertEquals(Int.MAX_VALUE, config.linuxDocs.maxDocs)
     }
@@ -462,14 +428,6 @@ class ConfigTest {
                         apiKey = System.getProperty("CVE_API_KEY"),
                         scheduleMinutes = System.getProperty("CVE_SCHEDULE_MINUTES")?.toInt() ?: 1440,
                         maxResults = System.getProperty("CVE_MAX_RESULTS")?.toInt() ?: 2000
-                    ),
-                    torrents = TorrentsConfig(
-                        enabled = System.getProperty("TORRENTS_ENABLED")?.toBoolean() ?: true,
-                        dataPath = System.getProperty("TORRENTS_DATA_PATH")
-                            ?: "https://codeberg.org/heretic/torrents-csv-data/raw/branch/main/torrents.csv",
-                        scheduleMinutes = System.getProperty("TORRENTS_SCHEDULE_MINUTES")?.toInt() ?: 10080,
-                        maxResults = System.getProperty("TORRENTS_MAX_RESULTS")?.toInt() ?: Int.MAX_VALUE,
-                        startLine = System.getProperty("TORRENTS_START_LINE")?.toLong() ?: 0
                     ),
                     binance = BinanceConfig(
                         enabled = System.getProperty("BINANCE_ENABLED")?.toBoolean() ?: false,
@@ -514,7 +472,6 @@ class ConfigTest {
                         port = System.getProperty("QDRANT_PORT")?.toInt() ?: 6334,
                         rssCollection = System.getProperty("QDRANT_RSS_COLLECTION") ?: "rss_feeds",
                         cveCollection = System.getProperty("QDRANT_CVE_COLLECTION") ?: "cve",
-                        torrentsCollection = System.getProperty("QDRANT_TORRENTS_COLLECTION") ?: "torrents",
                         marketCollection = System.getProperty("QDRANT_MARKET_COLLECTION") ?: "market_data",
                         wikipediaCollection = System.getProperty("QDRANT_WIKIPEDIA_COLLECTION") ?: "wikipedia",
                         australianLawsCollection = System.getProperty("QDRANT_AUSTRALIAN_LAWS_COLLECTION") ?: "australian_laws",

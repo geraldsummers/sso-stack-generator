@@ -55,7 +55,6 @@ import java.io.File
  * @property homepage Homepage dashboard endpoint
  * @property radicale Radicale CalDAV/CardDAV server endpoint
  * @property ntfy Ntfy notification service endpoint
- * @property qbittorrent qBittorrent torrent client endpoint
  * @property homeassistant Home Assistant home automation endpoint
  */
 data class ServiceEndpoints(
@@ -105,7 +104,6 @@ data class ServiceEndpoints(
     val homepage: String? = null,
     val radicale: String? = null,
     val ntfy: String? = null,
-    val qbittorrent: String? = null,
 
     val homeassistant: String? = null
 ) {
@@ -182,7 +180,6 @@ data class ServiceEndpoints(
             homepage = env("HOMEPAGE_URL") ?: "http://homepage:3000",
             radicale = env("RADICALE_URL"),
             ntfy = env("NTFY_URL") ?: "http://ntfy:80",
-            qbittorrent = env("QBITTORRENT_URL") ?: "http://qbittorrent:8080",
 
             homeassistant = env("HOMEASSISTANT_URL") ?: "http://homeassistant:8123"
         )
@@ -245,7 +242,6 @@ data class ServiceEndpoints(
             homepage = "http://localhost:3003",
             radicale = env("RADICALE_URL"),
             ntfy = "http://localhost:8081",
-            qbittorrent = "http://localhost:8082",
 
             homeassistant = "http://localhost:8123"
         )

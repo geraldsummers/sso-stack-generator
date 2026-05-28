@@ -264,15 +264,4 @@ class DocumentStagingStoreTest {
         stagingStore.stageBatch(emptyList())
     }
 
-    @Test
-    fun `full text index build order prioritizes torrents before wikipedia`() {
-        val order = DocumentStagingStore.fullTextIndexCollectionsInBuildOrder()
-
-        assertTrue(order.contains("torrents"), "torrents full-text index must be part of the build order")
-        assertTrue(order.contains("wikipedia"), "wikipedia full-text index must be part of the build order")
-        assertTrue(
-            order.indexOf("torrents") < order.indexOf("wikipedia"),
-            "torrents full-text index must build before wikipedia so clean startup reaches torrent BM25 readiness in time"
-        )
-    }
 }

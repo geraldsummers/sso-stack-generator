@@ -145,17 +145,6 @@ fun main() {
             }
         }
 
-        if (config.torrents.enabled) {
-            launch {
-                runStandardizedSource(config.qdrant.torrentsCollection, stagingStore, dedupStore, metadataStore, runtimeTracker = runtimeTracker) {
-                    TorrentsStandardizedSource(
-                        dataPath = config.torrents.dataPath,
-                        maxTorrents = config.torrents.maxResults
-                    )
-                }
-            }
-        }
-
         if (config.wikipedia.enabled) {
             launch {
                 runStandardizedSource(config.qdrant.wikipediaCollection, stagingStore, dedupStore, metadataStore, runtimeTracker = runtimeTracker) {
@@ -413,7 +402,6 @@ private fun buildMonitoredSources(config: PipelineConfig): List<MonitoredSourceD
     return listOf(
         MonitoredSourceDefinition("rss", "RSS Feeds", "Aggregates news and blog feeds", config.rss.enabled),
         MonitoredSourceDefinition("cve", "CVE Database", "Security vulnerabilities from NVD", config.cve.enabled),
-        MonitoredSourceDefinition("torrents", "Torrents CSV", "Torrent metadata from DHT", config.torrents.enabled),
         MonitoredSourceDefinition("wikipedia", "Wikipedia", "Wikipedia article dumps", config.wikipedia.enabled),
         MonitoredSourceDefinition("australian_laws", "Australian Laws", "Legal documents from legislation.gov.au", config.australianLaws.enabled),
         MonitoredSourceDefinition("linux_docs", "Linux Documentation", "Kernel and system documentation", config.linuxDocs.enabled),

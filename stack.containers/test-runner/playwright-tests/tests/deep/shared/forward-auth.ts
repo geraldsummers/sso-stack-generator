@@ -12,7 +12,6 @@
  * - Vaultwarden
  * - Homepage
  * - Ntfy
- * - qBittorrent
  * - Home Assistant
  * - Kopia (Backup)
  * - Seafile

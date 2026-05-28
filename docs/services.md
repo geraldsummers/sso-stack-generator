@@ -44,7 +44,6 @@ URLs are shown as `https://<subdomain>.<domain>`. Replace `<domain>` with the si
 | --- | --- | --- |
 | Jellyfin | `https://jellyfin.<domain>` | Media library and streaming server. |
 | Mastodon | `https://mastodon.<domain>` | Social networking instance. |
-| qBittorrent | `https://qbittorrent.<domain>` | Torrent client. |
 
 ## System
 

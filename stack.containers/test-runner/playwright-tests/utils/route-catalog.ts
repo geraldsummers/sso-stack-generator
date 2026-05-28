@@ -466,20 +466,6 @@ export const browserRouteCatalog: BrowserRoute[] = [
     ownership: { route: true, smoke: false, visual: false, deep: true },
   },
   {
-    host: 'qbittorrent',
-    label: 'qBittorrent',
-    kind: 'forward_auth',
-    anonymous: { kind: 'forward_auth' },
-    smoke: {
-      // qBittorrent may either keep its native WebUI auth gate or trust the Caddy proxy.
-      matcher: /qBittorrent.*WebUI|Add Torrent|Transfers|Downloading|Seeding|\bUsername\b|\bPassword\b|JavaScript Required/i,
-      selector: '#mainWindow, #desktop, #torrentsTable, input[name="username"], input[type="password"], #loginButton, text=/Transfers|Add Torrent|JavaScript Required/i',
-      disallowMatcher: /Invalid Username or Password/im,
-      disallowUrlMatcher: /keycloak|keycloak-auth/i,
-    },
-    ownership: { route: true, smoke: true, visual: false, deep: true },
-  },
-  {
     host: 'search',
     label: 'Search',
     kind: 'forward_auth',

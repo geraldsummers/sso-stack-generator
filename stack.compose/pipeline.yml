@@ -24,10 +24,6 @@ services:
       CVE_SCHEDULE_MINUTES: "1440"
       CVE_MAX_RESULTS: "2000"
 
-      TORRENTS_DATA_PATH: "https://codeberg.org/heretic/torrents-csv-data/raw/branch/main/torrents.csv"
-      TORRENTS_SCHEDULE_MINUTES: "10080"
-      TORRENTS_MAX_RESULTS: "2147483647"
-
       WIKIPEDIA_DUMP_PATH: "https://dumps.wikimedia.org/enwiki/latest/enwiki-latest-pages-articles.xml.bz2"
       WIKIPEDIA_SCHEDULE_MINUTES: "43200"
       WIKIPEDIA_MAX_ARTICLES: "2147483647"
@@ -73,7 +69,6 @@ services:
 
       QDRANT_RSS_COLLECTION: rss_feeds
       QDRANT_CVE_COLLECTION: cve
-      QDRANT_TORRENTS_COLLECTION: torrents
       QDRANT_MARKET_COLLECTION: market_data
       QDRANT_WIKIPEDIA_COLLECTION: wikipedia
       QDRANT_AUSTRALIAN_LAWS_COLLECTION: australian_laws
@@ -137,7 +132,6 @@ services:
 
       QDRANT_RSS_COLLECTION: rss_feeds
       QDRANT_CVE_COLLECTION: cve
-      QDRANT_TORRENTS_COLLECTION: torrents
       QDRANT_MARKET_COLLECTION: market_data
       QDRANT_WIKIPEDIA_COLLECTION: wikipedia
       QDRANT_AUSTRALIAN_LAWS_COLLECTION: australian_laws

@@ -26,7 +26,6 @@ embedding = embedding_model.encode(text)
 In webservices:
 - `rss_feeds`: RSS article embeddings
 - `cve`: Security vulnerability embeddings
-- `torrents`: Torrent metadata embeddings
 - `wikipedia`: Wikipedia article embeddings
 - `bookstack`: Documentation embeddings
 - `australian_laws`: Legal document embeddings

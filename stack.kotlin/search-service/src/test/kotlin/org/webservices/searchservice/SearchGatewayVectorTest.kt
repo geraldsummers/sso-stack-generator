@@ -459,7 +459,7 @@ class SearchGatewayVectorTest {
         assertFalse(invoke(gateway, "collectionSupportsDirectPresentationMetadata", "docs") as Boolean)
         assertFalse(invoke(gateway, "collectionRequiresPresentation", "wikipedia") as Boolean)
         assertFalse(invoke(gateway, "collectionRequiresPresentation", "australian_laws") as Boolean)
-        assertTrue(invoke(gateway, "collectionRequiresPresentation", "torrents") as Boolean)
+        assertTrue(invoke(gateway, "collectionRequiresPresentation", "opendota_matches") as Boolean)
     }
 
     @Test

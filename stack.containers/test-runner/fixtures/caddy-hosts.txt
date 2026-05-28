@@ -42,6 +42,5 @@ clickhouse
 models
 vllm-router
 forgejo
-qbittorrent
 search
 pipeline

@@ -258,56 +258,6 @@ suspend fun TestRunner.authenticatedOperationsTests() = suite("Authenticated Ope
         }
     }
 
-    
-    
-    
-
-    test("Qbittorrent: Acquire session and get version") {
-        val username = System.getenv("QBITTORRENT_USERNAME") ?: "admin"
-        val password = System.getenv("QBITTORRENT_PASSWORD")
-
-        ensureEdgeSession()
-
-        if (password.isNullOrBlank()) {
-            val unauthenticatedResponse = client.getRawResponse("http://qbittorrent:8080/api/v2/app/version")
-            require(unauthenticatedResponse.status in listOf(HttpStatusCode.Unauthorized, HttpStatusCode.Forbidden)) {
-                "qBittorrent local API should require a session when no test password is configured: ${unauthenticatedResponse.status}"
-            }
-            val proxiedResponse = authenticatedCaddyGet("qbittorrent")
-            require(proxiedResponse.status.value in 200..399) {
-                "Failed to access qBittorrent WebUI through authenticated proxy: ${proxiedResponse.status}"
-            }
-            println("      ✓ qBittorrent local API requires session auth and the WebUI is reachable through Keycloak edge auth")
-            return@test
-        }
-
-        val sessionResult = tokens.acquireQbittorrentSession(username, password)
-        require(sessionResult.isSuccess) {
-            "Failed to acquire qBittorrent session: ${sessionResult.exceptionOrNull()?.message}. Check qBittorrent credentials."
-        }
-        println("      ✓ Acquired Qbittorrent session cookie")
-
-        
-        val response = tokens.authenticatedGet("qbittorrent", "http://qbittorrent:8080/api/v2/app/version")
-        require(response.status == HttpStatusCode.OK) {
-            "Failed to get version: ${response.status}"
-        }
-
-        val version = response.bodyAsText()
-        println("      ✓ Qbittorrent version: $version")
-
-        
-        val proxiedResponse = authenticatedCaddyGet("qbittorrent")
-        require(proxiedResponse.status.value in 200..399) {
-            "Failed to access through authenticated proxy: ${proxiedResponse.status}"
-        }
-        println("      ✓ Successfully accessed Qbittorrent through authenticated proxy")
-    }
-
-    
-    
-    
-
     test("Mastodon: Acquire OAuth token and verify credentials") {
         val email = System.getenv("MASTODON_EMAIL")
             ?: System.getenv("STACK_ADMIN_EMAIL")

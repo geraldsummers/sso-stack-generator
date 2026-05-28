@@ -285,7 +285,6 @@ class BookStackWriter(
     private fun toBookStackDocument(doc: StagedDocument): BookStackDocument {
         return when (doc.source) {
             "rss" -> buildRssDocument(doc)
-            "torrents" -> buildTorrentDocument(doc)
             "wikipedia" -> buildWikipediaDocument(doc)
             "australian_laws" -> buildAustralianLegalDocument(doc)
             "linux_docs" -> buildLinuxDocDocument(doc)
@@ -325,9 +324,6 @@ class BookStackWriter(
 
         
         doc.metadata["feed_title"]?.let { tags["feed"] = it }
-
-        
-        doc.metadata["infohash"]?.let { tags["infohash"] = it }
 
         
         doc.metadata["jurisdiction"]?.let { tags["jurisdiction"] = it }
@@ -391,42 +387,6 @@ class BookStackWriter(
             tags = buildTags(doc) + mapOf(
                 "feed" to feedTitle
             )
-        )
-    }
-
-    private fun buildTorrentDocument(doc: StagedDocument): BookStackDocument {
-        val metadata = doc.metadata
-        val infohash = metadata["infohash"]?.ifBlank { null }
-        val name = metadata["name"]?.ifBlank { null } ?: infohash ?: doc.id
-        val seeders = metadata["seeders"]?.ifBlank { null }
-        val leechers = metadata["leechers"]?.ifBlank { null }
-        val sizeBytes = metadata["sizeBytes"]?.toLongOrNull()
-
-        val metadataItems = buildList {
-            if (infohash != null) add("Infohash" to formatInlineCode(infohash))
-            if (sizeBytes != null) add("Size" to BookStackHtmlHelper.sanitizeForHtml(formatBytes(sizeBytes)))
-            if (seeders != null) add("Seeders" to BookStackHtmlHelper.sanitizeForHtml(seeders))
-            if (leechers != null) add("Leechers" to BookStackHtmlHelper.sanitizeForHtml(leechers))
-            if (infohash != null) {
-                val magnet = "magnet:?xt=urn:btih:$infohash"
-                add("Magnet" to formatLink(magnet, "Open magnet"))
-            }
-        }
-
-        val pageContent = buildPage(
-            title = name,
-            metadataItems = metadataItems,
-            bodyHtml = listOfNotNull(formatChunkNotice(doc)).joinToString("\n"),
-            footerSource = "torrent index dataset"
-        )
-
-        return BookStackDocument(
-            bookName = "Torrent Index",
-            bookDescription = "Torrent metadata index for inspection and analysis",
-            chapterName = null,
-            pageTitle = name,
-            pageContent = pageContent,
-            tags = buildTags(doc)
         )
     }
 

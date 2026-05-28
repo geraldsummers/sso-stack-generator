@@ -158,13 +158,12 @@ class SimpleTests {
         val expectedCollections = listOf(
             "rss_feeds",
             "cve",
-            "torrents",
             "wikipedia",
             "australian_laws",
             "linux_docs"
         )
 
-        assertEquals(6, expectedCollections.size)
+        assertEquals(5, expectedCollections.size)
 
         
         expectedCollections.forEach { name ->

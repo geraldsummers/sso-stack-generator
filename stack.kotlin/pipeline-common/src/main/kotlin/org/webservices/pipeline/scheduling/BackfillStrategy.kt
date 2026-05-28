@@ -61,17 +61,6 @@ sealed class BackfillStrategy {
     }
 
     
-    data class TorrentsCsv(
-        val csvUrl: String
-    ) : BackfillStrategy() {
-        override fun calculateBackfillStart(): Instant {
-            return Instant.EPOCH  
-        }
-
-        override fun describe(): String = "Torrents: full CSV download on every run"
-    }
-
-    
     data class FullDatasetDownload(
         val url: String
     ) : BackfillStrategy() {

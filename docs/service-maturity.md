@@ -19,7 +19,6 @@ Experimental, Unknown, and Not applicable.
 | Vaultwarden | Good | Partial | Partial | Good | Secure Core | Sensitive data; backup and admin ownership are critical. |
 | Jellyfin | Partial | Partial | Partial | Good | Ops Platform | Media storage dominates disk; native clients may bypass browser SSO. |
 | Mastodon | Partial | Partial | Partial | Good | Ops Platform | Public-facing social service has moderation and email concerns. |
-| qBittorrent | Partial | Partial | Partial | Good | Ops Platform | Network and policy expectations should be explicit. |
 | Grafana | Good | Partial | Partial | Not applicable | Secure Core | Monitoring is useful once dashboards and alert paths are scoped. |
 | Kopia | Partial | Good | Partial | Not applicable | Secure Core | Backups are credible only after restore drills. |
 | Home Assistant | Partial | Partial | Partial | Good | Ops Platform | Device integrations are site-specific. |

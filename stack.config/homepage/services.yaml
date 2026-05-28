@@ -61,10 +61,6 @@
         href: https://mastodon.{{DOMAIN}}
         description: Social Network
 
-    - qBittorrent:
-        href: https://qbittorrent.{{DOMAIN}}
-        description: Torrent Client
-
 - System:
     - Grafana:
         href: https://grafana.{{DOMAIN}}

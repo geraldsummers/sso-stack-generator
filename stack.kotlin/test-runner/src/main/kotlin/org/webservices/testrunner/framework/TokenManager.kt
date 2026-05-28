@@ -325,31 +325,6 @@ class TokenManager(
     
     
 
-    
-    suspend fun acquireQbittorrentSession(username: String = "admin", password: String): Result<List<Cookie>> {
-        return try {
-            val response = client.post("${endpoints.qbittorrent}/api/v2/auth/login") {
-                contentType(ContentType.Application.FormUrlEncoded)
-                setBody("username=$username&password=$password")
-            }
-
-            if (response.status == HttpStatusCode.OK && response.bodyAsText() == "Ok.") {
-                val sessionCookies = response.setCookie()
-                cookies["qbittorrent"] = sessionCookies
-                Result.success(sessionCookies)
-            } else {
-                Result.failure(Exception("Login failed: ${response.status}"))
-            }
-        } catch (e: Exception) {
-            Result.failure(e)
-        }
-    }
-
-    
-    
-    
-
-    
     suspend fun acquireOpenWebUIToken(email: String, password: String): Result<String> {
         return try {
             val response = client.post("${endpoints.openWebUI}/api/v1/auths/signin") {
@@ -450,9 +425,6 @@ class TokenManager(
                 "planka", "workspaces" -> {
                     token?.let { header(HttpHeaders.Authorization, "Bearer $it") }
                 }
-                "qbittorrent" -> {
-                    serviceCookies?.forEach { cookie(it.name, it.value) }
-                }
             }
         }
     }
@@ -477,9 +449,6 @@ class TokenManager(
                 }
                 "planka", "workspaces" -> {
                     token?.let { header(HttpHeaders.Authorization, "Bearer $it") }
-                }
-                "qbittorrent" -> {
-                    serviceCookies?.forEach { cookie(it.name, it.value) }
                 }
             }
             block()

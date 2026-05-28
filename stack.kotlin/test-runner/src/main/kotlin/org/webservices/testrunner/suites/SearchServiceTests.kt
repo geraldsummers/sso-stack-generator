@@ -322,32 +322,6 @@ suspend fun TestRunner.searchServiceTests() = suite("Search Service RAG Provider
         )
     }
 
-    fun sampleTorrentQuery(): String {
-        val title = postgresScalar(
-            """
-            SELECT COALESCE(metadata::json->>'name', metadata::json->>'title')
-            FROM document_staging
-            WHERE collection = 'torrents'
-              AND embedding_status = 'COMPLETED'
-              AND COALESCE(
-                  metadata::json->>'presentation_url',
-                  metadata::json->>'url',
-                  metadata::json->>'link',
-                  metadata::json->>'infohash',
-                  bookstack_url
-              ) IS NOT NULL
-              AND COALESCE(metadata::json->>'name', metadata::json->>'title') IS NOT NULL
-            ORDER BY created_at DESC
-            LIMIT 1
-            """.trimIndent(),
-            timeoutSeconds = 15
-        ) ?: error(
-            "No searchable torrent title found in document_staging within 15s; " +
-                "check idx_staging_collection_status_created and document_staging load"
-        )
-        return normalizeKeywordQuery(title)
-    }
-
     fun sampleWikipediaQuery(): String {
         val title = postgresScalar(
             """
@@ -1241,69 +1215,6 @@ suspend fun TestRunner.searchServiceTests() = suite("Search Service RAG Provider
         firstResult["source"]?.jsonPrimitive?.content shouldBe "cve"
     }
 
-    
-    test("Torrents: BM25 search finds torrents by name") {
-        requireSourceSearchReady(runner, searchReadinessCache, "torrents", "Torrent search corpus")
-        waitForFullTextIndexReady("torrents", context = "PostgreSQL BM25 correctness prerequisites")
-        val query = sampleTorrentQuery()
-        val response = client.postRaw("${env.endpoints.searchService}/search") {
-            contentType(ContentType.Application.Json)
-            setBody(buildJsonObject {
-                put("query", query)
-                put("mode", "bm25")
-                putJsonArray("collections") { add("torrents") }
-                put("limit", 10)
-            })
-        }
-
-        response.status shouldBe HttpStatusCode.OK
-        val body = Json.parseToJsonElement(response.body<String>())
-        val results = body.jsonObject["results"]?.jsonArray
-
-        require(!results.isNullOrEmpty()) { "No torrent data found for BM25 search" }
-        val torrentResult = results.first().jsonObject
-        val source = torrentResult["source"]?.jsonPrimitive?.content
-        source shouldBe "torrents"
-        println("      ✓ BM25 found ${results.size} torrents")
-    }
-
-    test("Torrents: Semantic search finds similar content") {
-        requireSourceSearchReady(runner, searchReadinessCache, "torrents", "Torrent search corpus")
-        val query = sampleTorrentQuery()
-        val body = searchRequest(
-            label = "Torrent semantic search",
-            query = query,
-            mode = "vector",
-            collections = listOf("torrents"),
-            limit = 10
-        )
-        val results = body.jsonObject["results"]?.jsonArray
-
-        require(!results.isNullOrEmpty()) { "No torrent vectors found for semantic search" }
-        println("      ✓ Semantic search found ${results.size} similar torrents")
-        val firstScore = results.first().jsonObject["score"]?.jsonPrimitive?.double
-        require(firstScore != null && firstScore > 0) { "Invalid torrent vector score" }
-    }
-
-    test("Torrents: Hybrid search combines keyword and semantic") {
-        requireSourceSearchReady(runner, searchReadinessCache, "torrents", "Torrent search corpus")
-        waitForFullTextIndexReady("torrents", context = "PostgreSQL hybrid-search correctness prerequisites")
-        val query = sampleTorrentQuery()
-        val body = searchRequest(
-            label = "Torrent hybrid search",
-            query = query,
-            mode = "hybrid",
-            collections = listOf("torrents"),
-            limit = 10
-        )
-        body.jsonObject["mode"]?.jsonPrimitive?.content shouldBe "hybrid"
-        val results = body.jsonObject["results"]?.jsonArray
-        require(!results.isNullOrEmpty()) { "No torrent results found for hybrid search" }
-        val firstResult = results.first().jsonObject
-        firstResult["source"]?.jsonPrimitive?.content shouldBe "torrents"
-    }
-
-    
     test("Wikipedia: BM25 search finds articles by title/content") {
         requireSourceSearchReady(runner, searchReadinessCache, "wikipedia", "Wikipedia search corpus")
         waitForFullTextIndexReady("wikipedia", context = "PostgreSQL BM25 correctness prerequisites")

@@ -944,19 +944,6 @@ forgejo.{$DOMAIN} {
 }
 # webservices-component-end forgejo
 
-# qBittorrent (protected)
-# webservices-component-start qbittorrent
-qbittorrent.{$DOMAIN} {
-	import access_observability
-	route {
-		import keycloak_auth qbittorrent
-		reverse_proxy qbittorrent:8080 {
-			header_up X-Real-IP {remote_host}
-		}
-	}
-}
-# webservices-component-end qbittorrent
-
 # webservices-component-start search
 # Search Gateway (protected - all authenticated users)
 search.{$DOMAIN} {

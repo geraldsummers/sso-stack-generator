@@ -34,7 +34,6 @@ volumes:
   caddy_config:
   caddy_certs:
   caddy_ca:
-  qbittorrent_config:
 
   caddy_data:
 
@@ -51,13 +50,6 @@ volumes:
       type: bind
       o: bind
       device: ${VECTOR_DB_ROOT}/qdrant
-
-  qbittorrent_data:
-    driver: local
-    driver_opts:
-      type: bind
-      o: bind
-      device: ${QBITTORRENT_DATA_ROOT}
 
   jellyfin_media:
     driver: local

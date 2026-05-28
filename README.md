@@ -114,7 +114,7 @@ and partial upgrades.
 | Edge and identity | Caddy, Keycloak, OIDC clients, forward auth, group-based RBAC |
 | App platform | Homepage catalog, service routing, health checks, generated config |
 | Collaboration | BookStack, Seafile, SOGo, Element, Planka, Vaultwarden |
-| Productivity and media | ERPNext, Donetick, Home Assistant, Jellyfin, qBittorrent, Mastodon |
+| Productivity and media | ERPNext, Donetick, Home Assistant, Jellyfin, Mastodon |
 | AI and development | JupyterHub, disposable workspaces, Forgejo, Qdrant, search, knowledge ingestion, ChatGPT Connector |
 | Operations | Grafana, Prometheus, Loki, cAdvisor, exporters, Kopia backups |
 | Validation | Kotlin contract tests, TypeScript unit tests, Playwright browser checks, SSO/auth boundary tests, visual artifacts |

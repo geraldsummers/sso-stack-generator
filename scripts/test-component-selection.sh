@@ -119,7 +119,6 @@ export NTFY_USERNAME=component-test
 export PG_SSD_ROOT="$host_paths_dir/pg-ssd"
 export POSTGRES_PIPELINE_USER=pipeline
 export POSTGRES_SEARCH_SERVICE_USER=search_service
-export QBITTORRENT_DATA_ROOT="$host_paths_dir/qbittorrent"
 export SEAFILE_MEDIA_ROOT="$host_paths_dir/seafile"
 export SEAFILE_JWT_KEY=component-test-secret
 export STACK_ADMIN_EMAIL=admin@example.test

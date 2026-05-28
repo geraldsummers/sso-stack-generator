@@ -67,7 +67,6 @@ preflight_visual_stack() {
     ntfy \
     planka \
     prometheus \
-    qbittorrent \
     search-service \
     seafile \
     synapse \
@@ -110,7 +109,6 @@ set -- \
   tests/deep/forward-auth/kopia.spec.ts \
   tests/deep/forward-auth/ntfy.spec.ts \
   tests/deep/forward-auth/prometheus.spec.ts \
-  tests/deep/forward-auth/qbittorrent.spec.ts \
   tests/deep/forward-auth/search.spec.ts \
   tests/deep/forward-auth/seafile.spec.ts \
   tests/deep/forward-auth/onboarding.spec.ts \

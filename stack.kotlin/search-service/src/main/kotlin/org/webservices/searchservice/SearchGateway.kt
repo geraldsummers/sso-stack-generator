@@ -235,22 +235,6 @@ class SearchGateway(
                 setweight(to_tsvector('english', COALESCE(metadata::json->>'title', '')), 'A') ||
                 setweight(to_tsvector('english', text), 'B')
             """.trimIndent()
-            "torrents" -> """
-                setweight(
-                    to_tsvector(
-                        'english',
-                        regexp_replace(
-                            COALESCE(metadata::json->>'name', '') || ' ' ||
-                            COALESCE(metadata::json->>'title', ''),
-                            '[^[:alnum:]]+',
-                            ' ',
-                            'g'
-                        )
-                    ),
-                    'A'
-                ) ||
-                setweight(to_tsvector('english', text), 'B')
-            """.trimIndent()
             "opendota_matches" -> """
                 setweight(
                     to_tsvector(
@@ -316,7 +300,7 @@ class SearchGateway(
     private val postgresStatementTimeoutSeconds =
         (System.getenv("SEARCH_POSTGRES_STATEMENT_TIMEOUT_SECONDS")?.toIntOrNull() ?: 20).coerceIn(1, 120)
     private val directPresentationCollections = (System.getenv("SEARCH_PRESENTATION_METADATA_COLLECTIONS")
-        ?: "market_data,test-market,torrents,opendota_matches,poe_ninja_prices")
+        ?: "market_data,test-market,opendota_matches,poe_ninja_prices")
         .split(',')
         .map { it.trim() }
         .filter { it.isNotEmpty() }
@@ -1156,7 +1140,7 @@ class SearchGateway(
 
         // PostgreSQL full-text search with ts_rank for BM25-style relevance.
         // Accept either BookStack-backed documents or directly presentable documents
-        // (for example torrents with magnet URLs or market documents with Grafana links).
+        // (for example market documents with Grafana links).
         val sql = """
             WITH query AS (
                 SELECT websearch_to_tsquery('english', ?) AS value
