@@ -39,7 +39,24 @@ done
 
 [ -n "$SITE_ROOT" ] || { printf '[webservices-migrate] ERROR: --site-root is required\n' >&2; exit 1; }
 [ -f "$SITE_ROOT/manifest.json" ] || { printf '[webservices-migrate] ERROR: missing manifest.json in %s\n' "$SITE_ROOT" >&2; exit 1; }
-[ -f "$SITE_ROOT/stack.config.yaml" ] || { printf '[webservices-migrate] ERROR: missing stack.config.yaml in %s\n' "$SITE_ROOT" >&2; exit 1; }
-[ -f "$SITE_ROOT/webservices.sops.json" ] || { printf '[webservices-migrate] ERROR: missing webservices.sops.json in %s\n' "$SITE_ROOT" >&2; exit 1; }
 
+if [ -f "$SITE_ROOT/stack.config.yaml" ]; then
+  stack_config_file="$SITE_ROOT/stack.config.yaml"
+elif [ -f "$SITE_ROOT/global.settings/stack.config.yaml" ]; then
+  stack_config_file="$SITE_ROOT/global.settings/stack.config.yaml"
+else
+  printf '[webservices-migrate] ERROR: missing stack.config.yaml in %s or %s\n' "$SITE_ROOT" "$SITE_ROOT/global.settings" >&2
+  exit 1
+fi
+
+if [ -f "$SITE_ROOT/webservices.sops.json" ]; then
+  secrets_file="$SITE_ROOT/webservices.sops.json"
+elif [ -f "$SITE_ROOT/global.settings/webservices.sops.json" ]; then
+  secrets_file="$SITE_ROOT/global.settings/webservices.sops.json"
+else
+  printf '[webservices-migrate] ERROR: missing webservices.sops.json in %s or %s\n' "$SITE_ROOT" "$SITE_ROOT/global.settings" >&2
+  exit 1
+fi
+
+printf '[webservices-migrate] validated site files: %s, %s\n' "$stack_config_file" "$secrets_file" >&2
 printf '[webservices-migrate] no site migrations required (%s -> %s)\n' "${FROM_COMMIT:-unknown}" "${TO_COMMIT:-unknown}" >&2
