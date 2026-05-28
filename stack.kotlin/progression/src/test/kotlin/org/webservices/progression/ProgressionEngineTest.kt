@@ -64,6 +64,28 @@ class ProgressionEngineTest {
     }
 
     @Test
+    fun `scanner parses Caddy hosts with rendered domain placeholders`() {
+        val caddy = """
+            bookstack.{${'$'}DOMAIN} {
+              reverse_proxy bookstack:80
+            }
+
+            api.bookstack.{${'$'}DOMAIN} {
+              respond 404
+            }
+
+            {${'$'}DOMAIN}, homepage.{${'$'}DOMAIN} {
+              reverse_proxy homepage:3000
+            }
+        """.trimIndent()
+
+        assertEquals(
+            listOf("apex", "api.bookstack.<domain>", "bookstack.<domain>", "homepage.<domain>"),
+            parseCaddyHosts(caddy)
+        )
+    }
+
+    @Test
     fun `state store merges actual facts without losing claims`() {
         val dir = createTempDirectory()
         val store = StateStore(dir)

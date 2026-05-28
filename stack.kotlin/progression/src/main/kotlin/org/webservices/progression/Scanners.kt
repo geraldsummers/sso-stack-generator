@@ -162,12 +162,29 @@ fun parseComposeServices(compose: String): List<String> {
 }
 
 fun parseCaddyHosts(caddy: String): List<String> =
-    Regex("""(?m)^([A-Za-z0-9_.{}-]+(?:\.\{?${'$'}DOMAIN\}?|\.[A-Za-z0-9_.-]+))\s*\{""")
-        .findAll(caddy)
-        .map {
-            it.groupValues[1]
-                .replace(".{${'$'}DOMAIN}", ".<domain>")
-                .replace(".${'$'}DOMAIN", ".<domain>")
+    caddy.lineSequence()
+        .map { it.trim() }
+        .filter { it.endsWith("{") && !it.startsWith("#") }
+        .flatMap { line ->
+            line.removeSuffix("{")
+                .trim()
+                .splitToSequence(',')
+                .map { it.trim() }
+        }
+        .filter { host ->
+            host.isNotBlank() &&
+                !host.startsWith("@") &&
+                !host.startsWith("(") &&
+                !host.contains(" ") &&
+                (host.contains(".") || host == "{${'$'}DOMAIN}")
+        }
+        .map { host ->
+            when (host) {
+                "{${'$'}DOMAIN}" -> "apex"
+                else -> host
+                    .replace(".{${'$'}DOMAIN}", ".<domain>")
+                    .replace(".${'$'}DOMAIN", ".<domain>")
+            }
         }
         .distinct()
         .sorted()
