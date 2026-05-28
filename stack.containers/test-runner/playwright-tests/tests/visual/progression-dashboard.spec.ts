@@ -69,9 +69,21 @@ type ProgressionView = {
 };
 
 const repoRoot = path.resolve(__dirname, '../../../../..');
-const progressionHtmlPath = path.join(repoRoot, 'stack.kotlin/progression/src/main/resources/static/index.html');
-const taskCatalogPath = path.join(repoRoot, 'stack.config/progression/tasks/bookstack-mvp.json');
-const dashboardCatalogPath = path.join(repoRoot, 'stack.config/progression/dashboards/bookstack-mvp.json');
+function repoFixturePath(relativePath: string): string {
+  const candidates = [
+    path.join(repoRoot, relativePath),
+    path.join('/app/repo-fixtures', relativePath),
+  ];
+  const found = candidates.find((candidate) => fs.existsSync(candidate));
+  if (!found) {
+    throw new Error(`missing progression visual fixture ${relativePath}; tried ${candidates.join(', ')}`);
+  }
+  return found;
+}
+
+const progressionHtmlPath = repoFixturePath('stack.kotlin/progression/src/main/resources/static/index.html');
+const taskCatalogPath = repoFixturePath('stack.config/progression/tasks/bookstack-mvp.json');
+const dashboardCatalogPath = repoFixturePath('stack.config/progression/dashboards/bookstack-mvp.json');
 const screenshotRoot = process.env.PLAYWRIGHT_SCREENSHOTS_DIR || path.resolve(process.cwd(), 'test-results/screenshots');
 const screenshotDir = path.join(screenshotRoot, 'progression');
 

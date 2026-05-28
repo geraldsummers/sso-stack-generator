@@ -66,6 +66,8 @@ USER root
 
 COPY stack.kotlin/test-runner/build/libs/test-runner-*-all.jar /app/test-runner.jar
 COPY --chown=pwuser:pwuser stack.containers/test-runner/playwright-tests /app/playwright-tests
+COPY --chown=pwuser:pwuser stack.config/progression /app/repo-fixtures/stack.config/progression
+COPY --chown=pwuser:pwuser stack.kotlin/progression/src/main/resources/static /app/repo-fixtures/stack.kotlin/progression/src/main/resources/static
 COPY stack.containers/agent-workspace /app/stack.containers/agent-workspace
 COPY stack.containers/agent-workspace-notebook /app/stack.containers/agent-workspace-notebook
 COPY stack.containers/test-runner/fixtures/caddy-hosts.txt /app/repo-fixtures/caddy-hosts.txt
