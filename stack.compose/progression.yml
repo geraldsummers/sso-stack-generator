@@ -20,13 +20,13 @@ services:
       PROGRESSION_DEPLOY_ROOT: /deploy
       PROGRESSION_RUNTIME_DIR: /runtime/progression
     volumes:
-      - ./docker-compose.yml:/bundle/docker-compose.yml:ro
-      - ./build-info.json:/bundle/build-info.json:ro
-      - ./site/manifest.json:/bundle/site/manifest.json:ro
-      - ./stack.config/progression:/bundle/stack.config/progression:ro
-      - ./stack.config/caddy/Caddyfile:/bundle/stack.config/caddy/Caddyfile:ro
-      - ./stack.config/keycloak/configure-runtime.sh:/bundle/stack.config/keycloak/configure-runtime.sh:ro
-      - ./stack.systemd:/bundle/stack.systemd:ro
+      - ./build/docker-compose.yml:/bundle/docker-compose.yml:ro
+      - ./build/build-info.json:/bundle/build-info.json:ro
+      - ./build/site/manifest.json:/bundle/site/manifest.json:ro
+      - ./build/stack.config/progression:/bundle/stack.config/progression:ro
+      - ./build/stack.config/caddy/Caddyfile:/bundle/stack.config/caddy/Caddyfile:ro
+      - ./build/stack.config/keycloak/configure-runtime.sh:/bundle/stack.config/keycloak/configure-runtime.sh:ro
+      - ./build/stack.systemd:/bundle/stack.systemd:ro
       - ${SYSTEMD_USER_RUNTIME_DIR:?SYSTEMD_USER_RUNTIME_DIR is required}/webservices-runtime/progression:/runtime/progression
     healthcheck:
       test:

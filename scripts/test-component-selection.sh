@@ -145,6 +145,7 @@ chmod +x "$fake_bin/sops"
 copy_tree "$ROOT_DIR/global.settings" "$bundle_root/global.settings"
 copy_tree "$ROOT_DIR/stack.compose" "$bundle_root/stack.compose"
 copy_tree "$ROOT_DIR/stack.config" "$bundle_root/stack.config"
+copy_tree "$ROOT_DIR/stack.systemd" "$bundle_root/stack.systemd"
 copy_tree "$ROOT_DIR/scripts" "$bundle_root/scripts"
 
 cat > "$site_root/manifest.json" <<'EOF_MANIFEST'
@@ -227,6 +228,19 @@ component_selection_write_metadata \
 
 build_merged_compose "$bundle_root" "$bundle_root/docker-compose.full.yml" "$site_root/manifest.json"
 cp "$bundle_root/docker-compose.full.yml" "$bundle_root/docker-compose.yml"
+
+"$ROOT_DIR/scripts/deploy/render-systemd-user.sh" \
+  --bundle-root "$bundle_root" \
+  --output-dir "$bundle_root/systemd-user" \
+  --deploy-root-template "%h/webservices" \
+  --unit-root-template "%h/webservices/build/systemd-user" \
+  --runtime-env-file-template "%h/webservices/runtime/stack.env" >/dev/null
+
+progression_unit="$bundle_root/systemd-user/webservices-progression.service"
+assert_contains "$progression_unit" '%h/webservices/build/build-info.json' "Progression build-info preflight"
+assert_contains "$progression_unit" '%h/webservices/build/docker-compose.yml' "Progression compose preflight"
+assert_contains "$progression_unit" '%h/webservices/build/stack.config/progression' "Progression registry preflight"
+assert_not_contains "$progression_unit" '%h/webservices/build-info.json|%h/webservices/docker-compose.yml|%h/webservices/stack.config/progression' "root-level Progression preflight"
 
 PATH="$fake_bin:$PATH" "$ROOT_DIR/scripts/deploy/render-runtime.sh" \
   --bundle-root "$bundle_root" \
