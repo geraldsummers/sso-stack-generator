@@ -995,6 +995,18 @@ reload_deploy_sensitive_units() {
   user_systemctl reload "${units[@]}"
 }
 
+recreate_env_sensitive_containers() {
+  local container_name
+  local configured_containers="${DEPLOY_RECREATE_ENV_CONTAINERS:-opensearch nats airflow-init airflow-webserver airflow-scheduler ingestion-runner workspace-provisioner chatgpt-connector}"
+
+  for container_name in $configured_containers; do
+    if docker container inspect "$container_name" >/dev/null 2>&1; then
+      deploy_log "removing env-sensitive container for recreate: $container_name"
+      docker rm -f "$container_name" >/dev/null
+    fi
+  done
+}
+
 reload_changed_built_image_units() {
   local service_name image_ref before_id after_id container_image_id unit_name
   local units=()
@@ -1107,6 +1119,7 @@ if [ "$PARTIAL_DEPLOY" = "1" ]; then
   deploy_log "skipping excluded-service cleanup for scoped deploy after deploy signature guard"
 else
   cleanup_excluded_service_containers
+  recreate_env_sensitive_containers
 fi
 
 set_phase "bootstrap-scaffolds"
