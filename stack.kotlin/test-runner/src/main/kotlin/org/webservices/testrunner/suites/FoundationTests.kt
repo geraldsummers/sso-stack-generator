@@ -12,6 +12,7 @@ import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import org.webservices.testrunner.framework.*
+import java.util.Base64
 
 suspend fun TestRunner.ensureInferenceMode(
     mode: String,
@@ -201,7 +202,14 @@ suspend fun TestRunner.foundationTests() = suite("Foundation Tests") {
     }
 
     test("OpenSearch returns 404 for unknown exact document lookup") {
-        val response = requestHttpClient.get("${endpoints.searchService}/knowledge/_doc/definitely-missing-document")
+        val response = requestHttpClient.get("${endpoints.searchService}/knowledge/_doc/definitely-missing-document") {
+            val username = System.getenv("OPENSEARCH_USERNAME") ?: "admin"
+            val password = System.getenv("OPENSEARCH_PASSWORD").orEmpty()
+            if (password.isNotBlank()) {
+                val encoded = Base64.getEncoder().encodeToString("$username:$password".toByteArray(Charsets.UTF_8))
+                header(HttpHeaders.Authorization, "Basic $encoded")
+            }
+        }
         response.status shouldBe HttpStatusCode.NotFound
     }
 

@@ -166,6 +166,15 @@ class ServiceClient(
         return if (trimmed.endsWith("/embed")) trimmed else "$trimmed/embed"
     }
 
+    private fun openSearchBasicAuthHeader(): String? {
+        val username = System.getenv("OPENSEARCH_USERNAME") ?: "admin"
+        val password = System.getenv("OPENSEARCH_PASSWORD").orEmpty()
+        if (password.isBlank()) {
+            return null
+        }
+        return "Basic " + Base64.getEncoder().encodeToString("$username:$password".toByteArray(Charsets.UTF_8))
+    }
+
     private fun jsonText(result: JsonElement): String = Json.encodeToString(JsonElement.serializer(), result)
 
     private suspend fun directLlmChat(args: JsonObject): ToolResult {
@@ -474,15 +483,14 @@ class ServiceClient(
         mode: String = "hybrid",
         timeoutMs: Long? = null
     ): SearchResult {
+        if (mode == "vector") {
+            return vectorSearch(query, collections, limit, timeoutMs)
+        }
+
         return try {
             val executeRequest: suspend () -> HttpResponse = {
                 client.post("${endpoints.searchService.trimEnd('/')}/knowledge/_search") {
-                    val username = System.getenv("OPENSEARCH_USERNAME") ?: "admin"
-                    val password = System.getenv("OPENSEARCH_PASSWORD").orEmpty()
-                    if (password.isNotBlank()) {
-                        val encoded = Base64.getEncoder().encodeToString("$username:$password".toByteArray(Charsets.UTF_8))
-                        header(HttpHeaders.Authorization, "Basic $encoded")
-                    }
+                    openSearchBasicAuthHeader()?.let { header(HttpHeaders.Authorization, it) }
                     contentType(ContentType.Application.Json)
                     setBody(buildJsonObject {
                         put("size", limit)
@@ -512,7 +520,11 @@ class ServiceClient(
                 }
             }
             val response = if (timeoutMs != null) withTimeout(timeoutMs) { executeRequest() } else executeRequest()
-            val raw = Json.parseToJsonElement(response.bodyAsText())
+            val body = response.bodyAsText()
+            if (response.status == HttpStatusCode.NotFound && body.contains("index_not_found_exception")) {
+                return SearchResult(true, emptySearchResult(mode))
+            }
+            val raw = Json.parseToJsonElement(body)
             val normalized = if (response.status == HttpStatusCode.OK) normalizeOpenSearchSearchResult(raw, mode) else raw
 
             SearchResult(
@@ -521,6 +533,76 @@ class ServiceClient(
             )
         } catch (e: Exception) {
             SearchResult(false, JsonPrimitive(e.message ?: "Unknown error"))
+        }
+    }
+
+    private suspend fun vectorSearch(
+        query: String,
+        collections: List<String>,
+        limit: Int,
+        timeoutMs: Long?
+    ): SearchResult {
+        return try {
+            val embeddingResult = directEmbedding(buildJsonObject {
+                put("text", query)
+                put("model", "bge-m3")
+            })
+            val vector = when (embeddingResult) {
+                is ToolResult.Success -> Json.parseToJsonElement(embeddingResult.output).jsonArray
+                is ToolResult.Error -> return SearchResult(false, JsonPrimitive(embeddingResult.message))
+            }
+
+            val collection = collections.firstOrNull { it != "*" } ?: "stack_knowledge"
+            val executeRequest: suspend () -> HttpResponse = {
+                client.post("${endpoints.qdrant.trimEnd('/')}/collections/$collection/points/search") {
+                    endpoints.qdrantApiKey?.let { header("api-key", it) }
+                    contentType(ContentType.Application.Json)
+                    setBody(buildJsonObject {
+                        put("vector", vector)
+                        put("limit", limit)
+                        put("with_payload", true)
+                    })
+                }
+            }
+            val response = if (timeoutMs != null) withTimeout(timeoutMs) { executeRequest() } else executeRequest()
+            val body = response.bodyAsText()
+            if (response.status == HttpStatusCode.NotFound) {
+                return SearchResult(true, emptySearchResult("vector"))
+            }
+            val raw = Json.parseToJsonElement(body)
+            val normalized = if (response.status == HttpStatusCode.OK) normalizeQdrantSearchResult(raw) else raw
+            SearchResult(response.status == HttpStatusCode.OK, normalized)
+        } catch (e: Exception) {
+            SearchResult(false, JsonPrimitive(e.message ?: "Unknown error"))
+        }
+    }
+
+    private fun emptySearchResult(mode: String): JsonObject = buildJsonObject {
+        put("results", JsonArray(emptyList()))
+        put("total", 0)
+        put("mode", mode)
+    }
+
+    private fun normalizeQdrantSearchResult(raw: JsonElement): JsonObject {
+        val rows = raw.jsonObject["result"]?.jsonArray.orEmpty()
+        val results = JsonArray(rows.map { row ->
+            val rowObject = row.jsonObject
+            val payload = rowObject["payload"]?.jsonObject ?: JsonObject(emptyMap())
+            buildJsonObject {
+                put("id", payload["id"] ?: rowObject["id"] ?: JsonPrimitive(""))
+                put("collection", payload["collection"] ?: JsonPrimitive(""))
+                put("source", payload["source"] ?: JsonPrimitive(""))
+                put("title", payload["title"] ?: JsonPrimitive(""))
+                put("content", payload["text"] ?: JsonPrimitive(""))
+                put("text", payload["text"] ?: JsonPrimitive(""))
+                put("metadata", payload["metadata"] ?: JsonObject(emptyMap()))
+                put("score", rowObject["score"] ?: JsonPrimitive(0.0))
+            }
+        })
+        return buildJsonObject {
+            put("results", results)
+            put("total", results.size)
+            put("mode", "vector")
         }
     }
 

@@ -467,7 +467,7 @@ run_runner_no_build() {
     docker_compose_with_env "$results_root" "${EXEC_ENV_ASSIGNMENTS[@]}" \
         "TEST_RUNNER_MANAGED_COMMAND_LINE=$command_line" \
         -- \
-        up --no-build --pull never --no-deps --abort-on-container-exit --exit-code-from "$TEST_RUNNER_MANAGED_SERVICE" "$TEST_RUNNER_MANAGED_SERVICE"
+        up --force-recreate --no-build --pull never --no-deps --abort-on-container-exit --exit-code-from "$TEST_RUNNER_MANAGED_SERVICE" "$TEST_RUNNER_MANAGED_SERVICE"
     status=$?
     set -e
 
