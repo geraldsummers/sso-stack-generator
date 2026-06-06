@@ -1,6 +1,6 @@
 services:
   nats:
-    image: nats:2.11.9-alpine@sha256:6bb0a227194ad7d18285ba5246afda2b7a0632b64d84f2f1c8ef380146f0ee61
+    image: nats:2.11.9-alpine
     container_name: nats
     restart: unless-stopped
     networks:
