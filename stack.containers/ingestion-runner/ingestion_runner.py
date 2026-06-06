@@ -37,6 +37,7 @@ COLLECTIONS = {
     "agent_docs": "agent_docs",
 }
 SEARCH_INDEX = os.getenv("OPENSEARCH_INDEX", "knowledge")
+DEFAULT_EMBEDDING_BATCH_SIZE = 16
 
 
 class RunRequest(BaseModel):
@@ -299,9 +300,15 @@ def ensure_opensearch_index() -> None:
     raise RuntimeError(f"OpenSearch index bootstrap failed: {response.text}")
 
 
-def embed(texts: list[str]) -> list[list[float]]:
-    if not texts:
-        return []
+def embedding_batch_size() -> int:
+    raw = os.getenv("EMBEDDING_BATCH_SIZE", str(DEFAULT_EMBEDDING_BATCH_SIZE))
+    try:
+        return max(1, int(raw))
+    except ValueError:
+        return DEFAULT_EMBEDDING_BATCH_SIZE
+
+
+def embed_once(texts: list[str]) -> list[list[float]]:
     base = os.environ["EMBEDDING_SERVICE_URL"].rstrip("/")
     response = requests.post(f"{base}/embed", json={"inputs": texts}, timeout=120)
     response.raise_for_status()
@@ -309,6 +316,27 @@ def embed(texts: list[str]) -> list[list[float]]:
     if isinstance(data, dict):
         data = data.get("embeddings", data.get("data", data))
     return data
+
+
+def embed_batch(texts: list[str]) -> list[list[float]]:
+    try:
+        return embed_once(texts)
+    except requests.HTTPError as exc:
+        response = exc.response
+        if response is None or response.status_code != 413 or len(texts) == 1:
+            raise
+        midpoint = len(texts) // 2
+        return embed_batch(texts[:midpoint]) + embed_batch(texts[midpoint:])
+
+
+def embed(texts: list[str]) -> list[list[float]]:
+    if not texts:
+        return []
+    vectors: list[list[float]] = []
+    batch_size = embedding_batch_size()
+    for index in range(0, len(texts), batch_size):
+        vectors.extend(embed_batch(texts[index : index + batch_size]))
+    return vectors
 
 
 def upsert_documents(source: str, documents: list[dict[str, Any]]) -> int:
