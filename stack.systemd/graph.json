@@ -37,7 +37,6 @@
         "postgres-ssd-bootstrap",
         "qdrant",
         "valkey",
-        "vector-bootstrap",
         "volume-init"
       ]
     },
@@ -79,10 +78,14 @@
         "webservices-inference.target"
       ],
       "services": [
-        "knowledge-ingestion",
-        "embedding-worker",
-        "content-publisher",
-        "search-service"
+        "airflow-init",
+        "airflow-webserver",
+        "airflow-scheduler",
+        "nats",
+        "opensearch",
+        "qdrant",
+        "embedding-gpu",
+        "ingestion-runner"
       ]
     },
     {

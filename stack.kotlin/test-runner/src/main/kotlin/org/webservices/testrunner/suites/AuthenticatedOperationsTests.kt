@@ -404,37 +404,21 @@ suspend fun TestRunner.authenticatedOperationsTests() = suite("Authenticated Ope
     
     
 
-    test("Search Service: Authenticate and access API") {
+    test("OpenSearch: Authenticate and access API") {
         ensureEdgeSession()
 
 
-        // Try multiple potential health endpoints
-        val healthEndpoints = listOf("/actuator/health", "/health", "/api/health")
-        var healthCheckPassed = false
-
-        for (endpoint in healthEndpoints) {
-            try {
-                val directResponse = client.getRawResponse("http://search-service:8098$endpoint")
-                if (directResponse.status == HttpStatusCode.OK || directResponse.status == HttpStatusCode.Unauthorized) {
-                    println("      ✓ Search Service container accessible at $endpoint")
-                    healthCheckPassed = true
-                    break
-                }
-            } catch (e: Exception) {
-                // Try next endpoint
-            }
-        }
-
-        require(healthCheckPassed) {
-            "Search Service container not responding on any health endpoint"
+        val directResponse = client.getRawResponse("${endpoints.searchService}/_cluster/health")
+        require(directResponse.status == HttpStatusCode.OK || directResponse.status == HttpStatusCode.Unauthorized) {
+            "OpenSearch did not respond on direct cluster health route: ${directResponse.status}"
         }
 
         
-        val proxiedResponse = authenticatedCaddyGet("search", "/health")
+        val proxiedResponse = authenticatedCaddyGet("search", "/_cluster/health")
         require(proxiedResponse.status == HttpStatusCode.OK) {
             "Failed to access through authenticated proxy: ${proxiedResponse.status}"
         }
-        println("      ✓ Successfully accessed Search Service through authenticated proxy")
+        println("      ✓ Successfully accessed OpenSearch through authenticated proxy")
     }
 
     
@@ -451,8 +435,8 @@ suspend fun TestRunner.authenticatedOperationsTests() = suite("Authenticated Ope
 
         val baseCandidates = listOf(
             endpoints.pipeline.trimEnd('/'),
-            "http://knowledge-ingestion:8090",
-            "http://content-publisher:8090"
+            "http://airflow-webserver:8080",
+            "http://ingestion-runner:8090"
         )
         val directResponse = probeFirstReachable(
             baseCandidates.flatMap { base -> listOf("$base/actuator/health", "$base/health") }

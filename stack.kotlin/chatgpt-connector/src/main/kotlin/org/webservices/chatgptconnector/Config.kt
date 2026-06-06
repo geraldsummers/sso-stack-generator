@@ -10,6 +10,8 @@ data class ConnectorConfig(
     val oidcBaseUrl: String,
     val trustedProxySecret: String?,
     val searchServiceBaseUrl: String,
+    val searchServiceUsername: String?,
+    val searchServicePassword: String?,
     val keycloakRealm: String,
     val keycloakAdminClientId: String,
     val keycloakAdminClientSecret: String,
@@ -25,7 +27,12 @@ fun loadConfig(): ConnectorConfig = ConnectorConfig(
     databasePath = Path(env("CHATGPT_CONNECTOR_DB_PATH", "/data/db/chatgpt_connector.sqlite")),
     oidcBaseUrl = env("CHATGPT_CONNECTOR_OIDC_BASE_URL", "http://keycloak:8080/realms/webservices").trimEnd('/'),
     trustedProxySecret = System.getenv("CHATGPT_CONNECTOR_TRUSTED_PROXY_SECRET")?.takeIf { it.isNotBlank() },
-    searchServiceBaseUrl = env("CHATGPT_CONNECTOR_SEARCH_SERVICE_BASE_URL", "http://search-service:8098").trimEnd('/'),
+    searchServiceBaseUrl = env(
+        "CHATGPT_CONNECTOR_SEARCH_SERVICE_BASE_URL",
+        "${env("CHATGPT_CONNECTOR_OPENSEARCH_URL", "http://opensearch:9200").trimEnd('/')}/${env("CHATGPT_CONNECTOR_OPENSEARCH_INDEX", "knowledge")}"
+    ).trimEnd('/'),
+    searchServiceUsername = System.getenv("CHATGPT_CONNECTOR_OPENSEARCH_USERNAME")?.takeIf { it.isNotBlank() },
+    searchServicePassword = System.getenv("CHATGPT_CONNECTOR_OPENSEARCH_PASSWORD")?.takeIf { it.isNotBlank() },
     keycloakRealm = env("CHATGPT_CONNECTOR_KEYCLOAK_REALM", "webservices"),
     keycloakAdminClientId = env("CHATGPT_CONNECTOR_KEYCLOAK_ADMIN_CLIENT_ID", "admin-cli"),
     keycloakAdminClientSecret = env("CHATGPT_CONNECTOR_KEYCLOAK_ADMIN_CLIENT_SECRET", ""),

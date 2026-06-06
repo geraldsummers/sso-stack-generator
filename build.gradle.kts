@@ -34,11 +34,7 @@ subprojects {
 
     tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile> {
         compilerOptions {
-            allWarningsAsErrors.set(project.name !in listOf(
-                "knowledge-ingestion",
-                "embedding-worker",
-                "content-publisher"
-            ))
+            allWarningsAsErrors.set(true)
         }
     }
 

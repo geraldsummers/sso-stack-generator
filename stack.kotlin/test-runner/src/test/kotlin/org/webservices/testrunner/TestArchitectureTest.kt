@@ -47,7 +47,8 @@ class TestArchitectureTest {
         assertTrue(composeText.contains("KEYCLOAK_INTERNAL_URL: \${KEYCLOAK_INTERNAL_URL:-http://keycloak:8080}"))
         assertTrue(composeText.contains("KEYCLOAK_ADMIN_PASSWORD: \${KEYCLOAK_ADMIN_PASSWORD}"))
         assertTrue(composeText.contains("WORKSPACE_PROXY_AUTH_SECRET: \${WORKSPACE_PROXY_AUTH_SECRET}"))
-        assertTrue(composeText.contains("SEARCH_SERVICE_INTERNAL_TOKEN: \${SEARCH_SERVICE_INTERNAL_TOKEN}"))
+        assertTrue(composeText.contains("OPENSEARCH_URL: \${OPENSEARCH_URL:-http://opensearch:9200}"))
+        assertTrue(composeText.contains("OPENSEARCH_PASSWORD: \${OPENSEARCH_ADMIN_PASSWORD}"))
         assertTrue(composeText.contains("INFERENCE_CONTROLLER_API_TOKEN: \${INFERENCE_CONTROLLER_API_TOKEN}"))
         assertTrue(composeText.contains("MODEL_CONTEXT_OIDC_REDIRECT_URI: \${MODEL_CONTEXT_OIDC_REDIRECT_URI:-http://test-runner-managed/callback}"))
         assertTrue(text.contains("resolve_test_runner_runtime_host_dir"))
@@ -108,7 +109,7 @@ class TestArchitectureTest {
         assertTrue(commonText.contains("TESTDEV_PULL_WORKSPACE_BASE_IMAGES:-1"))
         assertTrue(commonText.contains("build/stack.containers/agent-workspace/Dockerfile"))
         assertTrue(commonText.contains("docker pull \"\$image_ref\""))
-        assertTrue(Files.readString(repoRoot.resolve("stack.kotlin/test-runner/src/main/kotlin/org/webservices/testrunner/framework/InternalApiAuth.kt")).contains("SEARCH_SERVICE_INTERNAL_TOKEN"))
+        assertFalse(Files.readString(repoRoot.resolve("stack.kotlin/test-runner/src/main/kotlin/org/webservices/testrunner/framework/InternalApiAuth.kt")).contains("SEARCH_SERVICE_INTERNAL_TOKEN"))
         assertTrue(commonText.contains("I_UNDERSTAND_THIS_TOUCHES_LOCAL_DOCKER"))
         assertTrue(commonText.contains("Refusing because DOCKER_HOST is set"))
         assertFalse(commonText.contains("TESTDEV_ALLOW_NON_VM_HOST"))
@@ -144,7 +145,7 @@ class TestArchitectureTest {
         assertTrue(workspaceCompose.contains("WORKSPACE_PROVISIONER_RUNTIME_HTTP_BIND_ADDRESS: \${WORKSPACE_RUNTIME_HTTP_BIND_ADDRESS:-127.0.0.1}"))
 
         assertTrue(caddyCompose.contains("BOOKSTACK_INTERNAL_API_TOKEN: \${BOOKSTACK_INTERNAL_API_TOKEN}"))
-        assertTrue(caddyCompose.contains("SEARCH_SERVICE_INTERNAL_TOKEN: \${SEARCH_SERVICE_INTERNAL_TOKEN}"))
+        assertTrue(caddyCompose.contains("OPENSEARCH_BASIC_AUTH: \${OPENSEARCH_BASIC_AUTH}"))
         assertTrue(caddyCompose.contains("HOMEASSISTANT_TRUSTED_PROXY_SECRET: \${HOMEASSISTANT_TRUSTED_PROXY_SECRET}"))
         assertTrue(caddyCompose.contains("ONBOARDING_TRUSTED_PROXY_SECRET: \${ONBOARDING_TRUSTED_PROXY_SECRET}"))
         assertTrue(caddyCompose.contains("CHATGPT_CONNECTOR_TRUSTED_PROXY_SECRET: \${CHATGPT_CONNECTOR_TRUSTED_PROXY_SECRET}"))
@@ -153,12 +154,12 @@ class TestArchitectureTest {
         assertTrue(caddyfile.contains("header_up X-Trusted-Proxy-Secret {\$ONBOARDING_TRUSTED_PROXY_SECRET}"))
         assertTrue(caddyfile.contains("header_up X-Trusted-Proxy-Secret {\$CHATGPT_CONNECTOR_TRUSTED_PROXY_SECRET}"))
         assertFalse(caddyfile.contains("172.20.0.0/24 172.21.0.0/24 172.22.0.0/24"))
-        assertTrue(caddyfile.contains("header_up X-Internal-Token {\$SEARCH_SERVICE_INTERNAL_TOKEN}"))
+        assertTrue(caddyfile.contains("header_up Authorization \"Basic {\$OPENSEARCH_BASIC_AUTH}\""))
         assertTrue(caddyfile.contains("request_header -Authorization"))
 
         assertTrue(renderValues.contains("render_set WORKSPACE_RUNTIME_HTTP_BIND_ADDRESS"))
         assertTrue(renderValues.contains("derive_stack_secret workspace-proxy-auth 64"))
-        assertTrue(renderValues.contains("derive_stack_secret search-service-internal 64"))
+        assertTrue(renderValues.contains("derive_stack_secret airflow-webserver 64"))
         assertTrue(renderValues.contains("derive_stack_secret bookstack-internal-api 64"))
         assertTrue(renderValues.contains("derive_stack_secret homeassistant-trusted-proxy 64"))
     }
@@ -236,6 +237,7 @@ class TestArchitectureTest {
                 "deploy.sh",
                 "init-site.sh",
                 "security-audit.sh",
+                "stackctl.sh",
                 "test-component-selection.sh",
                 "test-deploy-scope.sh",
                 "test-deploy-state.sh",
@@ -351,9 +353,9 @@ class TestArchitectureTest {
         val repoRoot = repoRoot()
         val embedding = Files.readString(repoRoot.resolve("stack.compose/embedding.yml"))
         val pipeline = Files.readString(repoRoot.resolve("stack.compose/pipeline.yml"))
+        val opensearch = Files.readString(repoRoot.resolve("stack.compose/opensearch.yml"))
         val jupyterhub = Files.readString(repoRoot.resolve("stack.compose/jupyterhub.yml"))
         val workspaceProvisioner = Files.readString(repoRoot.resolve("stack.compose/workspace-provisioner.yml"))
-        val searchService = Files.readString(repoRoot.resolve("stack.compose/search-service.yml"))
         val bookstack = Files.readString(repoRoot.resolve("stack.compose/bookstack.yml"))
         val caddyfile = Files.readString(repoRoot.resolve("stack.config/caddy/Caddyfile"))
         val graph = Files.readString(repoRoot.resolve("stack.systemd/graph.json"))
@@ -362,13 +364,14 @@ class TestArchitectureTest {
         assertTrue(embedding.contains("BAAI/bge-m3"))
         assertTrue(embedding.contains("--dtype float32"))
         assertTrue(embedding.contains("start_period: 300s"))
-        assertTrue(searchService.contains("embedding-gpu:\n        condition: service_started"))
-        assertTrue(searchService.contains("EMBEDDING_SERVICE_URL: http://embedding-gpu:8080"))
-        assertFalse(searchService.contains("inference-gateway"))
+        assertTrue(opensearch.contains("image: opensearchproject/opensearch"))
+        assertTrue(opensearch.contains("OPENSEARCH_INITIAL_ADMIN_PASSWORD: \${OPENSEARCH_ADMIN_PASSWORD}"))
+        assertFalse(opensearch.contains("inference-gateway"))
         assertTrue(jupyterhub.contains("DOCKER_NETWORK_NAME: webservices_ai"))
         assertFalse(workspaceProvisioner.contains("authelia"))
         assertTrue(workspaceProvisioner.contains("docker-vm-controller-proxy:\n        condition: service_started"))
-        assertTrue(workspaceProvisioner.contains("search-service:\n        condition: service_started"))
+        assertTrue(workspaceProvisioner.contains("opensearch:\n        condition: service_started"))
+        assertTrue(workspaceProvisioner.contains("qdrant:\n        condition: service_started"))
         assertTrue(bookstack.contains("API_REQUESTS_PER_MIN: \${BOOKSTACK_API_REQUESTS_PER_MIN:-1200}"))
         assertTrue(caddyfile.contains("workspaces.{\$DOMAIN}"))
         assertTrue(caddyfile.contains("reverse_proxy workspace-provisioner:8120"))
@@ -376,8 +379,10 @@ class TestArchitectureTest {
         assertTrue(caddyfile.contains("reverse_proxy embedding-gpu:8080"))
         assertFalse(caddyfile.contains("open-webui.{\$DOMAIN}"))
         assertFalse(caddyfile.contains("reverse_proxy inference-gateway:8111"))
-        assertFalse(searchService.contains("embedding-gpu:\n        condition: service_healthy"))
-        assertTrue(pipeline.contains("embedding-worker:"))
+        assertTrue(pipeline.contains("airflow-webserver:"))
+        assertTrue(pipeline.contains("airflow-scheduler:"))
+        assertTrue(pipeline.contains("ingestion-runner:"))
+        assertFalse(pipeline.contains("embedding-worker:"))
         assertFalse(pipeline.contains("inference-gateway"))
         assertTrue(graph.contains(""""onDemandServices": []"""))
     }

@@ -29,24 +29,3 @@ services:
         limits:
           memory: 2G
           cpus: '2.0'
-
-  vector-bootstrap:
-    image: zenika/kotlin@sha256:6aa73e11c07b361e4cf068dce3745a4bc9f8b0b7d8d0b8cbbcc385539184d46a
-    container_name: vector-bootstrap
-    restart: "no"
-    networks:
-      - qdrant
-    depends_on:
-      qdrant:
-        condition: service_healthy
-    environment:
-      QDRANT_URL: http://qdrant:6333
-      QDRANT_API_KEY: ${QDRANT_ADMIN_API_KEY}
-      VECTOR_SIZE: ${VECTOR_EMBED_SIZE:-1024}
-    volumes:
-      - ./configs/vectors/collections.yaml:/configs/collections.yaml:ro
-      - ./configs/vectors/bootstrap_vectors.main.kts:/scripts/bootstrap_vectors.main.kts:ro
-    command:
-      - kotlin
-      - /scripts/bootstrap_vectors.main.kts
-      - /configs/collections.yaml

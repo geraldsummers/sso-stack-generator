@@ -68,7 +68,7 @@ preflight_visual_stack() {
     planka \
     progression \
     prometheus \
-    search-service \
+    opensearch \
     seafile \
     synapse \
     element \
@@ -84,12 +84,14 @@ preflight_visual_stack() {
   done
 
   if [ "${TESTDEV_SKIP_GPU_INGESTION:-0}" != "1" ]; then
-    if ! status_line=$(require_container_health "knowledge-ingestion"); then
-      if [ -n "$missing_report" ]; then
-        missing_report="${missing_report}\n"
+    for service_name in airflow-webserver airflow-scheduler ingestion-runner; do
+      if ! status_line=$(require_container_health "$service_name"); then
+        if [ -n "$missing_report" ]; then
+          missing_report="${missing_report}\n"
+        fi
+        missing_report="${missing_report}${status_line}"
       fi
-      missing_report="${missing_report}${status_line}"
-    fi
+    done
   fi
 
   if [ -n "$missing_report" ]; then

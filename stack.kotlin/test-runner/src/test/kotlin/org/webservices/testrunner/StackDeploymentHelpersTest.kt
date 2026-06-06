@@ -88,8 +88,8 @@ class StackDeploymentHelpersTest {
             "Workspace provisioner image builds should use the classic Docker build endpoint exposed by the isolated controller proxy"
         )
         assertTrue(
-            composeSource.contains("search-service:\n        condition: service_started"),
-            "Workspace provisioner should wait for search-service startup"
+            composeSource.contains("opensearch:\n        condition: service_started"),
+            "Workspace provisioner should wait for OpenSearch startup"
         )
     }
 
@@ -120,17 +120,14 @@ class StackDeploymentHelpersTest {
     }
 
     @Test
-    fun `test runner search client authenticates internal search requests`() {
+    fun `test runner search client queries OpenSearch`() {
         val serviceClient = Files.readString(repoFile("stack.kotlin/test-runner/src/main/kotlin/org/webservices/testrunner/framework/ServiceClient.kt"))
-        val searchPostIndex = serviceClient.indexOf("client.post(\"${'$'}{endpoints.searchService}/search\")")
+        val searchPostIndex = serviceClient.indexOf("knowledge/_search")
         val contentTypeIndex = serviceClient.indexOf("contentType(ContentType.Application.Json)", searchPostIndex)
-        val authIndex = serviceClient.indexOf("applyInternalApiAuthHeaders()", searchPostIndex)
-        val rawSearchAuthIndex = serviceClient.indexOf("url.contains(endpoints.searchService)")
-        val rawAuthIndex = serviceClient.indexOf("builder.applyInternalApiAuthHeaders()", rawSearchAuthIndex)
+        val authIndex = serviceClient.indexOf("HttpHeaders.Authorization", searchPostIndex)
 
-        assertTrue(searchPostIndex >= 0, "ServiceClient should post searches to search-service")
-        assertTrue(authIndex in searchPostIndex until contentTypeIndex, "Search requests should include internal API auth headers")
-        assertTrue(rawAuthIndex > rawSearchAuthIndex, "Raw search-service requests should include internal API auth headers")
+        assertTrue(searchPostIndex >= 0, "ServiceClient should post searches to OpenSearch")
+        assertTrue(authIndex in searchPostIndex until contentTypeIndex, "Search requests should include OpenSearch basic auth")
     }
 
     @Test

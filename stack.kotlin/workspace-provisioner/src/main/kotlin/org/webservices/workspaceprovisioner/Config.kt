@@ -12,6 +12,8 @@ data class WorkspaceProvisionerConfig(
     val oidcPublicUrl: String,
     val publicBaseUrl: String,
     val searchServiceBaseUrl: String,
+    val searchServiceUsername: String?,
+    val searchServicePassword: String?,
     val searchServiceToken: String?,
     val trustedProxySecret: String?,
     val agentTokenSecret: String,
@@ -52,8 +54,13 @@ fun loadConfig(): WorkspaceProvisionerConfig = WorkspaceProvisionerConfig(
     oidcPublicUrl = env("WORKSPACE_PROVISIONER_OIDC_PUBLIC_URL", "https://keycloak.example.test/realms/webservices").trimEnd('/'),
     publicBaseUrl = env("WORKSPACE_PROVISIONER_PUBLIC_BASE_URL", "https://workspaces.example.test").trimEnd('/'),
     searchServiceBaseUrl = validateSearchServiceBaseUrl(
-        env("WORKSPACE_PROVISIONER_SEARCH_SERVICE_BASE_URL", "http://search-service:8098")
+        env(
+            "WORKSPACE_PROVISIONER_SEARCH_SERVICE_BASE_URL",
+            "${env("WORKSPACE_PROVISIONER_OPENSEARCH_URL", "http://opensearch:9200").trimEnd('/')}/${env("WORKSPACE_PROVISIONER_OPENSEARCH_INDEX", "knowledge")}"
+        )
     ),
+    searchServiceUsername = System.getenv("WORKSPACE_PROVISIONER_OPENSEARCH_USERNAME")?.takeIf { it.isNotBlank() },
+    searchServicePassword = System.getenv("WORKSPACE_PROVISIONER_OPENSEARCH_PASSWORD")?.takeIf { it.isNotBlank() },
     searchServiceToken = System.getenv("WORKSPACE_PROVISIONER_SEARCH_SERVICE_TOKEN")?.takeIf { it.isNotBlank() },
     trustedProxySecret = System.getenv("WORKSPACE_PROVISIONER_TRUSTED_PROXY_SECRET")?.takeIf { it.isNotBlank() },
     agentTokenSecret = envRequired("WORKSPACE_PROVISIONER_AGENT_TOKEN_SECRET"),

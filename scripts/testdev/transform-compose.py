@@ -18,9 +18,11 @@ EXCLUDED_SERVICES = {
     "inference-controller",
     "inference-gateway",
     # User-excluded ingestion/publication pipeline.
-    "knowledge-ingestion",
-    "embedding-worker",
-    "content-publisher",
+    "airflow-init",
+    "airflow-webserver",
+    "airflow-scheduler",
+    "ingestion-runner",
+    "nats",
     # External isolated Docker VM tunnel/proxies. Testdev uses the local DinD
     # daemon through the normal docker-socket proxies instead.
     "isolated-docker-vm-tunnel",
@@ -289,10 +291,6 @@ def main() -> int:
             env = service.setdefault("environment", {})
             if isinstance(env, dict):
                 env["DOCKER_NETWORK_NAME"] = "${COMPOSE_PROJECT_NAME}_ai"
-        if name == "search-service":
-            env = service.setdefault("environment", {})
-            if isinstance(env, dict):
-                env["EMBEDDING_SERVICE_URL"] = "${SEARCH_EMBEDDING_SERVICE_URL:-}"
         if name == "volume-init":
             disable_volume_init(service)
 

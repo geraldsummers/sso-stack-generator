@@ -29,7 +29,7 @@ fun loadConfig(): TestManagerConfig {
         suitesPath = Path(env("TEST_MANAGER_SUITES_PATH", workspaceRoot.resolve("runtime/configs/test-manager/suites.yaml").toString())),
         releaseInfoPath = Path(env("TEST_MANAGER_RELEASE_INFO_PATH", workspaceRoot.resolve(".build-info").toString())),
         domainConfigPath = Path(env("TEST_MANAGER_DOMAIN_CONFIG_PATH", workspaceRoot.resolve("runtime/configs/caddy/Caddyfile").toString())),
-        pipelineReadinessUrl = env("TEST_MANAGER_PIPELINE_READINESS_URL", "http://knowledge-ingestion:8090/readiness"),
+        pipelineReadinessUrl = env("TEST_MANAGER_PIPELINE_READINESS_URL", "http://ingestion-runner:8090/health"),
         pipelineApiKey = System.getenv("TEST_MANAGER_PIPELINE_API_KEY")?.takeIf { it.isNotBlank() },
         apiKey = envRequired("TEST_MANAGER_API_KEY"),
         allowedCommandPrefixes = envCsv("TEST_MANAGER_ALLOWED_COMMAND_PREFIXES", listOf("./run-tests.sh")),

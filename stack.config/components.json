@@ -44,14 +44,14 @@
       "composeFiles": ["embedding.yml", "qdrant.yml"]
     },
     "search": {
-      "name": "Search service",
-      "description": "Shared vector-backed search API.",
+      "name": "Search backends",
+      "description": "OpenSearch text search and Qdrant vector search APIs.",
       "dependencies": ["inference"],
-      "composeFiles": ["search-service.yml"]
+      "composeFiles": ["opensearch.yml"]
     },
     "pipeline": {
       "name": "Knowledge pipeline",
-      "description": "Ingestion, embedding worker, and content publication services.",
+      "description": "Airflow, NATS JetStream, and ingestion/publication runner services.",
       "dependencies": ["search", "bookstack"],
       "composeFiles": ["pipeline.yml"]
     },

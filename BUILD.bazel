@@ -15,6 +15,10 @@ filegroup(
         exclude = [
             "**/__pycache__/**",
             "**/*.pyc",
+            "stack.containers/content-publisher/**",
+            "stack.containers/embedding-worker/**",
+            "stack.containers/knowledge-ingestion/**",
+            "stack.containers/search-service/**",
             "stack.containers/test-runner/**/node_modules/**",
             "stack.containers/test-runner/**/coverage/**",
             "stack.containers/test-runner/**/test-results/**",

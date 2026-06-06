@@ -197,7 +197,9 @@ class MainTest {
         databasePath = dataDir.resolve("db.sqlite"),
         oidcBaseUrl = "http://keycloak.test/realms/webservices",
         trustedProxySecret = "test-secret",
-        searchServiceBaseUrl = "http://search-service.test",
+        searchServiceBaseUrl = "https://opensearch.test/knowledge",
+        searchServiceUsername = "admin",
+        searchServicePassword = "opensearch-password",
         keycloakRealm = "webservices",
         keycloakAdminClientId = "admin-cli",
         keycloakAdminClientSecret = "",
@@ -210,8 +212,8 @@ class MainTest {
     private fun searchMockClient(): HttpClient {
         val engine = MockEngine { request ->
             when (request.url.encodedPath) {
-                "/search" -> respond(
-                    """{"results":[{"id":"agent-doc","title":"Agent Docs","score":1.0,"content":"RBAC search","metadata":{}}],"total":1,"mode":"hybrid"}""",
+                "/knowledge/_search" -> respond(
+                    """{"hits":{"total":{"value":1},"hits":[{"_id":"agent-doc","_score":1.0,"_source":{"id":"agent-doc","title":"Agent Docs","text":"RBAC search","metadata":{}}}]}}""",
                     HttpStatusCode.OK,
                     headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString())
                 )

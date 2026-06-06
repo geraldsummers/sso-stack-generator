@@ -12,7 +12,7 @@ import java.io.File
  * ## Cross-Service Integration Testing
  * The endpoints represent the full authentication cascade and data flow:
  * - **Keycloak → OIDC/edge auth → Services**: Authentication flows validated end-to-end
- * - **Pipeline → PostgreSQL → Qdrant → Search-Service**: Document ingestion and retrieval
+ * - **Airflow → PostgreSQL → Qdrant/OpenSearch**: Document ingestion and retrieval
  * - **Agent-Tool-Server → All Services**: LLM tool execution across the stack
  *
  * ## Design Rationale
@@ -23,11 +23,11 @@ import java.io.File
  *
  * @property modelContextServer Agent-Tool-Server endpoint for LLM tool execution
  * @property dataFetcher Data fetcher service for triggering pipeline ingestion
- * @property searchService Hybrid search service (vector + BM25) endpoint
+ * @property searchService OpenSearch endpoint
  * @property pipeline Pipeline monitoring and control endpoint
  * @property llmGateway Inference gateway endpoint for LLM routing and function calling
  * @property bookstack BookStack knowledge base API endpoint
- * @property postgres PostgreSQL connection config (shared by Pipeline, Search-Service, tests)
+ * @property postgres PostgreSQL connection config (shared by Airflow, ingestion runner, tests)
  * @property mariadb MariaDB connection config (used by BookStack)
  * @property qdrant Qdrant vector database HTTP endpoint
  * @property valkey Valkey (Redis-compatible) cache endpoint
@@ -55,6 +55,7 @@ import java.io.File
  * @property homepage Homepage dashboard endpoint
  * @property radicale Radicale CalDAV/CardDAV server endpoint
  * @property ntfy Ntfy notification service endpoint
+ * @property qbittorrent qBittorrent torrent client endpoint
  * @property homeassistant Home Assistant home automation endpoint
  */
 data class ServiceEndpoints(
@@ -104,6 +105,7 @@ data class ServiceEndpoints(
     val homepage: String? = null,
     val radicale: String? = null,
     val ntfy: String? = null,
+    val qbittorrent: String? = null,
 
     val homeassistant: String? = null
 ) {
@@ -123,8 +125,8 @@ data class ServiceEndpoints(
         fun fromEnvironment(): ServiceEndpoints = ServiceEndpoints(
             modelContextServer = env("MODEL_CONTEXT_SERVER_URL") ?: "http://workspace-provisioner:8120",
             dataFetcher = env("DATA_FETCHER_URL") ?: "http://data-fetcher:8095",
-            searchService = env("SEARCH_SERVICE_URL") ?: "http://search-service:8098",
-            pipeline = env("PIPELINE_URL") ?: "http://knowledge-ingestion:8090",
+            searchService = env("SEARCH_SERVICE_URL") ?: env("OPENSEARCH_URL") ?: "http://opensearch:9200",
+            pipeline = env("PIPELINE_URL") ?: "http://airflow-webserver:8080",
             llmGateway = env("LLM_GATEWAY_URL") ?: "http://embedding-gpu:8080",
             bookstack = env("BOOKSTACK_URL") ?: "http://bookstack:80",
             postgres = DatabaseConfig(
@@ -180,6 +182,7 @@ data class ServiceEndpoints(
             homepage = env("HOMEPAGE_URL") ?: "http://homepage:3000",
             radicale = env("RADICALE_URL"),
             ntfy = env("NTFY_URL") ?: "http://ntfy:80",
+            qbittorrent = env("QBITTORRENT_URL") ?: "http://qbittorrent:8080",
 
             homeassistant = env("HOMEASSISTANT_URL") ?: "http://homeassistant:8123"
         )
@@ -199,8 +202,8 @@ data class ServiceEndpoints(
         fun forLocalhost(): ServiceEndpoints = ServiceEndpoints(
             modelContextServer = "http://localhost:18120",
             dataFetcher = "http://localhost:18095",
-            searchService = "http://localhost:18098",
-            pipeline = "http://localhost:18090",
+            searchService = env("OPENSEARCH_URL") ?: "https://localhost:19200",
+            pipeline = "http://localhost:8080",
             llmGateway = env("LLM_GATEWAY_URL") ?: "http://localhost:8080",
             bookstack = "http://localhost:10080",
             postgres = DatabaseConfig("localhost", 15432, "webservices", "test_runner_user", ""),
@@ -242,6 +245,7 @@ data class ServiceEndpoints(
             homepage = "http://localhost:3003",
             radicale = env("RADICALE_URL"),
             ntfy = "http://localhost:8081",
+            qbittorrent = "http://localhost:8082",
 
             homeassistant = "http://localhost:8123"
         )
@@ -255,8 +259,8 @@ data class ServiceEndpoints(
  * querying document staging tables, and verifying cross-service data consistency.
  *
  * The same PostgreSQL database is shared by:
- * - **Pipeline**: Writes documents to `document_staging` table
- * - **Search-Service**: Queries `document_staging` for full-text search
+ * - **Ingestion runner**: writes checkpoints and publication metadata to PostgreSQL
+ * - **OpenSearch/Qdrant**: serve full-text and vector search through official APIs
  * - **Tests**: Validates document processing states and counts
  *
  * @property host Database server hostname (e.g., "postgres" or "localhost")

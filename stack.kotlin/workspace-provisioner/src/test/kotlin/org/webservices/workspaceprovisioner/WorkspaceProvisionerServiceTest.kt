@@ -191,10 +191,10 @@ class WorkspaceProvisionerServiceTest {
     }
 
     @Test
-    fun `search service base url validation rejects credentials and non-http schemes`() {
-        assertEquals("http://search-service:8098", validateSearchServiceBaseUrl("http://search-service:8098/"))
+    fun `search backend base url validation rejects credentials and non-http schemes`() {
+        assertEquals("https://opensearch:9200/knowledge", validateSearchServiceBaseUrl("https://opensearch:9200/knowledge/"))
         assertThrows(IllegalArgumentException::class.java) {
-            validateSearchServiceBaseUrl("http://user:pass@search-service:8098")
+            validateSearchServiceBaseUrl("https://user:pass@opensearch:9200/knowledge")
         }
         assertThrows(IllegalArgumentException::class.java) {
             validateSearchServiceBaseUrl("file:///etc/passwd")
@@ -218,8 +218,10 @@ class WorkspaceProvisionerServiceTest {
             oidcBaseUrl = "http://keycloak:8080/realms/webservices",
             oidcPublicUrl = "https://keycloak.example.test/realms/webservices",
             publicBaseUrl = "https://workspaces.example.test",
-            searchServiceBaseUrl = "http://search-service:8098",
-        searchServiceToken = "search-token",
+            searchServiceBaseUrl = "https://opensearch:9200/knowledge",
+            searchServiceUsername = "admin",
+            searchServicePassword = "opensearch-password",
+            searchServiceToken = "search-token",
             trustedProxySecret = "test-secret",
             agentTokenSecret = "test-agent-secret",
             agentTokenTtlSeconds = 86_400L,

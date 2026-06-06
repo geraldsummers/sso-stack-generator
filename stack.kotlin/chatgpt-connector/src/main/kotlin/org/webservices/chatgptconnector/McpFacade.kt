@@ -3,12 +3,14 @@ package org.webservices.chatgptconnector
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.request.get
-import io.ktor.client.request.parameter
+import io.ktor.client.request.header
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
 import io.ktor.http.ContentType
+import io.ktor.http.HttpHeaders
 import io.ktor.http.contentType
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
@@ -16,12 +18,14 @@ import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.decodeFromJsonElement
+import kotlinx.serialization.json.doubleOrNull
 import kotlinx.serialization.json.encodeToJsonElement
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.put
 import kotlinx.serialization.json.putJsonArray
 import kotlinx.serialization.json.putJsonObject
+import java.util.Base64
 
 class McpFacade(
     private val store: ConnectorStore,
@@ -91,25 +95,88 @@ class McpFacade(
             limit = arguments["limit"]?.let { (it as JsonPrimitive).content.toIntOrNull() } ?: 10,
             audience = "agent"
         )
-        val response = httpClient.post("${config.searchServiceBaseUrl}/search") {
+        val response = httpClient.post("${config.searchServiceBaseUrl}/_search") {
+            applySearchAuth()
             contentType(ContentType.Application.Json)
-            setBody(request)
+            setBody(openSearchQuery(request))
         }
-        return json.encodeToJsonElement(response.body<SearchResponse>())
+        return openSearchResponse(response.body<JsonElement>(), request.mode)
     }
 
     private suspend fun callFetch(arguments: JsonObject): JsonElement {
         val id = arguments["id"]?.let { (it as JsonPrimitive).content } ?: return buildJsonObject { put("error", "missing id") }
-        val collection = arguments["collection"]?.let { (it as JsonPrimitive).content }
-        val response = httpClient.get("${config.searchServiceBaseUrl}/documents/$id") {
-            collection?.let { parameter("collection", it) }
+        val response = httpClient.get("${config.searchServiceBaseUrl}/_doc/$id") {
+            applySearchAuth()
         }
-        return json.encodeToJsonElement(response.body<SearchDocument>())
+        return openSearchDocument(id, response.body<JsonElement>())
     }
 
     private suspend fun callPipelineStatus(): JsonElement {
-        val response = httpClient.get("http://knowledge-ingestion:8090/health")
+        val response = httpClient.get("http://ingestion-runner:8090/health")
         return json.encodeToJsonElement(response.body<Map<String, String>>())
+    }
+
+    private fun io.ktor.client.request.HttpRequestBuilder.applySearchAuth() {
+        val username = config.searchServiceUsername
+        val password = config.searchServicePassword
+        if (!username.isNullOrBlank() && password != null) {
+            val encoded = Base64.getEncoder().encodeToString("$username:$password".toByteArray(Charsets.UTF_8))
+            header(HttpHeaders.Authorization, "Basic $encoded")
+        }
+    }
+
+    private fun openSearchQuery(request: SearchRequest): JsonObject = buildJsonObject {
+        put("size", request.limit)
+        put("query", buildJsonObject {
+            put("bool", buildJsonObject {
+                putJsonArray("must") {
+                    add(buildJsonObject {
+                        putJsonObject("multi_match") {
+                            put("query", request.query)
+                            put("fields", JsonArray(listOf(JsonPrimitive("title^3"), JsonPrimitive("text"))))
+                        }
+                    })
+                }
+                val collections = request.collections.filter { it != "*" }
+                if (collections.isNotEmpty()) {
+                    putJsonArray("filter") {
+                        add(buildJsonObject {
+                            putJsonObject("terms") {
+                                put("collection", JsonArray(collections.map { JsonPrimitive(it) }))
+                            }
+                        })
+                    }
+                }
+            })
+        })
+    }
+
+    private fun openSearchResponse(raw: JsonElement, mode: String): JsonElement {
+        val hits = raw.jsonObject["hits"]?.jsonObject
+        val results = hits?.get("hits")?.jsonArray.orEmpty().map { hit ->
+                val hitObject = hit.jsonObject
+                val source = hitObject["_source"]?.jsonObject ?: JsonObject(emptyMap())
+                SearchResult(
+                    id = source["id"]?.asString() ?: hitObject["_id"]?.asString().orEmpty(),
+                    title = source["title"]?.asString(),
+                    score = hitObject["_score"]?.jsonPrimitiveDouble() ?: 0.0,
+                    content = source["text"]?.asString(),
+                    metadata = source["metadata"]?.jsonObject?.mapValues { it.value.asString().orEmpty() }.orEmpty()
+                )
+        }
+        val total = hits?.get("total")?.jsonObject?.get("value")?.jsonPrimitiveDouble()?.toInt() ?: results.size
+        return json.encodeToJsonElement(SearchResponse(results, total, mode))
+    }
+
+    private fun openSearchDocument(id: String, raw: JsonElement): JsonElement {
+        val source = raw.jsonObject["_source"]?.jsonObject ?: JsonObject(emptyMap())
+        return json.encodeToJsonElement(SearchDocument(
+            id = source["id"]?.asString() ?: id,
+            collection = source["collection"]?.asString().orEmpty(),
+            title = source["title"]?.asString(),
+            content = source["text"]?.asString().orEmpty(),
+            metadata = source["metadata"]?.jsonObject?.mapValues { it.value.asString().orEmpty() }.orEmpty()
+        ))
     }
 
     private suspend fun callWorkspaceReadiness(): JsonElement {
@@ -126,3 +193,6 @@ class McpFacade(
         }
     }
 }
+
+private fun JsonElement.asString(): String? = (this as? JsonPrimitive)?.contentOrNull
+private fun JsonElement.jsonPrimitiveDouble(): Double? = (this as? JsonPrimitive)?.doubleOrNull

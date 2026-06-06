@@ -25,7 +25,7 @@ class ChatGptConnectorConfigTest {
         assertTrue(compose.contains("CHATGPT_CONNECTOR_TRUSTED_PROXY_SECRET: \${CHATGPT_CONNECTOR_TRUSTED_PROXY_SECRET:?CHATGPT_CONNECTOR_TRUSTED_PROXY_SECRET is required}"))
         assertTrue(compose.contains("CHATGPT_CONNECTOR_KEYCLOAK_ADMIN_PASSWORD: \${KEYCLOAK_ADMIN_PASSWORD:?KEYCLOAK_ADMIN_PASSWORD is required}"))
         assertTrue(compose.contains("keycloak:"))
-        assertTrue(compose.contains("search-service:"))
+        assertTrue(compose.contains("opensearch:"))
         assertTrue(compose.contains("workspace-provisioner:"))
         assertTrue(compose.contains("http://127.0.0.1:8130/health"))
 
@@ -79,14 +79,14 @@ class ChatGptConnectorConfigTest {
     @Test
     fun `agent docs ingestion is wired for connector searchable corpus`() {
         val pipeline = repoFileText("stack.compose/pipeline.yml")
-        val source = repoFileText("stack.kotlin/knowledge-ingestion/src/main/kotlin/org/webservices/pipeline/sources/standardized/AgentDocsStandardizedSource.kt")
+        val dag = repoFileText("stack.config/airflow/dags/knowledge_ingestion_dags.py")
+        val runner = repoFileText("stack.containers/ingestion-runner/ingestion_runner.py")
 
-        assertTrue(pipeline.contains("AGENT_DOCS_ENABLED: \"true\""))
         assertTrue(pipeline.contains("AGENT_DOCS_PATH: /configs/agent-docs"))
-        assertTrue(pipeline.contains("QDRANT_AGENT_DOCS_COLLECTION: agent_docs"))
         assertTrue(pipeline.contains("./configs/agent-docs:/configs/agent-docs:ro"))
-        assertTrue(source.contains("AgentDocsStandardizedSource"))
-        assertTrue(source.contains("agent_docs"))
+        assertTrue(dag.contains("\"agent_docs\""))
+        assertTrue(runner.contains("\"agent_docs\": \"agent_docs\""))
+        assertTrue(runner.contains("local_markdown_documents(source, os.getenv(\"AGENT_DOCS_PATH\""))
     }
 
     private fun appsTargetBlock(graph: String): String {

@@ -26,7 +26,7 @@ class TestManagerConfigTest {
         assertEquals("/workspace/runtime/configs/test-manager/suites.yaml", config["suitesPath"])
         assertEquals("/workspace/.build-info", config["releaseInfoPath"])
         assertEquals("/workspace/runtime/configs/caddy/Caddyfile", config["domainConfigPath"])
-        assertEquals("http://knowledge-ingestion:8090/readiness", config["pipelineReadinessUrl"])
+        assertEquals("http://ingestion-runner:8090/health", config["pipelineReadinessUrl"])
         assertNull(config["pipelineApiKey"])
         assertEquals("test-api-key", config["apiKey"])
         assertEquals("tcp://docker-socket-proxy:2375", config["dockerHost"])

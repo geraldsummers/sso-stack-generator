@@ -19,7 +19,7 @@ import java.io.File
  * ## Cross-Service Integration Testing
  * TestRunner enables tests that span multiple services:
  * - **Authentication Flows**: Keycloak → edge auth → Services
- * - **Data Pipelines**: Pipeline → PostgreSQL → Qdrant → Search-Service → BookStack
+ * - **Data Pipelines**: Airflow → PostgreSQL checkpoints → Qdrant/OpenSearch → BookStack
  * - **Agent Tools**: Agent-Tool-Server → All Services (LLM-driven workflows)
  * - **SSO Validation**: Single Keycloak session accessing multiple applications
  *

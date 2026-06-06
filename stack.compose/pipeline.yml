@@ -1,182 +1,165 @@
 services:
-  knowledge-ingestion:
-    image: webservices/knowledge-ingestion:local-build
-    build:
-      context: .
-      dockerfile: ./stack.containers/knowledge-ingestion/Dockerfile
-    container_name: knowledge-ingestion
+  nats:
+    image: nats:2.11.9-alpine@sha256:6bb0a227194ad7d18285ba5246afda2b7a0632b64d84f2f1c8ef380146f0ee61
+    container_name: nats
     restart: unless-stopped
-    labels:
-      - "com.centurylinklabs.watchtower.enable=false"
+    networks:
+      - pipeline
+    command:
+      - --jetstream
+      - --store_dir=/data/jetstream
+      - --http_port=8222
+      - --user=${NATS_USER}
+      - --pass=${NATS_PASSWORD}
+      - --max_memory=1G
+      - --max_file=20G
+    volumes:
+      - nats_data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "wget --quiet --tries=1 --timeout=3 -O- http://127.0.0.1:8222/healthz | grep -q ok"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
 
+  airflow-init:
+    image: apache/airflow:2.10.5-python3.11
+    container_name: airflow-init
+    restart: "no"
     networks:
       - postgres
+      - pipeline
+    depends_on:
+      postgres-ssd-bootstrap:
+        condition: service_completed_successfully
+    environment: &airflow_env
+      AIRFLOW__CORE__EXECUTOR: LocalExecutor
+      AIRFLOW__CORE__FERNET_KEY: ${AIRFLOW_FERNET_KEY}
+      AIRFLOW__CORE__LOAD_EXAMPLES: "false"
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:${POSTGRES_AIRFLOW_PASSWORD}@postgres-ssd:5432/airflow
+      AIRFLOW__WEBSERVER__SECRET_KEY: ${AIRFLOW_WEBSERVER_SECRET_KEY}
+      AIRFLOW_ADMIN_USERNAME: ${AIRFLOW_ADMIN_USERNAME}
+      AIRFLOW_ADMIN_PASSWORD: ${AIRFLOW_ADMIN_PASSWORD}
+      AIRFLOW_ADMIN_EMAIL: ${STACK_ADMIN_EMAIL}
+      AIRFLOW_CONN_INGESTION_RUNNER: http://ingestion-runner:8090
+    volumes: &airflow_volumes
+      - ./configs/airflow/dags:/opt/airflow/dags:ro
+      - airflow_logs:/opt/airflow/logs
+    command:
+      - bash
+      - -c
+      - |
+        airflow db migrate
+        airflow users create \
+          --username "$$AIRFLOW_ADMIN_USERNAME" \
+          --password "$$AIRFLOW_ADMIN_PASSWORD" \
+          --firstname Stack \
+          --lastname Admin \
+          --role Admin \
+          --email "$$AIRFLOW_ADMIN_EMAIL" || true
+
+  airflow-webserver:
+    image: apache/airflow:2.10.5-python3.11
+    container_name: airflow-webserver
+    restart: unless-stopped
+    networks:
+      - caddy
+      - postgres
+      - pipeline
+    depends_on:
+      airflow-init:
+        condition: service_completed_successfully
+      ingestion-runner:
+        condition: service_started
+    environment:
+      <<: *airflow_env
+    volumes: *airflow_volumes
+    command: webserver
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://127.0.0.1:8080/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 20
+      start_period: 60s
+
+  airflow-scheduler:
+    image: apache/airflow:2.10.5-python3.11
+    container_name: airflow-scheduler
+    restart: unless-stopped
+    networks:
+      - postgres
+      - pipeline
+    depends_on:
+      airflow-init:
+        condition: service_completed_successfully
+      ingestion-runner:
+        condition: service_started
+    environment:
+      <<: *airflow_env
+    volumes: *airflow_volumes
+    command: scheduler
+    healthcheck:
+      test: ["CMD-SHELL", "airflow jobs check --job-type SchedulerJob --hostname \"$${HOSTNAME}\""]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+
+  ingestion-runner:
+    image: webservices/ingestion-runner:local-build
+    build:
+      context: .
+      dockerfile: ./stack.containers/ingestion-runner/Dockerfile
+    container_name: ingestion-runner
+    restart: unless-stopped
+    networks:
       - internet
+      - postgres
+      - qdrant
+      - ai
+      - pipeline
+      - opensearch
       - mariadb
     depends_on:
       postgres-ssd-bootstrap:
         condition: service_completed_successfully
+      nats:
+        condition: service_healthy
+      qdrant:
+        condition: service_healthy
+      opensearch:
+        condition: service_healthy
+      embedding-gpu:
+        condition: service_started
     environment:
-      RSS_SCHEDULE_MINUTES: "60"
-      RSS_FEED_URLS: "https://cointelegraph.com/rss,https://www.coindesk.com/arc/outboundfeeds/rss/,https://decrypt.co/feed,https://www.theblock.co/rss.xml,https://www.marketwatch.com/rss/topstories,https://feeds.reuters.com/reuters/businessNews,https://feeds.bbci.co.uk/news/business/rss.xml,https://rss.nytimes.com/services/xml/rss/nyt/Business.xml,https://rss.nytimes.com/services/xml/rss/nyt/Technology.xml,https://hnrss.org/frontpage,https://feeds.arstechnica.com/arstechnica/index,https://www.investing.com/rss/news_25.rss,https://feeds.bbci.co.uk/news/world/rss.xml,https://www.abc.net.au/news/feed/51120/rss.xml"
-      CVE_ENABLED: "true"
-      CVE_API_KEY: "${CVE_API_KEY:-}"
-      CVE_SCHEDULE_MINUTES: "1440"
-      CVE_MAX_RESULTS: "2000"
-
-      WIKIPEDIA_DUMP_PATH: "https://dumps.wikimedia.org/enwiki/latest/enwiki-latest-pages-articles.xml.bz2"
-      WIKIPEDIA_SCHEDULE_MINUTES: "43200"
-      WIKIPEDIA_MAX_ARTICLES: "2147483647"
-
-      AUSTRALIAN_LAWS_JURISDICTIONS: "commonwealth,nsw,vic,qld,wa,sa,tas,act,nt"
-      AUSTRALIAN_LAWS_MAX_PER_JURISDICTION: "100"
-      AUSTRALIAN_LAWS_START_YEAR: "2020"
-      AUSTRALIAN_LAWS_SCHEDULE_MINUTES: "1440"
-
-      LINUX_DOCS_SOURCES: "MAN_PAGES,DEBIAN_DOCS"
-      LINUX_DOCS_SCHEDULE_MINUTES: "10080"
-      LINUX_DOCS_MAX: "2147483647"
-
-      OPEN_DOTA_ENABLED: "${OPEN_DOTA_ENABLED:-true}"
-      OPEN_DOTA_BASE_URL: "${OPEN_DOTA_BASE_URL:-https://api.opendota.com/api}"
-      OPEN_DOTA_SCHEDULE_MINUTES: "${OPEN_DOTA_SCHEDULE_MINUTES:-60}"
-      OPEN_DOTA_MAX_MATCHES: "${OPEN_DOTA_MAX_MATCHES:-100}"
-      OPEN_DOTA_FETCH_MATCH_DETAILS: "${OPEN_DOTA_FETCH_MATCH_DETAILS:-false}"
-
-      POE_NINJA_ENABLED: "${POE_NINJA_ENABLED:-true}"
-      POE_NINJA_BASE_URL: "${POE_NINJA_BASE_URL:-https://poe.ninja}"
-      POE_NINJA_LEAGUES: "${POE_NINJA_LEAGUES:-Standard}"
-      POE_NINJA_CURRENCY_TYPES: "${POE_NINJA_CURRENCY_TYPES:-Currency}"
-      POE_NINJA_ITEM_TYPES: "${POE_NINJA_ITEM_TYPES:-UniqueWeapon,UniqueArmour,UniqueAccessory,UniqueFlask,UniqueJewel,SkillGem,DivinationCard,Map}"
-      POE_NINJA_SCHEDULE_MINUTES: "${POE_NINJA_SCHEDULE_MINUTES:-360}"
-      POE_NINJA_MAX_ENTRIES_PER_TYPE: "${POE_NINJA_MAX_ENTRIES_PER_TYPE:-1000}"
-      POE_NINJA_REQUEST_DELAY_MS: "${POE_NINJA_REQUEST_DELAY_MS:-500}"
-
-      STACK_KNOWLEDGE_ENABLED: "true"
+      INGESTION_RUNNER_PORT: 8090
+      POSTGRES_DSN: postgresql://pipeline_user:${POSTGRES_PIPELINE_PASSWORD}@postgres-ssd:5432/webservices
+      NATS_URL: nats://${NATS_USER}:${NATS_PASSWORD}@nats:4222
+      NATS_STREAM_MAX_BYTES: ${NATS_STREAM_MAX_BYTES:-2147483648}
+      QDRANT_HTTP_URL: http://qdrant:6333
+      QDRANT_API_KEY: ${QDRANT_ADMIN_API_KEY}
+      QDRANT_VECTOR_SIZE: ${VECTOR_EMBED_SIZE:-1024}
+      OPENSEARCH_URL: http://opensearch:9200
+      OPENSEARCH_USERNAME: admin
+      OPENSEARCH_PASSWORD: ${OPENSEARCH_ADMIN_PASSWORD}
+      EMBEDDING_SERVICE_URL: http://embedding-gpu:8080
+      BOOKSTACK_URL: http://bookstack:80
+      BOOKSTACK_PUBLIC_URL: https://bookstack.${DOMAIN}
+      BOOKSTACK_API_TOKEN_ID: ${BOOKSTACK_API_TOKEN_ID}
+      BOOKSTACK_API_TOKEN_SECRET: ${BOOKSTACK_API_TOKEN_SECRET}
+      BOOKSTACK_ALLOWED_SOURCES: "rss,cve,wikipedia,australian_laws,linux_docs,debian_wiki,arch_wiki,agent_docs,stack_knowledge"
       STACK_KNOWLEDGE_PATH: /configs/stack-knowledge
-      STACK_KNOWLEDGE_SCHEDULE_MINUTES: "60"
-      AGENT_DOCS_ENABLED: "true"
       AGENT_DOCS_PATH: /configs/agent-docs
-      AGENT_DOCS_SCHEDULE_MINUTES: "60"
-
-      WIKI_TYPES: "DEBIAN,ARCH"
-      WIKI_MAX_PAGES_PER_WIKI: "500"
-      WIKI_SCHEDULE_MINUTES: "10080"
-
-      POSTGRES_JDBC_URL: jdbc:postgresql://postgres-ssd:5432/webservices
-      POSTGRES_USER: ${POSTGRES_PIPELINE_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PIPELINE_PASSWORD}
-
-      QDRANT_RSS_COLLECTION: rss_feeds
-      QDRANT_CVE_COLLECTION: cve
-      QDRANT_MARKET_COLLECTION: market_data
-      QDRANT_WIKIPEDIA_COLLECTION: wikipedia
-      QDRANT_AUSTRALIAN_LAWS_COLLECTION: australian_laws
-      QDRANT_LINUX_DOCS_COLLECTION: linux_docs
-      QDRANT_OPEN_DOTA_COLLECTION: opendota_matches
-      QDRANT_POE_NINJA_COLLECTION: poe_ninja_prices
-      QDRANT_STACK_KNOWLEDGE_COLLECTION: stack_knowledge
-      QDRANT_AGENT_DOCS_COLLECTION: agent_docs
-      QDRANT_DEBIAN_WIKI_COLLECTION: debian_wiki
-      QDRANT_ARCH_WIKI_COLLECTION: arch_wiki
-      PIPELINE_METADATA_PATH: /data/metadata
-      PIPELINE_DEDUP_PATH: /data/dedup/dedup.tsv
+      RSS_FEED_URLS: "https://cointelegraph.com/rss,https://www.coindesk.com/arc/outboundfeeds/rss/,https://decrypt.co/feed,https://www.theblock.co/rss.xml,https://www.marketwatch.com/rss/topstories,https://feeds.reuters.com/reuters/businessNews,https://feeds.bbci.co.uk/news/business/rss.xml,https://rss.nytimes.com/services/xml/rss/nyt/Business.xml,https://rss.nytimes.com/services/xml/rss/nyt/Technology.xml,https://hnrss.org/frontpage,https://feeds.arstechnica.com/arstechnica/index,https://www.investing.com/rss/news_25.rss,https://feeds.bbci.co.uk/news/world/rss.xml,https://www.abc.net.au/news/feed/51120/rss.xml"
+      WIKIPEDIA_DUMP_PATH: "https://dumps.wikimedia.org/enwiki/latest/enwiki-latest-pages-articles.xml.bz2"
+      WIKIPEDIA_MAX_ARTICLES: "${WIKIPEDIA_MAX_ARTICLES:-2147483647}"
     volumes:
       - pipeline_data:/data
       - ./configs/stack-knowledge:/configs/stack-knowledge:ro
       - ./configs/agent-docs:/configs/agent-docs:ro
     healthcheck:
-      test: ["CMD-SHELL", "timeout 5 wget --quiet --tries=1 -O /dev/null http://127.0.0.1:8090/health || exit 1"]
-      interval: 60s
-      timeout: 20s
-      retries: 3
-      start_period: 60s
-
-  embedding-worker:
-    image: webservices/embedding-worker:local-build
-    build:
-      context: .
-      dockerfile: ./stack.containers/embedding-worker/Dockerfile
-    container_name: embedding-worker
-    restart: unless-stopped
-    labels:
-      - "com.centurylinklabs.watchtower.enable=false"
-
-    networks:
-      - qdrant
-      - postgres
-      - ai
-    depends_on:
-      qdrant:
-        condition: service_started
-      postgres-ssd-bootstrap:
-        condition: service_completed_successfully
-      embedding-gpu:
-        condition: service_started
-    environment:
-      EMBEDDING_SERVICE_URL: http://embedding-gpu:8080
-      EMBEDDING_WORKER_BATCH_SIZE: "512"
-      EMBEDDING_WORKER_POLL_INTERVAL_SECONDS: "1"
-      EMBEDDING_WORKER_MAX_CONCURRENT: "64"
-      EMBEDDING_WORKER_REQUEST_BATCH_SIZE: "64"
-      EMBEDDING_WORKER_REQUEST_MAX_BYTES: "262144"
-      EMBEDDING_WORKER_MAX_CONCURRENT_BATCHES: "8"
-      EMBEDDING_WORKER_MAX_RETRIES: "3"
-      EMBEDDING_WORKER_RESERVE_CPU_FOR_INTERACTIVE: "true"
-      QDRANT_HOST: qdrant
-      QDRANT_PORT: 6334
-      QDRANT_API_KEY: ${QDRANT_ADMIN_API_KEY}
-      POSTGRES_JDBC_URL: jdbc:postgresql://postgres-ssd:5432/webservices
-      POSTGRES_USER: ${POSTGRES_PIPELINE_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PIPELINE_PASSWORD}
-
-      QDRANT_RSS_COLLECTION: rss_feeds
-      QDRANT_CVE_COLLECTION: cve
-      QDRANT_MARKET_COLLECTION: market_data
-      QDRANT_WIKIPEDIA_COLLECTION: wikipedia
-      QDRANT_AUSTRALIAN_LAWS_COLLECTION: australian_laws
-      QDRANT_LINUX_DOCS_COLLECTION: linux_docs
-      QDRANT_OPEN_DOTA_COLLECTION: opendota_matches
-      QDRANT_POE_NINJA_COLLECTION: poe_ninja_prices
-      QDRANT_STACK_KNOWLEDGE_COLLECTION: stack_knowledge
-      QDRANT_AGENT_DOCS_COLLECTION: agent_docs
-      QDRANT_DEBIAN_WIKI_COLLECTION: debian_wiki
-      QDRANT_ARCH_WIKI_COLLECTION: arch_wiki
-
-  content-publisher:
-    image: webservices/content-publisher:local-build
-    build:
-      context: .
-      dockerfile: ./stack.containers/content-publisher/Dockerfile
-    container_name: content-publisher
-    restart: unless-stopped
-    labels:
-      - "com.centurylinklabs.watchtower.enable=false"
-
-    networks:
-      - qdrant
-      - postgres
-      - mariadb
-      - internet
-      - caddy
-    depends_on:
-      postgres-ssd-bootstrap:
-        condition: service_completed_successfully
-      bookstack:
-        condition: service_healthy
-    environment:
-      BOOKSTACK_ENABLED: "true"
-      BOOKSTACK_URL: "http://bookstack:80"
-      BOOKSTACK_PUBLIC_URL: "https://bookstack.${DOMAIN}"
-      BOOKSTACK_TOKEN_ID: ${BOOKSTACK_API_TOKEN_ID}
-      BOOKSTACK_TOKEN_SECRET: ${BOOKSTACK_API_TOKEN_SECRET}
-      BOOKSTACK_API_TOKEN_ID: ${BOOKSTACK_API_TOKEN_ID}
-      BOOKSTACK_API_TOKEN_SECRET: ${BOOKSTACK_API_TOKEN_SECRET}
-      BOOKSTACK_ALLOWED_SOURCES: "rss,cve,wikipedia,australian_laws,linux_docs,debian_wiki,arch_wiki,agent_docs"
-      BOOKSTACK_MAX_CONCURRENT_WRITES: "1"
-
-      POSTGRES_JDBC_URL: jdbc:postgresql://postgres-ssd:5432/webservices
-      POSTGRES_USER: ${POSTGRES_PIPELINE_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PIPELINE_PASSWORD}
-      QDRANT_HTTP_URL: http://qdrant:6333
-      QDRANT_API_KEY: ${QDRANT_ADMIN_API_KEY}
+      test: ["CMD-SHELL", "curl -f http://127.0.0.1:8090/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 12
+      start_period: 30s

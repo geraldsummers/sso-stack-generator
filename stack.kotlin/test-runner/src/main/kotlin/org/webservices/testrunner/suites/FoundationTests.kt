@@ -195,15 +195,13 @@ suspend fun TestRunner.awaitSelectedTargetsHealthyStatus(
 }
 
 suspend fun TestRunner.foundationTests() = suite("Foundation Tests") {
-    test("Search service is healthy") {
-        val health = client.healthCheck("search-service")
+    test("OpenSearch is healthy") {
+        val health = client.healthCheck("opensearch")
         health.healthy shouldBe true
     }
 
-    test("Search service returns 404 for unknown exact document lookup") {
-        val response = requestHttpClient.get("${endpoints.searchService}/documents/definitely-missing-document") {
-            applyInternalApiAuthHeaders()
-        }
+    test("OpenSearch returns 404 for unknown exact document lookup") {
+        val response = requestHttpClient.get("${endpoints.searchService}/knowledge/_doc/definitely-missing-document")
         response.status shouldBe HttpStatusCode.NotFound
     }
 

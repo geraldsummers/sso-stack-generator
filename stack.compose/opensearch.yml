@@ -1,0 +1,34 @@
+services:
+  opensearch:
+    image: opensearchproject/opensearch:2.19.3
+    container_name: opensearch
+    restart: unless-stopped
+    networks:
+      - opensearch
+      - caddy
+    environment:
+      discovery.type: single-node
+      bootstrap.memory_lock: "true"
+      OPENSEARCH_INITIAL_ADMIN_PASSWORD: ${OPENSEARCH_ADMIN_PASSWORD}
+      OPENSEARCH_JAVA_OPTS: "-Xms1g -Xmx1g"
+      plugins.security.ssl.http.enabled: "false"
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+      nofile:
+        soft: 65536
+        hard: 65536
+    volumes:
+      - opensearch_bind_data:/usr/share/opensearch/data
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - |
+          curl --silent --fail --insecure \
+            --user "admin:$${OPENSEARCH_INITIAL_ADMIN_PASSWORD}" \
+            http://127.0.0.1:9200/_cluster/health >/dev/null
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 90s

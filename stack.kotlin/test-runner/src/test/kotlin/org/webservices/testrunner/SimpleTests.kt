@@ -19,7 +19,7 @@ class SimpleTests {
         assertNotNull(endpoints.postgres)
 
         assertTrue(endpoints.modelContextServer.startsWith("http://"))
-        assertTrue(endpoints.pipeline.contains("knowledge-ingestion"))
+        assertTrue(endpoints.pipeline.contains("airflow-webserver"))
         assertTrue(endpoints.qdrant.contains("6333"))
         assertTrue(endpoints.postgres.jdbcUrl.contains("postgresql"))
     }
@@ -29,7 +29,7 @@ class SimpleTests {
         val endpoints = ServiceEndpoints.forLocalhost()
 
         assertTrue(endpoints.modelContextServer.contains("localhost"))
-        assertTrue(endpoints.pipeline.contains("localhost:18090"))
+        assertTrue(endpoints.pipeline.contains("localhost:8080"))
         assertTrue(endpoints.qdrant.contains("localhost:16333"))
         assertTrue(endpoints.postgres.host.contains("localhost"))
     }
@@ -145,12 +145,12 @@ class SimpleTests {
         val localhostEndpoints = ServiceEndpoints.forLocalhost()
 
         
-        assertTrue(containerEndpoints.pipeline.contains("knowledge-ingestion"))
-        assertTrue(containerEndpoints.pipeline.contains("8090"))
+        assertTrue(containerEndpoints.pipeline.contains("airflow-webserver"))
+        assertTrue(containerEndpoints.pipeline.contains("8080"))
 
         
         assertTrue(localhostEndpoints.pipeline.contains("localhost"))
-        assertTrue(localhostEndpoints.pipeline.contains("18090"))
+        assertTrue(localhostEndpoints.pipeline.contains("8080"))
     }
 
     @Test

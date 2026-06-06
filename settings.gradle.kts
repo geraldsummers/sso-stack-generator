@@ -1,10 +1,6 @@
 rootProject.name = "webservices"
 
 include(":pipeline-common")
-include(":knowledge-ingestion")
-include(":embedding-worker")
-include(":content-publisher")
-include(":search-service")
 include(":gpu-bootstrap-arbiter")
 include(":gpu-workload-monitor")
 include(":inference-gateway")
@@ -17,10 +13,6 @@ include(":chatgpt-connector")
 include(":progression")
 
 project(":pipeline-common").projectDir = file("stack.kotlin/pipeline-common")
-project(":knowledge-ingestion").projectDir = file("stack.kotlin/knowledge-ingestion")
-project(":embedding-worker").projectDir = file("stack.kotlin/embedding-worker")
-project(":content-publisher").projectDir = file("stack.kotlin/content-publisher")
-project(":search-service").projectDir = file("stack.kotlin/search-service")
 project(":gpu-bootstrap-arbiter").projectDir = file("stack.kotlin/gpu-bootstrap-arbiter")
 project(":gpu-workload-monitor").projectDir = file("stack.kotlin/gpu-workload-monitor")
 project(":inference-gateway").projectDir = file("stack.kotlin/inference-gateway")

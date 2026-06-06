@@ -13,8 +13,8 @@ suspend fun TestRunner.microserviceTests() = suite("Pipeline Tests") {
     suspend fun probePipelineJson(path: String): JsonObject? {
         val baseCandidates = linkedSetOf(
             endpoints.pipeline.trimEnd('/'),
-            "http://knowledge-ingestion:8090",
-            "http://content-publisher:8090"
+            "http://airflow-webserver:8080",
+            "http://ingestion-runner:8090"
         )
         for (base in baseCandidates) {
             val response = runCatching { client.getRawResponse("$base$path") }.getOrNull() ?: continue

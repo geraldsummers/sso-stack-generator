@@ -303,7 +303,7 @@ build_derived_render_values() {
   derive_if_missing POSTGRES_OPENWEBUI_PASSWORD postgres-openwebui 48
   derive_if_missing POSTGRES_MASTODON_PASSWORD postgres-mastodon 48
   derive_if_missing POSTGRES_PIPELINE_PASSWORD postgres-pipeline 48
-  derive_if_missing POSTGRES_SEARCH_SERVICE_PASSWORD postgres-search-service 48
+  derive_if_missing POSTGRES_AIRFLOW_PASSWORD postgres-airflow 48
   derive_if_missing POSTGRES_TEST_RUNNER_PASSWORD postgres-test-runner 48
   derive_if_missing MARIADB_ADMIN_PASSWORD mariadb-admin 48
   derive_if_missing MARIADB_BOOKSTACK_PASSWORD mariadb-bookstack 48
@@ -323,6 +323,8 @@ build_derived_render_values() {
   derive_if_missing TEST_RUNNER_OAUTH_SECRET test-runner-oauth 48
   derive_if_missing VAULTWARDEN_OAUTH_SECRET vaultwarden-oauth 48
   derive_if_missing QDRANT_ADMIN_API_KEY qdrant-admin-api 48
+  derive_if_missing NATS_PASSWORD nats 48
+  derive_if_missing OPENSEARCH_ADMIN_PASSWORD opensearch-admin 32
   derive_if_missing LIVEKIT_API_KEY livekit-api-key 24
   derive_if_missing LIVEKIT_API_SECRET livekit-api-secret 48
   derive_if_missing ONLYOFFICE_JWT_SECRET onlyoffice-jwt 48
@@ -349,8 +351,28 @@ build_derived_render_values() {
   if ! render_has WORKSPACE_PROXY_AUTH_SECRET || [ -z "$(render_get WORKSPACE_PROXY_AUTH_SECRET)" ]; then
     render_set WORKSPACE_PROXY_AUTH_SECRET "$(derive_stack_secret workspace-proxy-auth 64)"
   fi
-  if ! render_has SEARCH_SERVICE_INTERNAL_TOKEN || [ -z "$(render_get SEARCH_SERVICE_INTERNAL_TOKEN)" ]; then
-    render_set SEARCH_SERVICE_INTERNAL_TOKEN "$(derive_stack_secret search-service-internal 64)"
+  if ! render_has NATS_USER || [ -z "$(render_get NATS_USER)" ]; then
+    render_set NATS_USER "webservices"
+  fi
+  if ! render_has AIRFLOW_ADMIN_USERNAME || [ -z "$(render_get AIRFLOW_ADMIN_USERNAME)" ]; then
+    render_set AIRFLOW_ADMIN_USERNAME "admin"
+  fi
+  if ! render_has AIRFLOW_ADMIN_PASSWORD || [ -z "$(render_get AIRFLOW_ADMIN_PASSWORD)" ]; then
+    render_set AIRFLOW_ADMIN_PASSWORD "$(derive_stack_secret airflow-admin 48)"
+  fi
+  if ! render_has AIRFLOW_FERNET_KEY || [ -z "$(render_get AIRFLOW_FERNET_KEY)" ]; then
+    render_set AIRFLOW_FERNET_KEY "$(python3 - <<'PY'
+import base64
+import os
+print(base64.urlsafe_b64encode(os.urandom(32)).decode())
+PY
+)"
+  fi
+  if ! render_has AIRFLOW_WEBSERVER_SECRET_KEY || [ -z "$(render_get AIRFLOW_WEBSERVER_SECRET_KEY)" ]; then
+    render_set AIRFLOW_WEBSERVER_SECRET_KEY "$(derive_stack_secret airflow-webserver 64)"
+  fi
+  if ! render_has OPENSEARCH_BASIC_AUTH || [ -z "$(render_get OPENSEARCH_BASIC_AUTH)" ]; then
+    render_set OPENSEARCH_BASIC_AUTH "$(printf 'admin:%s' "$(render_get OPENSEARCH_ADMIN_PASSWORD)" | base64 | tr -d '\n')"
   fi
   if ! render_has WORKSPACE_AGENT_TOKEN_SECRET || [ -z "$(render_get WORKSPACE_AGENT_TOKEN_SECRET)" ]; then
     render_set WORKSPACE_AGENT_TOKEN_SECRET "$(derive_stack_secret workspace-agent-token 64)"

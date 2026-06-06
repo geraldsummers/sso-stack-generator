@@ -56,8 +56,8 @@ class TokenManagerTest {
     private fun createTestEndpoints() = ServiceEndpoints(
         modelContextServer = "http://workspace-provisioner:8120",
         dataFetcher = "http://data-fetcher:8095",
-        searchService = "http://search-service:8098",
-        pipeline = "http://knowledge-ingestion:8090",
+        searchService = "https://opensearch:9200",
+        pipeline = "http://airflow-webserver:8080",
         llmGateway = "http://embedding-gpu:8080",
         bookstack = "http://bookstack:80",
         postgres = DatabaseConfig("postgres", 5432, "webservices", "test_runner_user", ""),

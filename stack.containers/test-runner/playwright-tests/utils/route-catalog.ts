@@ -217,8 +217,8 @@ export const browserRouteCatalog: BrowserRoute[] = [
     anonymous: { kind: 'service_login', matcher: /\bERPNext\b|\bFrappe\b|\bKeycloak\b|\bLogin\b/i, loginLabel: 'Keycloak', allowAuthRedirect: true },
     visual: {
       fileStem: 'erpnext-authenticated',
-      matcher: /\bERPNext\b|\bFrappe\b|\bDesk\b|\bHome\b|\bModules\b|\bSettings\b|Playwright User/i,
-      selector: 'text=/ERPNext|Frappe|Desk|Home|Modules|Settings|Playwright User/i',
+      matcher: /\bERPNext\b|\bFrappe\b|\bDesk\b|\bHome\b|\bModules\b|\bSettings\b|Alice Morgan/i,
+      selector: 'text=/ERPNext|Frappe|Desk|Home|Modules|Settings|Alice Morgan/i',
       loginLabel: 'Keycloak',
       disallowMatcher: /\bLogin to Frappe\b|\bEmail Address\b|\b503 Service Unavailable\b/i,
     },
@@ -486,12 +486,12 @@ export const browserRouteCatalog: BrowserRoute[] = [
   },
   {
     host: 'search',
-    label: 'Search',
+    label: 'OpenSearch',
     kind: 'forward_auth',
     anonymous: { kind: 'forward_auth' },
     smoke: {
-      matcher: /webservices Search|Search Knowledge Base|Hybrid|Semantic|Keyword/i,
-      selector: '#searchInput, text=/Search Knowledge Base|Hybrid|Semantic|Keyword/i',
+      matcher: /cluster_name|opensearch|You Know, for Search/i,
+      selector: 'body',
       disallowMatcher: /Sign in|Log in|Keycloak|Bad Gateway|Service Unavailable|Internal Server Error/i,
       disallowUrlMatcher: /keycloak|keycloak-auth/i,
     },

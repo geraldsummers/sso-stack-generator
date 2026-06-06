@@ -411,6 +411,33 @@ start_admin_user_reconciler() {
   ) &
 }
 
+seahub_is_running() {
+  pgrep -f '[g]unicorn.*seahub' >/dev/null 2>&1
+}
+
+ensure_seahub_running() {
+  (
+    local attempt
+
+    for attempt in $(seq 1 180); do
+      if seahub_is_running; then
+        log "Seahub process is running"
+        exit 0
+      fi
+
+      if [ -x "$SEAHUB_SCRIPT" ]; then
+        log "Seahub process missing; starting Seahub on port 8000"
+        "$SEAHUB_SCRIPT" start 8000 || true
+      fi
+
+      sleep 2
+    done
+
+    log "ERROR: timed out waiting for Seahub process"
+    exit 1
+  ) &
+}
+
 bootstrap_fresh_state() {
   log "Bootstrapping fresh Seafile state via upstream init"
   (
@@ -528,6 +555,7 @@ main() {
   require_path "$MARKER_FILE"
   verify_required_paths
   ensure_shared_links
+  ensure_seahub_running
   start_admin_user_reconciler
 
   exec /sbin/my_init -- /scripts/enterpoint.sh "$@"

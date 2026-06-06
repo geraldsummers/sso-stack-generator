@@ -24,7 +24,7 @@ class McpFacadeTest {
         val client = HttpClient(engine) {
             install(ContentNegotiation) { json(Json { ignoreUnknownKeys = true }) }
         }
-        val cfg = loadConfig().copy(searchServiceBaseUrl = "http://search-service:8098")
+        val cfg = loadConfig().copy(searchServiceBaseUrl = "https://opensearch:9200/knowledge")
         val store = ConnectorStore(createTempDirectory("mcp-test").resolve("db.sqlite"))
         val facade = McpFacade(store, cfg, client)
         val token = AgentTokenDto("t", "a", "mcp_abc", listOf("*"), "2999-01-01T00:00:00Z", null, null)

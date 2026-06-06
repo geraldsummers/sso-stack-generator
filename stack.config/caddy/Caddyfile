@@ -12,7 +12,7 @@
 # - BOOKSTACK_INTERNAL_API_TOKEN (shared token for api.bookstack.$DOMAIN)
 # - CHATGPT_CONNECTOR_TRUSTED_PROXY_SECRET (trusted-proxy secret for ChatGPT Connector)
 # - ONBOARDING_TRUSTED_PROXY_SECRET (trusted-proxy secret for onboarding)
-# - SEARCH_SERVICE_INTERNAL_TOKEN (shared token for Caddy -> search-service)
+# - OPENSEARCH_BASIC_AUTH       (base64 admin:password for Caddy -> OpenSearch)
 # - STACK_ADMIN_EMAIL          (e.g. admin@example.com)
 # - VAULTWARDEN_ORG_ID         (vaultwarden org UUID for SSO policy resolution)
 # - WORKSPACE_PROXY_AUTH_SECRET (trusted-proxy secret for internal auth hops)
@@ -343,12 +343,24 @@ jellyfin.{$DOMAIN} {
 			path /Users/AuthenticateByName /Users/authenticatebyname
 		}
 		respond @jellyfin_password_login "Jellyfin password login is disabled; use Keycloak SSO" 403
-		reverse_proxy jellyfin-profile-proxy:8080 {
-			header_up Host {host}
-			header_up X-Forwarded-Host {host}
-			header_up X-Forwarded-Server {host}
-			header_up X-Forwarded-Proto {scheme}
-			header_up X-Forwarded-Port {server_port}
+		@jellyfin_playback_info path /Items/*/PlaybackInfo
+		handle @jellyfin_playback_info {
+			reverse_proxy jellyfin-profile-proxy:8080 {
+				header_up Host {host}
+				header_up X-Forwarded-Host {host}
+				header_up X-Forwarded-Server {host}
+				header_up X-Forwarded-Proto {scheme}
+				header_up X-Forwarded-Port {server_port}
+			}
+		}
+		handle {
+			reverse_proxy jellyfin:8096 {
+				header_up Host {host}
+				header_up X-Forwarded-Host {host}
+				header_up X-Forwarded-Server {host}
+				header_up X-Forwarded-Proto {scheme}
+				header_up X-Forwarded-Port {server_port}
+			}
 		}
 	}
 }
@@ -956,25 +968,25 @@ forgejo.{$DOMAIN} {
 # webservices-component-end forgejo
 
 # webservices-component-start search
-# Search Gateway (protected - all authenticated users)
+# OpenSearch API (protected - all authenticated users)
 search.{$DOMAIN} {
 	import access_observability
 	route {
 		import keycloak_auth search
-		reverse_proxy search-service:8098 {
-			header_up X-Internal-Token {$SEARCH_SERVICE_INTERNAL_TOKEN}
+		reverse_proxy http://opensearch:9200 {
+			header_up Authorization "Basic {$OPENSEARCH_BASIC_AUTH}"
 		}
 	}
 }
 # webservices-component-end search
 
-# Pipeline Monitor (protected - read-only stats dashboard)
+# Airflow (protected)
 # webservices-component-start pipeline
 pipeline.{$DOMAIN} {
 	import access_observability
 	route {
 		import keycloak_auth pipeline
-		reverse_proxy knowledge-ingestion:8090
+		reverse_proxy airflow-webserver:8080
 	}
 }
 # webservices-component-end pipeline

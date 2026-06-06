@@ -39,11 +39,13 @@ x-test-base: &test_runner_base
     MODEL_CONTEXT_OIDC_SCOPE: ${MODEL_CONTEXT_OIDC_SCOPE:-openid profile email groups}
     MODEL_CONTEXT_PROXY_AUTH_SECRET: ${MODEL_CONTEXT_PROXY_AUTH_SECRET}
     WORKSPACE_PROXY_AUTH_SECRET: ${WORKSPACE_PROXY_AUTH_SECRET}
-    SEARCH_SERVICE_INTERNAL_TOKEN: ${SEARCH_SERVICE_INTERNAL_TOKEN}
+    OPENSEARCH_URL: ${OPENSEARCH_URL:-http://opensearch:9200}
+    OPENSEARCH_USERNAME: ${OPENSEARCH_USERNAME:-admin}
+    OPENSEARCH_PASSWORD: ${OPENSEARCH_ADMIN_PASSWORD}
     INFERENCE_CONTROLLER_API_TOKEN: ${INFERENCE_CONTROLLER_API_TOKEN}
     INFERENCE_GATEWAY_INTERNAL_API_TOKEN: ${INFERENCE_GATEWAY_INTERNAL_API_TOKEN}
     GPU_ARBITER_API_TOKEN: ${GPU_ARBITER_API_TOKEN}
-    DISABLE_TLS_VALIDATION: "false"
+    DISABLE_TLS_VALIDATION: "true"
     STACK_ADMIN_USER: ${STACK_ADMIN_USER}
     STACK_ADMIN_PASSWORD: ${STACK_ADMIN_PASSWORD}
     STACK_ADMIN_EMAIL: ${STACK_ADMIN_EMAIL}
@@ -111,8 +113,10 @@ services:
       - matrix-internal
       - memcached
       - monitoring
+      - pipeline
       - postgres
       - qdrant
+      - opensearch
       - valkey
 
   test-runner-managed:
@@ -140,6 +144,8 @@ services:
       - matrix-internal
       - memcached
       - monitoring
+      - pipeline
       - postgres
       - qdrant
+      - opensearch
       - valkey

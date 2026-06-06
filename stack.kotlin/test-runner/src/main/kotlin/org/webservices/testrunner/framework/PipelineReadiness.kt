@@ -71,8 +71,8 @@ suspend fun TestRunner.getPipelineResponse(path: String): HttpResponse? {
     val suffix = if (path.startsWith("/")) path else "/$path"
     val candidateBases = buildList {
         add(endpoints.pipeline.trimEnd('/'))
-        add("http://knowledge-ingestion:8090")
-        add("http://content-publisher:8090")
+        add("http://airflow-webserver:8080")
+        add("http://ingestion-runner:8090")
     }.distinct()
 
     for (base in candidateBases) {

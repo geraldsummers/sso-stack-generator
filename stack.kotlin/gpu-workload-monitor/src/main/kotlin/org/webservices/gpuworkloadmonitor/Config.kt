@@ -16,7 +16,7 @@ fun loadConfig(): WorkloadMonitorConfig {
         ).split(',').mapNotNull { it.trim().takeIf(String::isNotEmpty) }.distinct(),
         knowledgeIngestionReadinessBaseUrl = env(
             "GPU_WORKLOAD_MONITOR_READINESS_BASE_URL",
-            "http://knowledge-ingestion:8090/readiness"
+            "http://ingestion-runner:8090/health"
         ).trimEnd('/'),
         evaluationIntervalSeconds = envLong("GPU_WORKLOAD_MONITOR_EVALUATION_INTERVAL_SECONDS", 30),
         sourceQueryTimeoutMs = envLong("GPU_WORKLOAD_MONITOR_SOURCE_QUERY_TIMEOUT_MS", 3000),

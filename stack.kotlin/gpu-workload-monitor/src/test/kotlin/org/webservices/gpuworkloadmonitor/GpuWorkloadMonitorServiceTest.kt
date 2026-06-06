@@ -101,7 +101,7 @@ class GpuWorkloadMonitorServiceTest {
             postgresUser = "pipeline_user",
             postgresPassword = "secret",
             sourceIds = sourceIds,
-            knowledgeIngestionReadinessBaseUrl = "http://knowledge-ingestion:8090/readiness",
+            knowledgeIngestionReadinessBaseUrl = "http://ingestion-runner:8090/health",
             evaluationIntervalSeconds = 300,
             sourceQueryTimeoutMs = 1000,
             readinessHttpTimeoutMs = 1000

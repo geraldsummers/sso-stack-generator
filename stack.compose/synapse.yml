@@ -92,6 +92,8 @@ services:
         condition: service_healthy
       synapse:
         condition: service_healthy
+      matrix-authentication-service:
+        condition: service_started
     environment:
       DOMAIN: ${DOMAIN}
       POSTGRES_HOST: postgres

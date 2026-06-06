@@ -10,7 +10,7 @@ POSTGRES_FORGEJO_PASSWORD="${POSTGRES_FORGEJO_PASSWORD:?ERROR: POSTGRES_FORGEJO_
 POSTGRES_OPENWEBUI_PASSWORD="${POSTGRES_OPENWEBUI_PASSWORD:?ERROR: POSTGRES_OPENWEBUI_PASSWORD not set}"
 POSTGRES_MASTODON_PASSWORD="${POSTGRES_MASTODON_PASSWORD:?ERROR: POSTGRES_MASTODON_PASSWORD not set}"
 POSTGRES_PIPELINE_PASSWORD="${POSTGRES_PIPELINE_PASSWORD:?ERROR: POSTGRES_PIPELINE_PASSWORD not set}"
-POSTGRES_SEARCH_SERVICE_PASSWORD="${POSTGRES_SEARCH_SERVICE_PASSWORD:?ERROR: POSTGRES_SEARCH_SERVICE_PASSWORD not set}"
+POSTGRES_AIRFLOW_PASSWORD="${POSTGRES_AIRFLOW_PASSWORD:?ERROR: POSTGRES_AIRFLOW_PASSWORD not set}"
 POSTGRES_TEST_RUNNER_PASSWORD="${POSTGRES_TEST_RUNNER_PASSWORD:?ERROR: POSTGRES_TEST_RUNNER_PASSWORD not set}"
 
 psql_base=(
@@ -55,10 +55,10 @@ bootstrap_postgres_ssd() {
             ALTER USER pipeline_user WITH PASSWORD \$pwd\$$POSTGRES_PIPELINE_PASSWORD\$pwd\$;
         END IF;
 
-        IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = 'search_service_user') THEN
-            CREATE USER search_service_user WITH PASSWORD \$pwd\$$POSTGRES_SEARCH_SERVICE_PASSWORD\$pwd\$;
+        IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = 'airflow') THEN
+            CREATE USER airflow WITH PASSWORD \$pwd\$$POSTGRES_AIRFLOW_PASSWORD\$pwd\$;
         ELSE
-            ALTER USER search_service_user WITH PASSWORD \$pwd\$$POSTGRES_SEARCH_SERVICE_PASSWORD\$pwd\$;
+            ALTER USER airflow WITH PASSWORD \$pwd\$$POSTGRES_AIRFLOW_PASSWORD\$pwd\$;
         END IF;
 
         IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = 'test_runner_user') THEN
@@ -81,11 +81,14 @@ bootstrap_postgres_ssd() {
     SELECT 'CREATE DATABASE webservices OWNER pipeline_user'
     WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'webservices')\gexec
 
+    SELECT 'CREATE DATABASE airflow OWNER airflow'
+    WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'airflow')\gexec
+
     GRANT ALL PRIVILEGES ON DATABASE forgejo TO forgejo;
     GRANT ALL PRIVILEGES ON DATABASE openwebui TO openwebui;
     GRANT ALL PRIVILEGES ON DATABASE mastodon TO mastodon;
     GRANT ALL PRIVILEGES ON DATABASE webservices TO pipeline_user;
-    GRANT CONNECT ON DATABASE webservices TO search_service_user;
+    GRANT ALL PRIVILEGES ON DATABASE airflow TO airflow;
     GRANT CONNECT ON DATABASE webservices TO test_runner_user;
 EOSQL
 
@@ -109,74 +112,76 @@ EOSQL
 EOSQL
 
   "${psql_base[@]}" --dbname "webservices" -c "GRANT ALL ON SCHEMA public TO pipeline_user;"
-  "${psql_base[@]}" --dbname "webservices" -c "GRANT USAGE ON SCHEMA public TO search_service_user;"
   "${psql_base[@]}" --dbname "webservices" -c "GRANT USAGE ON SCHEMA public TO test_runner_user;"
-  "${psql_base[@]}" --dbname "webservices" -c "ALTER DEFAULT PRIVILEGES FOR USER pipeline_user IN SCHEMA public GRANT SELECT ON TABLES TO search_service_user;"
   "${psql_base[@]}" --dbname "webservices" -c "ALTER DEFAULT PRIVILEGES FOR USER pipeline_user IN SCHEMA public GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO test_runner_user;"
   "${psql_base[@]}" --dbname "webservices" <<-'EOSQL'
-    CREATE TABLE IF NOT EXISTS dedupe_records (
-        id SERIAL PRIMARY KEY,
-        source VARCHAR(255) NOT NULL,
-        item_id VARCHAR(500) NOT NULL,
-        content_hash VARCHAR(64) NOT NULL,
-        first_seen TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        last_seen_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        last_seen_run_id VARCHAR(100),
-        fetch_type VARCHAR(100),
-        UNIQUE(source, item_id)
+    CREATE EXTENSION IF NOT EXISTS pgcrypto;
+    CREATE TABLE IF NOT EXISTS ingestion_sources (
+        id TEXT PRIMARY KEY,
+        source_type TEXT NOT NULL,
+        enabled BOOLEAN NOT NULL DEFAULT TRUE,
+        config JSONB NOT NULL DEFAULT '{}'::jsonb,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
     );
-    CREATE TABLE IF NOT EXISTS fetch_history (
-        id SERIAL PRIMARY KEY,
-        source VARCHAR(255) NOT NULL,
-        category VARCHAR(100) NOT NULL,
-        item_count INTEGER,
-        fetched_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        metadata TEXT,
-        fetch_type VARCHAR(100),
-        status VARCHAR(50),
-        record_count INTEGER,
-        error_message TEXT,
-        execution_time_ms INTEGER
+    CREATE TABLE IF NOT EXISTS ingestion_runs (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        source_id TEXT NOT NULL REFERENCES ingestion_sources(id),
+        dag_id TEXT NOT NULL,
+        airflow_run_id TEXT,
+        status TEXT NOT NULL,
+        started_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+        finished_at TIMESTAMPTZ,
+        records_seen BIGINT NOT NULL DEFAULT 0,
+        records_indexed BIGINT NOT NULL DEFAULT 0,
+        error_count BIGINT NOT NULL DEFAULT 0,
+        metadata JSONB NOT NULL DEFAULT '{}'::jsonb
     );
-    CREATE TABLE IF NOT EXISTS document_staging (
-        id VARCHAR(500) PRIMARY KEY,
-        source VARCHAR(255) NOT NULL,
-        collection VARCHAR(255) NOT NULL,
-        text TEXT NOT NULL,
-        metadata TEXT NOT NULL,
-        embedding_status VARCHAR(50) NOT NULL,
-        chunk_index INTEGER,
-        total_chunks INTEGER,
-        created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-        retry_count INTEGER NOT NULL DEFAULT 0,
-        error_message TEXT,
+    CREATE TABLE IF NOT EXISTS ingestion_checkpoints (
+        source_id TEXT PRIMARY KEY REFERENCES ingestion_sources(id),
+        checkpoint_key TEXT NOT NULL,
+        checkpoint_value JSONB NOT NULL,
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+    CREATE TABLE IF NOT EXISTS ingestion_errors (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        run_id UUID REFERENCES ingestion_runs(id),
+        source_id TEXT REFERENCES ingestion_sources(id),
+        item_id TEXT,
+        error_type TEXT NOT NULL,
+        error_message TEXT NOT NULL,
+        metadata JSONB NOT NULL DEFAULT '{}'::jsonb,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+    CREATE TABLE IF NOT EXISTS publication_records (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        document_id TEXT NOT NULL,
+        source_id TEXT NOT NULL REFERENCES ingestion_sources(id),
+        presentation_target TEXT NOT NULL,
+        presentation_url TEXT NOT NULL,
         bookstack_url TEXT,
-        vector_id VARCHAR(500)
+        published BOOLEAN NOT NULL DEFAULT FALSE,
+        search_ready BOOLEAN NOT NULL DEFAULT FALSE,
+        metadata JSONB NOT NULL DEFAULT '{}'::jsonb,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+        UNIQUE(document_id, presentation_target)
     );
-    CREATE INDEX IF NOT EXISTS dedupe_records_hash_idx ON dedupe_records(content_hash);
-    CREATE INDEX IF NOT EXISTS dedupe_records_first_seen_idx ON dedupe_records(first_seen);
-    CREATE INDEX IF NOT EXISTS fetch_history_source_idx ON fetch_history(source);
-    CREATE INDEX IF NOT EXISTS fetch_history_fetched_at_idx ON fetch_history(fetched_at);
-    CREATE INDEX IF NOT EXISTS fetch_history_status_idx ON fetch_history(status);
-    CREATE INDEX IF NOT EXISTS idx_staging_status_created ON document_staging(embedding_status, created_at);
-    CREATE INDEX IF NOT EXISTS idx_staging_collection_status ON document_staging(collection, embedding_status);
-    CREATE INDEX IF NOT EXISTS idx_staging_source ON document_staging(source);
-    CREATE INDEX IF NOT EXISTS idx_staging_fulltext_completed
-        ON document_staging
-        USING GIN (
-            (
-                setweight(to_tsvector('english', COALESCE(metadata::json->>'title', '')), 'A') ||
-                setweight(to_tsvector('english', text), 'B')
-            )
-        )
-        WHERE embedding_status = 'COMPLETED';
-    ALTER TABLE dedupe_records OWNER TO pipeline_user;
-    ALTER TABLE fetch_history OWNER TO pipeline_user;
-    ALTER TABLE document_staging OWNER TO pipeline_user;
-    GRANT SELECT ON dedupe_records TO search_service_user, test_runner_user;
-    GRANT SELECT ON fetch_history TO search_service_user, test_runner_user;
-    GRANT SELECT ON document_staging TO search_service_user;
-    GRANT SELECT, INSERT, UPDATE, DELETE ON document_staging TO test_runner_user;
+    CREATE INDEX IF NOT EXISTS ingestion_runs_source_started_idx ON ingestion_runs(source_id, started_at DESC);
+    CREATE INDEX IF NOT EXISTS ingestion_runs_status_idx ON ingestion_runs(status);
+    CREATE INDEX IF NOT EXISTS ingestion_errors_run_idx ON ingestion_errors(run_id);
+    CREATE INDEX IF NOT EXISTS publication_records_source_idx ON publication_records(source_id);
+    ALTER TABLE ingestion_sources OWNER TO pipeline_user;
+    ALTER TABLE ingestion_runs OWNER TO pipeline_user;
+    ALTER TABLE ingestion_checkpoints OWNER TO pipeline_user;
+    ALTER TABLE ingestion_errors OWNER TO pipeline_user;
+    ALTER TABLE publication_records OWNER TO pipeline_user;
+    GRANT SELECT, INSERT, UPDATE, DELETE ON ingestion_sources TO test_runner_user;
+    GRANT SELECT, INSERT, UPDATE, DELETE ON ingestion_runs TO test_runner_user;
+    GRANT SELECT, INSERT, UPDATE, DELETE ON ingestion_checkpoints TO test_runner_user;
+    GRANT SELECT, INSERT, UPDATE, DELETE ON ingestion_errors TO test_runner_user;
+    GRANT SELECT, INSERT, UPDATE, DELETE ON publication_records TO test_runner_user;
 EOSQL
+
+  "${psql_base[@]}" --dbname "airflow" -c "GRANT ALL ON SCHEMA public TO airflow;"
 }

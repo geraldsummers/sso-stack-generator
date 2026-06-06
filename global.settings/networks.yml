@@ -15,6 +15,14 @@ networks:
     driver: bridge
     internal: true
 
+  opensearch:
+    driver: bridge
+    internal: true
+
+  pipeline:
+    driver: bridge
+    internal: true
+
   valkey:
     driver: bridge
     internal: true

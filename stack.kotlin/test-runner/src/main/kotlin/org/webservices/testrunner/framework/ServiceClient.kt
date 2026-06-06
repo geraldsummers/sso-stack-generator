@@ -10,6 +10,7 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.*
 import java.net.URI
 import java.sql.DriverManager
+import java.util.Base64
 import java.util.UUID
 
 /**
@@ -118,21 +119,30 @@ class ServiceClient(
      * the foundation for all integration tests - if health checks fail, the stack is
      * not ready for testing.
      *
-     * @param service Service name ("workspace-provisioner", "pipeline", "search-service", "data-fetcher")
+     * @param service Service name ("workspace-provisioner", "pipeline", "opensearch", "data-fetcher")
      * @return HealthStatus indicating whether the service is healthy and its HTTP status code
      */
     suspend fun healthCheck(service: String): HealthStatus {
         val url = when (service) {
             "workspace-provisioner", "model-context-server" -> "${endpoints.modelContextServer}/health"
             "pipeline" -> "${endpoints.pipeline}/health"
-            "search-service" -> "${endpoints.searchService}/health"
+            "opensearch" -> "${endpoints.searchService}/_cluster/health"
             
             "data-fetcher" -> "${endpoints.dataFetcher}/health"
             else -> throw IllegalArgumentException("Unknown service: $service")
         }
 
         return try {
-            val response = client.get(url)
+            val response = client.get(url) {
+                if (service == "opensearch") {
+                    val username = System.getenv("OPENSEARCH_USERNAME") ?: "admin"
+                    val password = System.getenv("OPENSEARCH_PASSWORD").orEmpty()
+                    if (password.isNotBlank()) {
+                        val encoded = Base64.getEncoder().encodeToString("$username:$password".toByteArray(Charsets.UTF_8))
+                        header(HttpHeaders.Authorization, "Basic $encoded")
+                    }
+                }
+            }
             HealthStatus(service, response.status == HttpStatusCode.OK, response.status.value)
         } catch (e: Exception) {
             HealthStatus(service, false, -1, e.message)
@@ -455,26 +465,7 @@ class ServiceClient(
     }
 
     /**
-     * Performs hybrid search via the search-service to validate RAG capabilities.
-     *
-     * This tests the complete search pipeline:
-     * 1. Query is sent to search-service
-     * 2. Search-service calls embedding-service to vectorize the query
-     * 3. Parallel searches: Qdrant (vector similarity) + PostgreSQL (full-text BM25)
-     * 4. Results merged using Reciprocal Rank Fusion (RRF)
-     * 5. Deduplicated and ranked results returned
-     *
-     * Tests validate that:
-     * - Vector search finds semantically similar documents
-     * - Full-text search finds exact keyword matches
-     * - Hybrid fusion provides better results than either approach alone
-     * - Collection filtering works correctly
-     * - Results include the documents that pipeline indexed
-     *
-     * @param query Natural language search query
-     * @param collections Qdrant collections to search (default: all)
-     * @param limit Maximum number of results to return
-     * @return SearchResult with success flag and JSON results array
+     * Performs BM25 text search through OpenSearch and returns the legacy test result shape.
      */
     suspend fun search(
         query: String,
@@ -485,25 +476,76 @@ class ServiceClient(
     ): SearchResult {
         return try {
             val executeRequest: suspend () -> HttpResponse = {
-                client.post("${endpoints.searchService}/search") {
-                    applyInternalApiAuthHeaders()
+                client.post("${endpoints.searchService.trimEnd('/')}/knowledge/_search") {
+                    val username = System.getenv("OPENSEARCH_USERNAME") ?: "admin"
+                    val password = System.getenv("OPENSEARCH_PASSWORD").orEmpty()
+                    if (password.isNotBlank()) {
+                        val encoded = Base64.getEncoder().encodeToString("$username:$password".toByteArray(Charsets.UTF_8))
+                        header(HttpHeaders.Authorization, "Basic $encoded")
+                    }
                     contentType(ContentType.Application.Json)
                     setBody(buildJsonObject {
-                        put("query", query)
-                        put("collections", JsonArray(collections.map { JsonPrimitive(it) }))
-                        put("mode", mode)
-                        put("limit", limit)
+                        put("size", limit)
+                        putJsonObject("query") {
+                            putJsonObject("bool") {
+                                putJsonArray("must") {
+                                    add(buildJsonObject {
+                                        putJsonObject("multi_match") {
+                                            put("query", query)
+                                            put("fields", JsonArray(listOf(JsonPrimitive("title^2"), JsonPrimitive("text"))))
+                                        }
+                                    })
+                                }
+                                val filters = collections.filter { it != "*" }
+                                if (filters.isNotEmpty()) {
+                                    putJsonArray("filter") {
+                                        add(buildJsonObject {
+                                            putJsonObject("terms") {
+                                                put("collection", JsonArray(filters.map { JsonPrimitive(it) }))
+                                            }
+                                        })
+                                    }
+                                }
+                            }
+                        }
                     })
                 }
             }
             val response = if (timeoutMs != null) withTimeout(timeoutMs) { executeRequest() } else executeRequest()
+            val raw = Json.parseToJsonElement(response.bodyAsText())
+            val normalized = if (response.status == HttpStatusCode.OK) normalizeOpenSearchSearchResult(raw, mode) else raw
 
             SearchResult(
                 success = response.status == HttpStatusCode.OK,
-                results = Json.parseToJsonElement(response.bodyAsText())
+                results = normalized
             )
         } catch (e: Exception) {
             SearchResult(false, JsonPrimitive(e.message ?: "Unknown error"))
+        }
+    }
+
+    private fun normalizeOpenSearchSearchResult(raw: JsonElement, mode: String): JsonObject {
+        val hits = raw.jsonObject["hits"]?.jsonObject
+        val rows = hits?.get("hits")?.jsonArray.orEmpty()
+        val results = JsonArray(rows.map { hit ->
+            val hitObject = hit.jsonObject
+            val source = hitObject["_source"]?.jsonObject ?: JsonObject(emptyMap())
+            buildJsonObject {
+                put("id", source["id"] ?: hitObject["_id"] ?: JsonPrimitive(""))
+                put("collection", source["collection"] ?: JsonPrimitive(""))
+                put("source", source["source"] ?: JsonPrimitive(""))
+                put("title", source["title"] ?: JsonPrimitive(""))
+                put("content", source["text"] ?: JsonPrimitive(""))
+                put("text", source["text"] ?: JsonPrimitive(""))
+                put("metadata", source["metadata"] ?: JsonObject(emptyMap()))
+                put("score", hitObject["_score"] ?: JsonPrimitive(0.0))
+            }
+        })
+        val total = hits?.get("total")?.jsonObject?.get("value")?.jsonPrimitive?.intOrNull ?: results.size
+        return buildJsonObject {
+            put("results", results)
+            put("total", total)
+            put("mode", mode)
         }
     }
 

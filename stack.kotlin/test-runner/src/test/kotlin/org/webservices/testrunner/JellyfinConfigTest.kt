@@ -98,7 +98,10 @@ class JellyfinConfigTest {
             deploy.contains("webservices-jellyfin-profile-proxy.service"),
             "Deploy should reload the Jellyfin profile proxy when its image or bundled code changes"
         )
+        assertTrue(caddyfile.contains("@jellyfin_playback_info path /Items/*/PlaybackInfo"))
+        assertTrue(caddyfile.contains("handle @jellyfin_playback_info"))
         assertTrue(caddyfile.contains("reverse_proxy jellyfin-profile-proxy:8080"))
+        assertTrue(caddyfile.contains("reverse_proxy jellyfin:8096"))
         assertTrue(caddyfile.contains("header_up Host {host}"))
         assertTrue(caddyfile.contains("header_up X-Forwarded-Host {host}"))
         assertTrue(caddyfile.contains("header_up X-Forwarded-Proto {scheme}"))

@@ -669,7 +669,7 @@ class DocumentStagingStore(
         logger.info { "Connected to PostgreSQL: $jdbcUrl (HikariCP pool size: ${config.maximumPoolSize})" }
 
         ensureTableExists()
-        if (jdbcUrl.startsWith("jdbc:postgresql")) {
+        if (jdbcUrl.startsWith("jdbc:postgresql") && legacyDocumentStagingIndexesEnabled()) {
             schedulePostgresIndexCreation()
         }
     }
@@ -720,6 +720,11 @@ class DocumentStagingStore(
         worker.isDaemon = true
         worker.start()
     }
+
+    private fun legacyDocumentStagingIndexesEnabled(): Boolean =
+        System.getenv("WEBSERVICES_LEGACY_DOCUMENT_STAGING_INDEXES")
+            ?.trim()
+            ?.equals("true", ignoreCase = true) == true
 
     private fun ensurePostgresIndexes() {
         DriverManager.getConnection(jdbcUrl, user, dbPassword).use { conn ->

@@ -44,7 +44,7 @@ validate_caddy_file() {
     -e KOPIA_PROXY_AUTHORIZATION=test \
     -e BOOKSTACK_INTERNAL_API_TOKEN=test \
     -e CHATGPT_CONNECTOR_TRUSTED_PROXY_SECRET=test \
-    -e SEARCH_SERVICE_INTERNAL_TOKEN=test \
+    -e OPENSEARCH_BASIC_AUTH=test \
     -e HOMEASSISTANT_TRUSTED_PROXY_SECRET=test \
     -e VAULTWARDEN_ORG_ID=00000000-0000-0000-0000-000000000000 \
     caddy:2.11.3 \
@@ -96,7 +96,8 @@ export JELLYFIN_OIDC_SECRET=component-test-secret
 export KEYCLOAK_ADMIN_PASSWORD=component-test-secret
 export KOPIA_PROXY_AUTHORIZATION=component-test-secret
 export ONBOARDING_TRUSTED_PROXY_SECRET=component-test-secret
-export SEARCH_SERVICE_INTERNAL_TOKEN=component-test-secret
+export OPENSEARCH_ADMIN_PASSWORD='ComponentTestPassword123!'
+export OPENSEARCH_BASIC_AUTH=test
 export VALKEY_ADMIN_PASSWORD=component-test-secret
 export BOOKSTACK_INTERNAL_API_TOKEN=component-test-secret
 export BOOKSTACK_API_TOKEN_ID=component-test-token-id
@@ -118,7 +119,7 @@ export NTFY_PASSWORD=component-test-secret
 export NTFY_USERNAME=component-test
 export PG_SSD_ROOT="$host_paths_dir/pg-ssd"
 export POSTGRES_PIPELINE_USER=pipeline
-export POSTGRES_SEARCH_SERVICE_USER=search_service
+export POSTGRES_AIRFLOW_USER=airflow
 export SEAFILE_MEDIA_ROOT="$host_paths_dir/seafile"
 export SEAFILE_JWT_KEY=component-test-secret
 export STACK_ADMIN_EMAIL=admin@example.test
