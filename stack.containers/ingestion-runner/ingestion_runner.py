@@ -227,12 +227,23 @@ def source_stats(source: str) -> dict[str, Any]:
 def ensure_qdrant_collection(collection: str) -> None:
     base = os.environ["QDRANT_HTTP_URL"].rstrip("/")
     vector_size = int(os.getenv("QDRANT_VECTOR_SIZE", "1024"))
+    existing = requests.get(
+        f"{base}/collections/{collection}",
+        headers=qdrant_headers(),
+        timeout=30,
+    )
+    if existing.status_code == 200:
+        return
     response = requests.put(
         f"{base}/collections/{collection}",
         headers=qdrant_headers(),
         json={"vectors": {"size": vector_size, "distance": "Cosine"}},
         timeout=30,
     )
+    if response.status_code in {200, 201}:
+        return
+    if response.status_code == 400 and "already exists" in response.text.lower():
+        return
     if response.status_code not in {200, 201}:
         raise RuntimeError(f"Qdrant collection {collection} bootstrap failed: {response.text}")
 
@@ -266,8 +277,11 @@ def ensure_opensearch_index() -> None:
         json=mapping,
         timeout=30,
     )
-    if response.status_code not in {200, 201, 400}:
-        raise RuntimeError(f"OpenSearch index bootstrap failed: {response.text}")
+    if response.status_code in {200, 201}:
+        return
+    if response.status_code == 400 and "resource_already_exists_exception" in response.text:
+        return
+    raise RuntimeError(f"OpenSearch index bootstrap failed: {response.text}")
 
 
 def embed(texts: list[str]) -> list[list[float]]:
@@ -433,6 +447,20 @@ def source_documents(source: str, limit: int | None) -> list[dict[str, Any]]:
     return placeholder_documents(source, limit)
 
 
+@app.on_event("startup")
+def bootstrap_on_startup() -> None:
+    last_error: Exception | None = None
+    for attempt in range(1, 13):
+        try:
+            bootstrap()
+            return
+        except Exception as exc:
+            last_error = exc
+            print(f"bootstrap attempt {attempt}/12 failed: {exc}", flush=True)
+            time.sleep(min(attempt * 2, 20))
+    raise RuntimeError(f"backend bootstrap failed during startup: {last_error}")
+
+
 @app.get("/health")
 def health() -> dict[str, str]:
     return {"status": "ok"}
@@ -460,10 +488,10 @@ def readiness(source: str) -> dict[str, Any]:
 
 @app.post("/bootstrap")
 def bootstrap() -> dict[str, Any]:
+    ensure_opensearch_index()
     for source, collection in COLLECTIONS.items():
         ensure_source(source)
         ensure_qdrant_collection(collection)
-    ensure_opensearch_index()
     return {"status": "ok", "collections": list(COLLECTIONS.values()), "index": SEARCH_INDEX}
 
 
