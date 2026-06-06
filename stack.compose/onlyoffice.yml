@@ -30,6 +30,11 @@ services:
     volumes:
       - onlyoffice_data:/var/www/onlyoffice
       - caddy_ca:/ca:ro
+    deploy:
+      resources:
+        limits:
+          memory: ${ONLYOFFICE_MEMORY_LIMIT:-4G}
+          cpus: '${ONLYOFFICE_CPU_LIMIT:-2.0}'
     healthcheck:
       test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:80/healthcheck"]
       interval: 60s

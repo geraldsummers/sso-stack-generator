@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import bz2
 import hashlib
+import html
+import io
 import json
 import os
 import re
@@ -10,7 +12,7 @@ import uuid
 import xml.etree.ElementTree as ET
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any
+from typing import Any, Iterable
 
 import feedparser
 import psycopg
@@ -64,6 +66,18 @@ def opensearch_auth() -> tuple[str, str]:
         os.getenv("OPENSEARCH_USERNAME", "admin"),
         os.environ["OPENSEARCH_PASSWORD"],
     )
+
+
+def bookstack_headers() -> dict[str, str]:
+    token_id = os.getenv("BOOKSTACK_API_TOKEN_ID", "").strip()
+    token_secret = os.getenv("BOOKSTACK_API_TOKEN_SECRET", "").strip()
+    if not token_id or not token_secret:
+        raise HTTPException(status_code=503, detail="BookStack API credentials are not configured")
+    return {
+        "Authorization": f"Token {token_id}:{token_secret}",
+        "Accept": "application/json",
+        "Content-Type": "application/json",
+    }
 
 
 def doc_id(source: str, stable_key: str, chunk_index: int) -> str:
@@ -136,9 +150,8 @@ def write_checkpoint(source: str, key: str, value: dict[str, Any]) -> None:
             """
             INSERT INTO ingestion_checkpoints (source_id, checkpoint_key, checkpoint_value)
             VALUES (%s, %s, %s::jsonb)
-            ON CONFLICT (source_id) DO UPDATE
-            SET checkpoint_key = EXCLUDED.checkpoint_key,
-                checkpoint_value = EXCLUDED.checkpoint_value,
+            ON CONFLICT (source_id, checkpoint_key) DO UPDATE
+            SET checkpoint_value = EXCLUDED.checkpoint_value,
                 updated_at = now()
             """,
             (source, key, json.dumps(value)),
@@ -174,6 +187,8 @@ def source_stats(source: str) -> dict[str, Any]:
             SELECT checkpoint_value
             FROM ingestion_checkpoints
             WHERE source_id = %s
+            ORDER BY updated_at DESC
+            LIMIT 1
             """,
             (source,),
         ).fetchone()
@@ -344,6 +359,205 @@ def upsert_documents(source: str, documents: list[dict[str, Any]]) -> int:
     return indexed
 
 
+def update_publication_search_metadata(source: str, presentation_url: str) -> int:
+    collection = COLLECTIONS[source]
+    os_base = os.environ["OPENSEARCH_URL"].rstrip("/")
+    qdrant_base = os.environ["QDRANT_HTTP_URL"].rstrip("/")
+    script = {
+        "script": {
+            "source": (
+                "ctx._source.presentation_url = params.url; "
+                "ctx._source.bookstack_url = params.url; "
+                "ctx._source.published = true; "
+                "ctx._source.search_ready = true; "
+                "ctx._source.updated_at = params.updated_at"
+            ),
+            "lang": "painless",
+            "params": {"url": presentation_url, "updated_at": utcnow()},
+        },
+        "query": {"term": {"source": source}},
+    }
+    response = requests.post(
+        f"{os_base}/{SEARCH_INDEX}/_update_by_query?conflicts=proceed&refresh=true",
+        auth=opensearch_auth(),
+        json=script,
+        timeout=120,
+    )
+    response.raise_for_status()
+    updated = int(response.json().get("updated", 0))
+
+    scroll = requests.post(
+        f"{qdrant_base}/collections/{collection}/points/scroll",
+        headers=qdrant_headers(),
+        json={
+            "limit": 1000,
+            "with_payload": False,
+            "with_vector": False,
+            "filter": {"must": [{"key": "source", "match": {"value": source}}]},
+        },
+        timeout=60,
+    )
+    if scroll.status_code == 200:
+        point_ids = [point["id"] for point in scroll.json().get("result", {}).get("points", [])]
+        if point_ids:
+            requests.post(
+                f"{qdrant_base}/collections/{collection}/points/payload?wait=true",
+                headers=qdrant_headers(),
+                json={
+                    "payload": {
+                        "presentation_url": presentation_url,
+                        "bookstack_url": presentation_url,
+                        "published": True,
+                        "search_ready": True,
+                        "updated_at": utcnow(),
+                    },
+                    "points": point_ids,
+                },
+                timeout=120,
+            ).raise_for_status()
+    return updated
+
+
+def bookstack_request(method: str, path: str, payload: dict[str, Any] | None = None) -> dict[str, Any]:
+    response = requests.request(
+        method,
+        f"{os.environ['BOOKSTACK_URL'].rstrip('/')}{path}",
+        headers=bookstack_headers(),
+        json=payload,
+        timeout=60,
+    )
+    if response.status_code < 200 or response.status_code >= 300:
+        raise HTTPException(
+            status_code=502,
+            detail=f"BookStack API {method} {path} failed: HTTP {response.status_code} {response.text[:500]}",
+        )
+    if not response.text.strip():
+        return {}
+    return response.json()
+
+
+def bookstack_fetch_all(path: str) -> list[dict[str, Any]]:
+    items: list[dict[str, Any]] = []
+    page = 1
+    while True:
+        separator = "&" if "?" in path else "?"
+        data = bookstack_request("GET", f"{path}{separator}count=100&page={page}")
+        page_items = [item for item in data.get("data", []) if isinstance(item, dict)]
+        items.extend(page_items)
+        if len(page_items) < 100:
+            return items
+        page += 1
+
+
+def ensure_bookstack_publication_book() -> dict[str, Any]:
+    book_name = os.getenv("BOOKSTACK_PUBLICATION_BOOK", "Knowledge")
+    book_description = os.getenv(
+        "BOOKSTACK_PUBLICATION_BOOK_DESCRIPTION",
+        "Runtime-generated knowledge pages published by the ingestion pipeline.",
+    )
+    for book in bookstack_fetch_all("/api/books"):
+        if book.get("name") == book_name:
+            book_id = int(book.get("id", 0))
+            if book.get("description") == book_description:
+                return book
+            return bookstack_request("PUT", f"/api/books/{book_id}", {"name": book_name, "description": book_description})
+    return bookstack_request("POST", "/api/books", {"name": book_name, "description": book_description})
+
+
+def publication_docs(source: str, limit: int) -> list[dict[str, Any]]:
+    os_base = os.environ["OPENSEARCH_URL"].rstrip("/")
+    response = requests.post(
+        f"{os_base}/{SEARCH_INDEX}/_search",
+        auth=opensearch_auth(),
+        json={
+            "size": limit,
+            "query": {"term": {"source": source}},
+            "sort": [{"updated_at": {"order": "desc"}}],
+            "_source": ["title", "url", "text", "metadata"],
+        },
+        timeout=30,
+    )
+    response.raise_for_status()
+    return [hit.get("_source", {}) for hit in response.json().get("hits", {}).get("hits", [])]
+
+
+def render_publication_html(source: str, docs: list[dict[str, Any]]) -> str:
+    title = html.escape(source.replace("_", " ").title())
+    generated = html.escape(utcnow())
+    sections = [
+        f"<p><em>Generated by the webservices ingestion pipeline at {generated}.</em></p>",
+        f"<p>This page summarizes currently indexed material for <strong>{title}</strong>. Full text remains searchable in OpenSearch and Qdrant.</p>",
+    ]
+    for doc in docs:
+        doc_title = html.escape(str(doc.get("title") or "Untitled"))
+        doc_url = html.escape(str(doc.get("url") or ""))
+        text = html.escape(str(doc.get("text") or "")[:4000])
+        link = f'<p><a href="{doc_url}" target="_blank" rel="noreferrer noopener">{doc_url}</a></p>' if doc_url else ""
+        sections.append(f"<h2>{doc_title}</h2>{link}<p>{text}</p>")
+    if not docs:
+        sections.append("<p>No indexed documents were available when this publication task ran.</p>")
+    return "\n".join(sections)
+
+
+def existing_bookstack_page_id(source: str) -> int | None:
+    with pg_conn() as conn:
+        row = conn.execute(
+            """
+            SELECT metadata->>'bookstack_page_id'
+            FROM publication_records
+            WHERE source_id = %s
+              AND presentation_target = 'bookstack'
+            ORDER BY updated_at DESC
+            LIMIT 1
+            """,
+            (source,),
+        ).fetchone()
+    if not row or not row[0]:
+        return None
+    try:
+        page_id = int(row[0])
+    except ValueError:
+        return None
+    return page_id if page_id > 0 else None
+
+
+def publish_bookstack_page(source: str) -> dict[str, Any]:
+    book = ensure_bookstack_publication_book()
+    book_id = int(book.get("id", 0))
+    if book_id <= 0:
+        raise HTTPException(status_code=502, detail="BookStack publication book did not include an id")
+    page_title = f"{source.replace('_', ' ').title()} Knowledge"
+    docs = publication_docs(source, int(os.getenv("BOOKSTACK_PUBLICATION_MAX_DOCS", "5")))
+    payload = {
+        "book_id": book_id,
+        "name": page_title,
+        "html": render_publication_html(source, docs),
+        "tags": [
+            {"name": "generated_by", "value": "ingestion-runner"},
+            {"name": "source", "value": source},
+        ],
+    }
+    page_id = existing_bookstack_page_id(source)
+    if page_id:
+        try:
+            page = bookstack_request("PUT", f"/api/pages/{page_id}", payload)
+        except HTTPException as exc:
+            if "HTTP 404" not in str(exc.detail):
+                raise
+            page = bookstack_request("POST", "/api/pages", payload)
+    else:
+        page = bookstack_request("POST", "/api/pages", payload)
+
+    public_base = os.environ["BOOKSTACK_PUBLIC_URL"].rstrip("/")
+    book_slug = str(book.get("slug") or "").strip()
+    page_slug = str(page.get("slug") or "").strip()
+    if book_slug and page_slug:
+        url = f"{public_base}/books/{book_slug}/page/{page_slug}"
+    else:
+        url = f"{public_base}/link/{page.get('id')}" if page.get("id") else public_base
+    return {"url": url, "book_id": book_id, "page_id": page.get("id"), "page_title": page_title}
+
+
 def local_markdown_documents(source: str, root: str, limit: int | None) -> list[dict[str, Any]]:
     docs: list[dict[str, Any]] = []
     for path in sorted(Path(root).glob("**/*.md")):
@@ -388,37 +602,177 @@ def rss_documents(limit: int | None) -> list[dict[str, Any]]:
     return docs
 
 
-def wikipedia_documents(limit: int | None) -> list[dict[str, Any]]:
-    path_or_url = os.environ["WIKIPEDIA_DUMP_PATH"]
-    max_docs = limit or min(int(os.getenv("WIKIPEDIA_MAX_ARTICLES", "100")), 100)
-    if path_or_url.startswith("http"):
-        raise RuntimeError("full Wikipedia dump streaming is enabled for Airflow checkpoints but must run from a local dump path in this runner build")
-    opener = bz2.open if path_or_url.endswith(".bz2") else open
+def http_json(url: str, timeout: int = 30) -> Any:
+    response = requests.get(url, headers={"User-Agent": "webservices-ingestion-runner/1.0"}, timeout=timeout)
+    response.raise_for_status()
+    return response.json()
+
+
+def http_text(url: str, timeout: int = 30) -> str:
+    response = requests.get(url, headers={"User-Agent": "webservices-ingestion-runner/1.0"}, timeout=timeout)
+    response.raise_for_status()
+    return response.text
+
+
+def mediawiki_documents(source: str, api_url: str, page_titles: list[str], limit: int | None) -> list[dict[str, Any]]:
     docs: list[dict[str, Any]] = []
+    for title in page_titles[: limit or len(page_titles)]:
+        data = http_json(
+            f"{api_url}?action=query&prop=extracts&explaintext=1&redirects=1&format=json&titles={requests.utils.quote(title)}"
+        )
+        pages = data.get("query", {}).get("pages", {})
+        for page in pages.values():
+            page_title = page.get("title", title)
+            extract = page.get("extract", "")
+            if not extract:
+                continue
+            docs.append(
+                {
+                    "stable_key": f"{api_url}:{page.get('pageid', page_title)}",
+                    "title": page_title,
+                    "url": f"{api_url.rsplit('/api.php', 1)[0]}/index.php?title={requests.utils.quote(page_title.replace(' ', '_'))}",
+                    "text": extract,
+                    "metadata": {"page_id": page.get("pageid"), "source_api": api_url},
+                    "audience": "agent",
+                }
+            )
+            if limit and len(docs) >= limit:
+                return docs
+    return docs
+
+
+def cve_documents(limit: int | None) -> list[dict[str, Any]]:
+    data = http_json(f"https://services.nvd.nist.gov/rest/json/cves/2.0?resultsPerPage={min(limit or 20, 50)}")
+    docs: list[dict[str, Any]] = []
+    for item in data.get("vulnerabilities", []):
+        cve = item.get("cve", {})
+        cve_id = cve.get("id", "")
+        descriptions = cve.get("descriptions", [])
+        text = next((d.get("value", "") for d in descriptions if d.get("lang") == "en"), "")
+        if not cve_id or not text:
+            continue
+        docs.append(
+            {
+                "stable_key": cve_id,
+                "title": cve_id,
+                "url": f"https://nvd.nist.gov/vuln/detail/{cve_id}",
+                "text": text,
+                "metadata": {"published": cve.get("published"), "last_modified": cve.get("lastModified")},
+                "audience": "operator",
+            }
+        )
+    return docs
+
+
+def australian_law_documents(limit: int | None) -> list[dict[str, Any]]:
+    url = os.getenv("AUSTRALIAN_LAWS_SAMPLE_URL", "https://www.legislation.gov.au/C2024A00001/latest/text")
+    text = BeautifulSoup(http_text(url), "html.parser").get_text(" ")
+    return [
+        {
+            "stable_key": url,
+            "title": "Australian legislation sample",
+            "url": url,
+            "text": text,
+            "metadata": {"sample": True},
+            "audience": "human",
+        }
+    ][: limit or 1]
+
+
+def linux_docs_documents(limit: int | None) -> list[dict[str, Any]]:
+    pages = [
+        ("Linux kernel documentation", "https://docs.kernel.org/"),
+        ("Kernel admin guide", "https://docs.kernel.org/admin-guide/README.html"),
+    ]
+    docs: list[dict[str, Any]] = []
+    for title, url in pages[: limit or len(pages)]:
+        text = BeautifulSoup(http_text(url), "html.parser").get_text(" ")
+        docs.append({"stable_key": url, "title": title, "url": url, "text": text, "metadata": {"sample": True}, "audience": "agent"})
+    return docs
+
+
+def torrent_documents(limit: int | None) -> list[dict[str, Any]]:
+    feed_url = os.getenv("TORRENT_RSS_URL", "https://distrowatch.com/news/torrents.xml")
+    parsed = feedparser.parse(feed_url)
+    docs: list[dict[str, Any]] = []
+    for entry in parsed.entries[: limit or 20]:
+        title = entry.get("title", feed_url)
+        link = entry.get("link", feed_url)
+        text = BeautifulSoup(entry.get("summary", "") or entry.get("description", ""), "html.parser").get_text(" ")
+        docs.append({"stable_key": link, "title": title, "url": link, "text": f"{title}\n\n{text}", "metadata": {"feed_url": feed_url}, "audience": "operator"})
+    return docs
+
+
+def opendota_documents(limit: int | None) -> list[dict[str, Any]]:
+    docs: list[dict[str, Any]] = []
+    for hero in http_json("https://api.opendota.com/api/heroes")[: limit or 20]:
+        name = hero.get("localized_name", hero.get("name", "OpenDota hero"))
+        text = json.dumps(hero, sort_keys=True)
+        docs.append({"stable_key": str(hero.get("id", name)), "title": name, "url": "https://www.opendota.com/heroes", "text": text, "metadata": hero, "audience": "agent"})
+    return docs
+
+
+def poe_ninja_documents(limit: int | None) -> list[dict[str, Any]]:
+    league = os.getenv("POE_NINJA_LEAGUE", "Standard")
+    data = http_json(f"https://poe.ninja/api/data/currencyoverview?league={requests.utils.quote(league)}&type=Currency")
+    docs: list[dict[str, Any]] = []
+    for line in data.get("lines", [])[: limit or 20]:
+        name = line.get("currencyTypeName", "Currency")
+        text = json.dumps(line, sort_keys=True)
+        docs.append({"stable_key": f"{league}:{name}", "title": f"{name} ({league})", "url": "https://poe.ninja/economy", "text": text, "metadata": line, "audience": "agent"})
+    return docs
+
+
+def iter_wikipedia_pages(path_or_url: str, max_docs: int) -> Iterable[dict[str, Any]]:
+    def page_from_elem(elem: ET.Element) -> dict[str, Any]:
+        title = elem.findtext("./{*}title") or "Untitled"
+        page_id = elem.findtext("./{*}id") or title
+        revision = elem.find("./{*}revision")
+        text = revision.findtext("./{*}text") if revision is not None else ""
+        return {
+            "stable_key": page_id,
+            "title": title,
+            "url": f"https://en.wikipedia.org/wiki/{title.replace(' ', '_')}",
+            "text": text or "",
+            "metadata": {"page_id": page_id, "dump": path_or_url},
+            "audience": "mixed",
+        }
+
+    seen = 0
+    if path_or_url.startswith("http"):
+        response = requests.get(path_or_url, headers={"User-Agent": "webservices-ingestion-runner/1.0"}, stream=True, timeout=60)
+        response.raise_for_status()
+        response.raw.decode_content = True
+        byte_stream = bz2.BZ2File(response.raw) if path_or_url.endswith(".bz2") else response.raw
+        text_stream = io.TextIOWrapper(byte_stream, encoding="utf-8", errors="replace")
+        for _, elem in ET.iterparse(text_stream, events=("end",)):
+            if not elem.tag.endswith("page"):
+                continue
+            seen += 1
+            yield page_from_elem(elem)
+            write_checkpoint("wikipedia", "stream_position", {"dump": path_or_url, "pages_seen": seen, "at": utcnow()})
+            elem.clear()
+            if seen >= max_docs:
+                return
+        return
+
+    opener = bz2.open if path_or_url.endswith(".bz2") else open
     with opener(path_or_url, "rt", encoding="utf-8", errors="replace") as handle:
         for _, elem in ET.iterparse(handle, events=("end",)):
             if not elem.tag.endswith("page"):
                 continue
-            title = elem.findtext("./{*}title") or "Untitled"
-            page_id = elem.findtext("./{*}id") or title
-            revision = elem.find("./{*}revision")
-            text = ""
-            if revision is not None:
-                text = revision.findtext("./{*}text") or ""
-            docs.append(
-                {
-                    "stable_key": page_id,
-                    "title": title,
-                    "url": f"https://en.wikipedia.org/wiki/{title.replace(' ', '_')}",
-                    "text": text,
-                    "metadata": {"page_id": page_id},
-                    "audience": "mixed",
-                }
-            )
+            seen += 1
+            yield page_from_elem(elem)
+            write_checkpoint("wikipedia", "stream_position", {"dump": path_or_url, "pages_seen": seen, "at": utcnow()})
             elem.clear()
-            if len(docs) >= max_docs:
-                break
-    return docs
+            if seen >= max_docs:
+                return
+
+
+def wikipedia_documents(limit: int | None) -> list[dict[str, Any]]:
+    path_or_url = os.environ["WIKIPEDIA_DUMP_PATH"]
+    max_docs = limit or min(int(os.getenv("WIKIPEDIA_MAX_ARTICLES", "100")), int(os.getenv("WIKIPEDIA_RUNNER_HARD_LIMIT", "500")))
+    return list(iter_wikipedia_pages(path_or_url, max_docs))
 
 
 def placeholder_documents(source: str, limit: int | None) -> list[dict[str, Any]]:
@@ -444,6 +798,22 @@ def source_documents(source: str, limit: int | None) -> list[dict[str, Any]]:
         return rss_documents(limit)
     if source == "wikipedia":
         return wikipedia_documents(limit)
+    if source == "cve":
+        return cve_documents(limit)
+    if source == "torrents":
+        return torrent_documents(limit)
+    if source == "australian_laws":
+        return australian_law_documents(limit)
+    if source == "linux_docs":
+        return linux_docs_documents(limit)
+    if source == "debian_wiki":
+        return mediawiki_documents(source, "https://wiki.debian.org/api.php", ["FrontPage", "DebianRepository", "DebianPackageManagement"], limit)
+    if source == "arch_wiki":
+        return mediawiki_documents(source, "https://wiki.archlinux.org/api.php", ["Main page", "Pacman", "System maintenance"], limit)
+    if source == "opendota":
+        return opendota_documents(limit)
+    if source == "poe_ninja":
+        return poe_ninja_documents(limit)
     return placeholder_documents(source, limit)
 
 
@@ -519,7 +889,13 @@ def publish(request: RunRequest) -> dict[str, Any]:
     source = request.source
     if source not in COLLECTIONS:
         raise HTTPException(status_code=400, detail=f"unknown source: {source}")
+    allowed = {item.strip() for item in os.getenv("BOOKSTACK_ALLOWED_SOURCES", "").split(",") if item.strip()}
+    if allowed and source not in allowed:
+        raise HTTPException(status_code=403, detail=f"publication disabled for source: {source}")
     ensure_source(source)
+    publication = publish_bookstack_page(source)
+    presentation_url = publication["url"]
+    updated = update_publication_search_metadata(source, presentation_url)
     with pg_conn() as conn:
         conn.execute(
             """
@@ -533,14 +909,30 @@ def publish(request: RunRequest) -> dict[str, Any]:
                 bookstack_url = EXCLUDED.bookstack_url,
                 published = true,
                 search_ready = true,
+                metadata = EXCLUDED.metadata,
                 updated_at = now()
             """,
             (
                 f"{source}:publication-bootstrap",
                 source,
-                os.environ["BOOKSTACK_PUBLIC_URL"],
-                os.environ["BOOKSTACK_PUBLIC_URL"],
-                json.dumps({"bootstrap": True}),
+                presentation_url,
+                presentation_url,
+                json.dumps(
+                    {
+                        "bootstrap": True,
+                        "opensearch_updated": updated,
+                        "bookstack_book_id": publication.get("book_id"),
+                        "bookstack_page_id": publication.get("page_id"),
+                        "bookstack_page_title": publication.get("page_title"),
+                    }
+                ),
             ),
         )
-    return {"status": "ok", "source": source, "presentation_target": "bookstack"}
+    return {
+        "status": "ok",
+        "source": source,
+        "presentation_target": "bookstack",
+        "presentation_url": presentation_url,
+        "bookstack_page_id": publication.get("page_id"),
+        "updated": updated,
+    }

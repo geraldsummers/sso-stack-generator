@@ -61,6 +61,11 @@ services:
       - ./configs/mailserver/setup-dkim.sh:/tmp/docker-mailserver/setup-dkim.sh:ro
       - ./configs/mailserver/entrypoint-wrapper.sh:/tmp/docker-mailserver/entrypoint-wrapper.sh:ro
       - ./configs/mailserver/dovecot-oauth2.conf.ext:/etc/dovecot/dovecot-oauth2.conf.ext:ro
+    deploy:
+      resources:
+        limits:
+          memory: ${MAILSERVER_MEMORY_LIMIT:-3G}
+          cpus: '${MAILSERVER_CPU_LIMIT:-2.0}'
     healthcheck:
       test: ["CMD-SHELL", "ss -ltn | grep -E ':25|:587|:993' && supervisorctl status | grep -E 'postfix.*RUNNING' && supervisorctl status | grep -E 'dovecot.*RUNNING'"]
       interval: 15s

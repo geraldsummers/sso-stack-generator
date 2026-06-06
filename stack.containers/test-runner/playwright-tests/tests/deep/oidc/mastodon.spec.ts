@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test';
 import type { Locator, Page, Response } from '@playwright/test';
+import { execFileSync } from 'child_process';
 import * as fs from 'fs';
 import * as path from 'path';
 import { KeycloakLoginPage } from '../../../pages/KeycloakLoginPage';
@@ -56,6 +57,96 @@ type MastodonAccount = {
   avatar?: string;
   avatar_static?: string;
 };
+
+const PREVIEW_CARD_FIXTURE_JPEG_BASE64 = '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';
+
+function seedMastodonPreviewCard(): MastodonTimelineStatus | undefined {
+  const script = `
+require 'base64'
+require 'json'
+account = Account.find_by(username: 'screenshot_demo') || Account.joins(:user).first
+raise 'no local Mastodon account available for preview-card seed' unless account
+host = ENV.fetch('WEB_DOMAIN', ENV.fetch('LOCAL_DOMAIN', 'mastodon.local'))
+url = "https://#{host}/playwright-preview-card"
+image_path = '/tmp/playwright-preview-card.jpg'
+File.binwrite(image_path, Base64.decode64('${PREVIEW_CARD_FIXTURE_JPEG_BASE64}'))
+card = PreviewCard.find_or_initialize_by(url: url)
+card.title = 'Playwright preview card fixture'
+card.description = 'Deterministic local cache preview-card fixture.'
+card.provider_name = host
+card.width = 160
+card.height = 90
+card.image = File.open(image_path)
+card.save!
+Status.where(account_id: account.id).where('text LIKE ?', '%Playwright preview card cache fixture%').destroy_all
+status = PostStatusService.new.call(account, text: "Playwright preview card cache fixture #{url}", visibility: :public)
+PreviewCardsStatus.find_or_create_by!(preview_card: card, status: status, url: url)
+puts JSON.generate(id: status.id.to_s, acct: account.acct, image: card.image.url)
+`;
+
+  const output = execFileSync('docker', [
+    'exec',
+    '-i',
+    'mastodon-web',
+    'sh',
+    '-lc',
+    'cat >/tmp/playwright-preview-card-seed.rb && bin/rails runner /tmp/playwright-preview-card-seed.rb',
+  ], { input: script, encoding: 'utf-8', timeout: 120000 });
+
+  const seed = JSON.parse(output.trim()) as { id: string; acct: string; image: string };
+  return {
+    id: seed.id,
+    account: { acct: seed.acct },
+    card: {
+      image: seed.image.startsWith('http') ? seed.image : serviceUrl('mastodon', seed.image),
+      url: serviceUrl('mastodon', '/playwright-preview-card'),
+    },
+  };
+}
+
+function seedMastodonMediaStatus(): MastodonTimelineStatus | undefined {
+  const script = `
+require 'base64'
+require 'json'
+account = Account.find_by(username: 'screenshot_demo') || Account.joins(:user).first
+raise 'no local Mastodon account available for media seed' unless account
+image_path = '/tmp/playwright-media-attachment.jpg'
+File.binwrite(image_path, Base64.decode64('${PREVIEW_CARD_FIXTURE_JPEG_BASE64}'))
+Status.where(account_id: account.id).where('text LIKE ?', '%Playwright media attachment fixture%').destroy_all
+attachment = MediaAttachment.create!(
+  account: account,
+  file: File.open(image_path),
+  type: :image,
+  description: 'Playwright media attachment fixture'
+)
+status = PostStatusService.new.call(
+  account,
+  text: 'Playwright media attachment fixture',
+  visibility: :public,
+  media_ids: [attachment.id]
+)
+puts JSON.generate(id: status.id.to_s, acct: account.acct, file: attachment.file.url)
+`;
+
+  const output = execFileSync('docker', [
+    'exec',
+    '-i',
+    'mastodon-web',
+    'sh',
+    '-lc',
+    'cat >/tmp/playwright-media-attachment-seed.rb && bin/rails runner /tmp/playwright-media-attachment-seed.rb',
+  ], { input: script, encoding: 'utf-8', timeout: 120000 });
+
+  const seed = JSON.parse(output.trim()) as { id: string; acct: string; file: string };
+  return {
+    id: seed.id,
+    account: { acct: seed.acct },
+    media_attachments: [{
+      type: 'image',
+      url: seed.file.startsWith('http') ? seed.file : serviceUrl('mastodon', seed.file),
+    }],
+  };
+}
 
 test('Mastodon - OIDC login flow', async ({ page }) => {
     test.setTimeout(180000);
@@ -196,6 +287,11 @@ test('Mastodon - federated media images render with real pixels', async ({ page 
   );
 
   const findImageStatus = async (): Promise<MastodonTimelineStatus | undefined> => {
+    const seededStatus = seedMastodonMediaStatus();
+    if (seededStatus) {
+      return seededStatus;
+    }
+
     const browserFetchJson = async <T>(path: string): Promise<{ ok: boolean; status: number; json?: T }> => {
       return await page.evaluate(async (requestPath) => {
         const response = await fetch(requestPath, {
@@ -392,8 +488,11 @@ test('Mastodon - federated preview card images render with real pixels', async (
     '/api/v1/timelines/public?limit=40',
   ];
 
-  let statusWithPreviewCard: MastodonTimelineStatus | undefined;
+  let statusWithPreviewCard: MastodonTimelineStatus | undefined = seedMastodonPreviewCard();
   for (const timelinePath of timelinePaths) {
+    if (statusWithPreviewCard) {
+      break;
+    }
     const timelineResponse = await browserFetchJson<MastodonTimelineStatus[]>(timelinePath);
     if (!timelineResponse.ok || !timelineResponse.json) {
       console.log(`   Mastodon timeline ${timelinePath} was not readable from browser session: HTTP ${timelineResponse.status}`);

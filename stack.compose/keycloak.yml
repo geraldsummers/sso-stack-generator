@@ -47,8 +47,14 @@ services:
       KC_METRICS_ENABLED: "true"
       KC_HOSTNAME: https://keycloak.${DOMAIN}
       KC_PROXY_HEADERS: xforwarded
+      JAVA_OPTS_KC_HEAP: "-XX:InitialRAMPercentage=35 -XX:MaxRAMPercentage=60"
     volumes:
       - ./configs/keycloak/realm:/opt/keycloak/data/import:ro
+    deploy:
+      resources:
+        limits:
+          memory: ${KEYCLOAK_MEMORY_LIMIT:-2G}
+          cpus: '${KEYCLOAK_CPU_LIMIT:-2.0}'
     healthcheck:
       test:
         - CMD-SHELL

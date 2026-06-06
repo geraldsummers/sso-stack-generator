@@ -143,6 +143,19 @@ EOSQL
         checkpoint_value JSONB NOT NULL,
         updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
     );
+    DO $$
+    BEGIN
+        IF EXISTS (
+            SELECT 1
+            FROM pg_constraint
+            WHERE conrelid = 'ingestion_checkpoints'::regclass
+              AND contype = 'p'
+              AND pg_get_constraintdef(oid) = 'PRIMARY KEY (source_id)'
+        ) THEN
+            ALTER TABLE ingestion_checkpoints DROP CONSTRAINT ingestion_checkpoints_pkey;
+            ALTER TABLE ingestion_checkpoints ADD PRIMARY KEY (source_id, checkpoint_key);
+        END IF;
+    END $$;
     CREATE TABLE IF NOT EXISTS ingestion_errors (
         id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
         run_id UUID REFERENCES ingestion_runs(id),
@@ -169,6 +182,7 @@ EOSQL
     );
     CREATE INDEX IF NOT EXISTS ingestion_runs_source_started_idx ON ingestion_runs(source_id, started_at DESC);
     CREATE INDEX IF NOT EXISTS ingestion_runs_status_idx ON ingestion_runs(status);
+    CREATE INDEX IF NOT EXISTS ingestion_checkpoints_source_updated_idx ON ingestion_checkpoints(source_id, updated_at DESC);
     CREATE INDEX IF NOT EXISTS ingestion_errors_run_idx ON ingestion_errors(run_id);
     CREATE INDEX IF NOT EXISTS publication_records_source_idx ON publication_records(source_id);
     ALTER TABLE ingestion_sources OWNER TO pipeline_user;

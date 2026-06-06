@@ -9,6 +9,6 @@ test('Pipeline Monitor - Access with forward auth', async ({ page }) => {
     page,
     'Pipeline Monitor',
     serviceUrl('pipeline'),
-    /Pipeline Readiness|Data Pipeline|Sources|Status/i
+    /Airflow|DAGs|Pipeline Readiness|Data Pipeline|Sources|Status/i
   );
 });

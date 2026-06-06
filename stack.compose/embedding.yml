@@ -23,15 +23,16 @@ services:
       --model-id BAAI/bge-m3
       --dtype float32
       --port 8080
-      --max-concurrent-requests 1024
-      --max-batch-tokens 8192
-      --max-batch-requests 256
-      --max-client-batch-size 160
+      --max-concurrent-requests ${EMBEDDING_GPU_MAX_CONCURRENT_REQUESTS:-32}
+      --max-batch-tokens ${EMBEDDING_GPU_MAX_BATCH_TOKENS:-8192}
+      --max-batch-requests ${EMBEDDING_GPU_MAX_BATCH_REQUESTS:-32}
+      --max-client-batch-size ${EMBEDDING_GPU_MAX_CLIENT_BATCH_SIZE:-32}
       --pooling mean
     deploy:
       resources:
         limits:
-          cpus: '${EMBEDDING_GPU_CPU_LIMIT:-8.0}'
+          memory: ${EMBEDDING_GPU_MEMORY_LIMIT:-10G}
+          cpus: '${EMBEDDING_GPU_CPU_LIMIT:-4.0}'
         reservations:
           devices:
             - driver: nvidia

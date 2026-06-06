@@ -3,6 +3,8 @@ services:
     image: lscr.io/linuxserver/bookstack:version-v24.12.1
     container_name: bookstack
     restart: unless-stopped
+    mem_limit: ${BOOKSTACK_MEMORY_LIMIT:-1536M}
+    cpus: ${BOOKSTACK_CPU_LIMIT:-1.5}
     networks:
       caddy:
       mariadb:
@@ -48,6 +50,8 @@ services:
     image: lscr.io/linuxserver/bookstack:version-v24.12.1
     container_name: bookstack-procedural-docs
     restart: unless-stopped
+    mem_limit: ${BOOKSTACK_PROCEDURAL_DOCS_MEMORY_LIMIT:-512M}
+    cpus: ${BOOKSTACK_PROCEDURAL_DOCS_CPU_LIMIT:-0.5}
     labels:
       - "com.centurylinklabs.watchtower.enable=false"
     networks:

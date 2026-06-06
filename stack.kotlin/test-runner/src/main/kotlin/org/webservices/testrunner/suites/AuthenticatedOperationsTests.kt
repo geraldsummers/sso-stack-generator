@@ -434,9 +434,10 @@ suspend fun TestRunner.authenticatedOperationsTests() = suite("Authenticated Ope
 
 
         val baseCandidates = listOf(
+            "http://ingestion-runner:8090",
             endpoints.pipeline.trimEnd('/'),
             "http://airflow-webserver:8080",
-            "http://ingestion-runner:8090"
+            "http://webservices-ingestion-runner-1:8090"
         )
         val directResponse = probeFirstReachable(
             baseCandidates.flatMap { base -> listOf("$base/actuator/health", "$base/health") }

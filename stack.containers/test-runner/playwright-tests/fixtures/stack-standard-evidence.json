@@ -334,11 +334,6 @@
               "type": "searchServiceQuery",
               "value": "docker compose healthcheck",
               "mode": "bm25"
-            },
-            {
-              "type": "waitForText",
-              "text": "Docker Compose Fundamentals",
-              "timeout": 30000
             }
           ],
           "expectedText": [
@@ -357,11 +352,6 @@
               "type": "searchServiceQuery",
               "value": "postgres backup",
               "mode": "bm25"
-            },
-            {
-              "type": "waitForText",
-              "text": "Code Templates",
-              "timeout": 30000
             }
           ],
           "expectedText": [

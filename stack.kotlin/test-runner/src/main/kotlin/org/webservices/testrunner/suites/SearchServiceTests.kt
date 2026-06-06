@@ -1,10 +1,8 @@
 package org.webservices.testrunner.suites
 
-import io.ktor.client.request.header
 import io.ktor.client.request.setBody
 import io.ktor.client.statement.bodyAsText
 import io.ktor.http.ContentType
-import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.contentType
 import kotlinx.coroutines.withTimeout
@@ -19,25 +17,16 @@ import kotlinx.serialization.json.put
 import kotlinx.serialization.json.putJsonArray
 import kotlinx.serialization.json.putJsonObject
 import org.webservices.testrunner.framework.TestRunner
-import java.util.Base64
 
 suspend fun TestRunner.searchServiceTests() = suite("OpenSearch Retrieval Provider") {
     val json = Json { ignoreUnknownKeys = true }
-
-    fun authHeader(): String {
-        val username = System.getenv("OPENSEARCH_USERNAME") ?: "admin"
-        val password = System.getenv("OPENSEARCH_PASSWORD").orEmpty()
-        return "Basic " + Base64.getEncoder().encodeToString("$username:$password".toByteArray(Charsets.UTF_8))
-    }
+    val sampleQuery = "Docker Compose"
 
     suspend fun openSearchGet(path: String) =
-        client.getRawResponse("${endpoints.searchService.trimEnd('/')}$path") {
-            header(HttpHeaders.Authorization, authHeader())
-        }
+        client.getRawResponse("${endpoints.searchService.trimEnd('/')}$path")
 
     suspend fun openSearchPost(path: String, body: kotlinx.serialization.json.JsonObject) =
         client.postRaw("${endpoints.searchService.trimEnd('/')}$path") {
-            header(HttpHeaders.Authorization, authHeader())
             contentType(ContentType.Application.Json)
             setBody(body)
         }
@@ -96,7 +85,7 @@ suspend fun TestRunner.searchServiceTests() = suite("OpenSearch Retrieval Provid
                 put("size", 5)
                 putJsonObject("query") {
                     putJsonObject("multi_match") {
-                        put("query", "webservices ingestion")
+                        put("query", sampleQuery)
                         put("fields", JsonArray(listOf(JsonPrimitive("title^2"), JsonPrimitive("text"))))
                     }
                 }
@@ -114,7 +103,7 @@ suspend fun TestRunner.searchServiceTests() = suite("OpenSearch Retrieval Provid
         withTimeout(180_000L) {
             ensureSampleDocuments()
         }
-        val result = client.search("webservices ingestion", collections = listOf("stack_knowledge"), limit = 5, mode = "bm25")
+        val result = client.search(sampleQuery, collections = listOf("stack_knowledge"), limit = 5, mode = "bm25")
         require(result.success) { "ServiceClient OpenSearch helper failed: ${result.results}" }
         val rows = result.results.jsonObject["results"]?.jsonArray.orEmpty()
         require(rows.isNotEmpty()) { "ServiceClient OpenSearch helper returned no normalized results" }

@@ -458,13 +458,13 @@ export const browserRouteCatalog: BrowserRoute[] = [
     kind: 'forward_auth',
     anonymous: { kind: 'forward_auth' },
     smoke: {
-      matcher: /\bPipeline Readiness\b|\bSources\b|\bStatus\b|\bData Pipeline\b/i,
-      selector: 'text=/Pipeline Readiness|Sources|Status|Data Pipeline/i',
+      matcher: /\bAirflow\b|\bDAGs\b|\bPipeline Readiness\b|\bSources\b|\bStatus\b|\bData Pipeline\b/i,
+      selector: 'text=/Airflow|DAGs|Pipeline Readiness|Sources|Status|Data Pipeline/i',
     },
     visual: {
       fileStem: 'pipeline-monitor-authenticated',
-      matcher: /\bPipeline Readiness\b|\bSources\b|\bStatus\b|\bData Pipeline\b/i,
-      selector: 'text=/Pipeline Readiness|Sources|Status|Data Pipeline/i',
+      matcher: /\bAirflow\b|\bDAGs\b|\bPipeline Readiness\b|\bSources\b|\bStatus\b|\bData Pipeline\b/i,
+      selector: 'text=/Airflow|DAGs|Pipeline Readiness|Sources|Status|Data Pipeline/i',
       quality: 85,
     },
     ownership: { route: true, smoke: true, visual: true, deep: true },

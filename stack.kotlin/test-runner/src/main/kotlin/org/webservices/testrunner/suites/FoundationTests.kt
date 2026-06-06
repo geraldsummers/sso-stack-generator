@@ -204,7 +204,9 @@ suspend fun TestRunner.foundationTests() = suite("Foundation Tests") {
     test("OpenSearch returns 404 for unknown exact document lookup") {
         val response = requestHttpClient.get("${endpoints.searchService}/knowledge/_doc/definitely-missing-document") {
             val username = System.getenv("OPENSEARCH_USERNAME") ?: "admin"
-            val password = System.getenv("OPENSEARCH_PASSWORD").orEmpty()
+            val password = System.getenv("OPENSEARCH_PASSWORD")
+                ?.takeIf { it.isNotBlank() }
+                ?: System.getenv("OPENSEARCH_ADMIN_PASSWORD").orEmpty()
             if (password.isNotBlank()) {
                 val encoded = Base64.getEncoder().encodeToString("$username:$password".toByteArray(Charsets.UTF_8))
                 header(HttpHeaders.Authorization, "Basic $encoded")

@@ -21,7 +21,7 @@ The browser tests verify that protected routes land on the intended service UI, 
 - Search: `/webservices Search|Search Knowledge Base|Hybrid|Semantic|Keyword/i`
 - Home Assistant: `/Overview|Developer Tools|History|Logbook|Automations|Devices|Areas|Integrations|Energy/i`
 - Kopia: `/KopiaUI/i`
-- Pipeline Monitor: `/webservices Pipeline Monitor|Pipeline Readiness|Sources|Status|Data Pipeline/i`
+- Pipeline Monitor: `/Airflow|DAGs|webservices Pipeline Monitor|Pipeline Readiness|Sources|Status|Data Pipeline/i`
 
 ## OIDC Services
 

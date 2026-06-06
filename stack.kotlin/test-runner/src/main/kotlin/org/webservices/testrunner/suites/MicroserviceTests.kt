@@ -10,31 +10,37 @@ import org.webservices.testrunner.framework.*
 
 suspend fun TestRunner.microserviceTests() = suite("Pipeline Tests") {
 
-    suspend fun probePipelineJson(path: String): JsonObject? {
+    suspend fun probePipelineJson(path: String, attempts: Int = 6): JsonObject? {
         val baseCandidates = linkedSetOf(
+            "http://ingestion-runner:8090",
             endpoints.pipeline.trimEnd('/'),
             "http://airflow-webserver:8080",
-            "http://ingestion-runner:8090"
+            "http://webservices-ingestion-runner-1:8090"
         )
-        for (base in baseCandidates) {
-            val response = runCatching { client.getRawResponse("$base$path") }.getOrNull() ?: continue
-            if (response.status == HttpStatusCode.NotFound ||
-                response.status == HttpStatusCode.BadGateway ||
-                response.status == HttpStatusCode.ServiceUnavailable ||
-                response.status == HttpStatusCode.GatewayTimeout
-            ) {
-                continue
+        repeat(attempts.coerceAtLeast(1)) { attempt ->
+            for (base in baseCandidates) {
+                val response = runCatching { client.getRawResponse("$base$path") }.getOrNull() ?: continue
+                if (response.status == HttpStatusCode.NotFound ||
+                    response.status == HttpStatusCode.BadGateway ||
+                    response.status == HttpStatusCode.ServiceUnavailable ||
+                    response.status == HttpStatusCode.GatewayTimeout
+                ) {
+                    continue
+                }
+                if (response.status != HttpStatusCode.OK) {
+                    continue
+                }
+                val body = response.bodyAsText().trim()
+                if (body.isBlank()) {
+                    continue
+                }
+                val parsed = runCatching { Json.parseToJsonElement(body).jsonObject }.getOrNull()
+                if (parsed != null) {
+                    return parsed
+                }
             }
-            if (response.status != HttpStatusCode.OK) {
-                continue
-            }
-            val body = response.bodyAsText().trim()
-            if (body.isBlank()) {
-                continue
-            }
-            val parsed = runCatching { Json.parseToJsonElement(body).jsonObject }.getOrNull()
-            if (parsed != null) {
-                return parsed
+            if (attempt < attempts - 1) {
+                delay(5_000)
             }
         }
         return null
