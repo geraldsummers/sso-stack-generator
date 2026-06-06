@@ -24,6 +24,18 @@ SOURCES = {
     "agent_docs": timedelta(hours=1),
 }
 
+PUBLISHABLE_SOURCES = [
+    "rss",
+    "cve",
+    "wikipedia",
+    "australian_laws",
+    "linux_docs",
+    "debian_wiki",
+    "arch_wiki",
+    "agent_docs",
+    "stack_knowledge",
+]
+
 
 def call_runner(path: str, payload: dict) -> dict:
     response = requests.post(f"{RUNNER_URL}{path}", json=payload, timeout=60 * 30)
@@ -79,6 +91,7 @@ for _source, _schedule_delta in SOURCES.items():
     start_date=datetime(2025, 1, 1),
     schedule=None,
     catchup=False,
+    max_active_tasks=1,
     default_args={"retries": 3, "retry_delay": timedelta(minutes=5)},
     tags=["knowledge", "bookstack"],
 )
@@ -87,8 +100,12 @@ def bookstack_publication():
     def publish_allowed_source(source: str) -> dict:
         return call_runner("/publish", {"source": source, "publish": True})
 
-    for source in ["rss", "cve", "wikipedia", "australian_laws", "linux_docs", "debian_wiki", "arch_wiki", "agent_docs", "stack_knowledge"]:
-        publish_allowed_source.override(task_id=f"publish_{source}")(source)
+    previous = None
+    for source in PUBLISHABLE_SOURCES:
+        current = publish_allowed_source.override(task_id=f"publish_{source}")(source)
+        if previous is not None:
+            previous >> current
+        previous = current
 
 
 bookstack_publication()
