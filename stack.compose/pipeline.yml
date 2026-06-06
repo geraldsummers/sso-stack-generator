@@ -11,8 +11,6 @@ services:
       - --http_port=8222
       - --user=${NATS_USER}
       - --pass=${NATS_PASSWORD}
-      - --max_memory=1G
-      - --max_file=20G
     volumes:
       - nats_data:/data
     healthcheck:

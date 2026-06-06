@@ -265,6 +265,22 @@ derive_if_missing() {
   fi
 }
 
+derive_policy_secret() {
+  local label="$1"
+  local length="${2:-32}"
+  local body_length
+  body_length=$((length - 4))
+  if [ "$body_length" -lt 12 ]; then
+    body_length=12
+  fi
+  printf 'Aa1!%s' "$(derive_stack_secret "$label" "$body_length")"
+}
+
+opensearch_password_is_valid() {
+  local value="$1"
+  [[ "$value" =~ [A-Z] ]] && [[ "$value" =~ [a-z] ]] && [[ "$value" =~ [0-9] ]] && [[ "$value" =~ [^A-Za-z0-9] ]] && [ "${#value}" -ge 8 ]
+}
+
 build_derived_render_values() {
   render_set GENERATION_TIMESTAMP "$(iso_timestamp_utc)"
   render_set BASE_URL "https://$(render_get DOMAIN)"
@@ -324,7 +340,9 @@ build_derived_render_values() {
   derive_if_missing VAULTWARDEN_OAUTH_SECRET vaultwarden-oauth 48
   derive_if_missing QDRANT_ADMIN_API_KEY qdrant-admin-api 48
   derive_if_missing NATS_PASSWORD nats 48
-  derive_if_missing OPENSEARCH_ADMIN_PASSWORD opensearch-admin 32
+  if ! render_has OPENSEARCH_ADMIN_PASSWORD || [ -z "$(render_get OPENSEARCH_ADMIN_PASSWORD)" ] || ! opensearch_password_is_valid "$(render_get OPENSEARCH_ADMIN_PASSWORD)"; then
+    render_set OPENSEARCH_ADMIN_PASSWORD "$(derive_policy_secret opensearch-admin 32)"
+  fi
   derive_if_missing LIVEKIT_API_KEY livekit-api-key 24
   derive_if_missing LIVEKIT_API_SECRET livekit-api-secret 48
   derive_if_missing ONLYOFFICE_JWT_SECRET onlyoffice-jwt 48
@@ -371,9 +389,7 @@ PY
   if ! render_has AIRFLOW_WEBSERVER_SECRET_KEY || [ -z "$(render_get AIRFLOW_WEBSERVER_SECRET_KEY)" ]; then
     render_set AIRFLOW_WEBSERVER_SECRET_KEY "$(derive_stack_secret airflow-webserver 64)"
   fi
-  if ! render_has OPENSEARCH_BASIC_AUTH || [ -z "$(render_get OPENSEARCH_BASIC_AUTH)" ]; then
-    render_set OPENSEARCH_BASIC_AUTH "$(printf 'admin:%s' "$(render_get OPENSEARCH_ADMIN_PASSWORD)" | base64 | tr -d '\n')"
-  fi
+  render_set OPENSEARCH_BASIC_AUTH "$(printf 'admin:%s' "$(render_get OPENSEARCH_ADMIN_PASSWORD)" | base64 | tr -d '\n')"
   if ! render_has WORKSPACE_AGENT_TOKEN_SECRET || [ -z "$(render_get WORKSPACE_AGENT_TOKEN_SECRET)" ]; then
     render_set WORKSPACE_AGENT_TOKEN_SECRET "$(derive_stack_secret workspace-agent-token 64)"
   fi

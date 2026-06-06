@@ -6,6 +6,9 @@ services:
     networks:
       - opensearch
       - caddy
+    depends_on:
+      volume-init:
+        condition: service_completed_successfully
     environment:
       discovery.type: single-node
       bootstrap.memory_lock: "true"

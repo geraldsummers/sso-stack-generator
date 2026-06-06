@@ -1035,7 +1035,7 @@ reload_changed_built_image_units() {
 
 restart_deploy_job_units() {
   local unit_name
-  local configured_units="${DEPLOY_RESTART_JOB_UNITS:-webservices-erpnext-configurator.service webservices-erpnext-bootstrap.service}"
+  local configured_units="${DEPLOY_RESTART_JOB_UNITS:-webservices-volume-init.service webservices-postgres-ssd-bootstrap.service webservices-erpnext-configurator.service webservices-erpnext-bootstrap.service}"
 
   for unit_name in $configured_units; do
     [ -f "$BUNDLE_ROOT/systemd-user/$unit_name" ] || continue
