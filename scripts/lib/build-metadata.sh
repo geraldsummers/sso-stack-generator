@@ -52,6 +52,10 @@ require_clean_git_tree() {
   local repo_dir="$1"
   local dirty_state
 
+  if [ "${WEBSERVICES_ALLOW_DIRTY_BUILD:-}" = "1" ]; then
+    return 0
+  fi
+
   dirty_state="$(build_metadata_git_dirty "$repo_dir")"
   case "$dirty_state" in
     false)
