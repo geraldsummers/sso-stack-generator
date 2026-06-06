@@ -642,6 +642,12 @@ def http_text(url: str, timeout: int = 30) -> str:
     return response.text
 
 
+def http_text_with_url(url: str, timeout: int = 30) -> tuple[str, str]:
+    response = requests.get(url, headers={"User-Agent": "webservices-ingestion-runner/1.0"}, timeout=timeout)
+    response.raise_for_status()
+    return response.text, response.url
+
+
 def mediawiki_documents(source: str, api_url: str, page_titles: list[str], limit: int | None) -> list[dict[str, Any]]:
     docs: list[dict[str, Any]] = []
     for title in page_titles[: limit or len(page_titles)]:
@@ -666,6 +672,31 @@ def mediawiki_documents(source: str, api_url: str, page_titles: list[str], limit
             )
             if limit and len(docs) >= limit:
                 return docs
+    return docs
+
+
+def moinmoin_documents(source: str, base_url: str, page_titles: list[str], limit: int | None) -> list[dict[str, Any]]:
+    docs: list[dict[str, Any]] = []
+    for title in page_titles[: limit or len(page_titles)]:
+        page_path = requests.utils.quote(title)
+        url = f"{base_url.rstrip('/')}/{page_path}"
+        raw_url = f"{url}?action=raw"
+        text = http_text(raw_url)
+        if not text.strip():
+            html_text = http_text(url)
+            text = BeautifulSoup(html_text, "html.parser").get_text(" ")
+        docs.append(
+            {
+                "stable_key": raw_url,
+                "title": title,
+                "url": url,
+                "text": text,
+                "metadata": {"source_type": "moinmoin", "raw_url": raw_url},
+                "audience": "agent",
+            }
+        )
+        if limit and len(docs) >= limit:
+            return docs
     return docs
 
 
@@ -742,7 +773,25 @@ def opendota_documents(limit: int | None) -> list[dict[str, Any]]:
 
 def poe_ninja_documents(limit: int | None) -> list[dict[str, Any]]:
     league = os.getenv("POE_NINJA_LEAGUE", "Standard")
-    data = http_json(f"https://poe.ninja/api/data/currencyoverview?league={requests.utils.quote(league)}&type=Currency")
+    try:
+        data = http_json(f"https://poe.ninja/api/data/currencyoverview?league={requests.utils.quote(league)}&type=Currency")
+    except requests.HTTPError as exc:
+        response = exc.response
+        if response is None or response.status_code != 404:
+            raise
+        page_url = os.getenv("POE_NINJA_CURRENCY_URL", "https://poe.ninja/poe1/economy")
+        html_text, final_url = http_text_with_url(page_url)
+        text = BeautifulSoup(html_text, "html.parser").get_text(" ")
+        return [
+            {
+                "stable_key": final_url,
+                "title": "poe.ninja Path of Exile economy",
+                "url": final_url,
+                "text": text,
+                "metadata": {"source_type": "poe_ninja_page", "requested_league": league},
+                "audience": "agent",
+            }
+        ][: limit or 1]
     docs: list[dict[str, Any]] = []
     for line in data.get("lines", [])[: limit or 20]:
         name = line.get("currencyTypeName", "Currency")
@@ -835,7 +884,7 @@ def source_documents(source: str, limit: int | None) -> list[dict[str, Any]]:
     if source == "linux_docs":
         return linux_docs_documents(limit)
     if source == "debian_wiki":
-        return mediawiki_documents(source, "https://wiki.debian.org/api.php", ["FrontPage", "DebianRepository", "DebianPackageManagement"], limit)
+        return moinmoin_documents(source, "https://wiki.debian.org", ["FrontPage", "DebianRepository", "DebianPackageManagement"], limit)
     if source == "arch_wiki":
         return mediawiki_documents(source, "https://wiki.archlinux.org/api.php", ["Main page", "Pacman", "System maintenance"], limit)
     if source == "opendota":
