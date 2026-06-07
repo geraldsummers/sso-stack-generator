@@ -131,6 +131,8 @@ Important constraints:
 - Prefer minimal explicit flow over convenience wrappers.
 - Prefer fixing generators over patching outputs.
 - Preserve the `webservices` naming.
+- Commit each coherent source change set once it is implemented and verified;
+  do not leave completed edits uncommitted while moving on to unrelated work.
 - Keep destructive host-admin operations under `ops/host-admin/` and out of the bundled deploy UX.
 - Prefer direct `ssh <user>@<host> "command"` for remote inspection or repair.
 - Do not guess remote usernames or hosts if the user has not provided them.
