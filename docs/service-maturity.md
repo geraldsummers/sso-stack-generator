@@ -9,7 +9,7 @@ Experimental, Unknown, and Not applicable.
 | JupyterHub | Good | Partial | Partial | Not applicable | AI Sovereign Lab | Useful for technical teams; storage expectations should be scoped. |
 | Forgejo | Good | Partial | Partial | Not applicable | Ops Platform | Git hosting is operationally sensitive; backups matter. |
 | Workspaces | Partial | Experimental | Partial | Not applicable | AI Sovereign Lab | Disposable workspace runtime has more moving parts. |
-| Search Service | Partial | Partial | Partial | Not applicable | AI Sovereign Lab | Depends on ingestion and vector storage quality. |
+| Search | Partial | Partial | Partial | Not applicable | AI Sovereign Lab | OpenSearch and Qdrant quality depends on ingestion health and corpus quality. |
 | BookStack | Good | Partial | Good | Not applicable | Secure Core | Strong docs fit; restore should include app data and database. |
 | Progression | Good | Partial | Partial | Not applicable | Secure Core | Evidence-backed apprenticeship layer; MVP focuses on BookStack ownership. |
 | SOGo | Partial | Partial | Partial | Good | Ops Platform | Mail/calendar clients add configuration and deliverability caveats. |

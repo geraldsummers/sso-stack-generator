@@ -111,7 +111,7 @@ If the task is to add a new ingestion source, first read the stack knowledge doc
 stack-search --collection stack_knowledge --mode bm25 --audience agent "Knowledge Pipeline Extension Guide"
 ```
 
-The supported path is `StandardizedSource<T : Chunkable> -> DocumentStagingStore -> embedding-worker -> Qdrant -> search-service`, with optional BookStack publication through `content-publisher`. Prefer this path over writing directly to Qdrant so the new source gets deduplication, exact document retrieval, monitoring, publication state, and search API support.
+The supported path is `StandardizedSource<T : Chunkable> -> DocumentStagingStore -> embedding-worker -> Qdrant + OpenSearch`, with optional BookStack publication through `content-publisher`. Prefer this path over writing directly to Qdrant so the new source gets deduplication, exact document retrieval, monitoring, publication state, and search API support.
 
 Search modes:
 
@@ -151,13 +151,13 @@ curl -fsS -H "Authorization: Bearer ${STACK_AGENT_TOKEN}" \
   "${STACK_KNOWLEDGE_SEARCH_URL}"
 ```
 
-Available direct endpoints are discoverable from the search service `/tools` response through the workspace proxy.
+Available direct endpoints are discoverable through the workspace search helpers and the protected search route.
 
 ### Useful stack services
 
 Use names exactly; many services are only reachable through stack networks or Caddy routes.
 
-- `search-service`: retrieval API for stack knowledge.
+- `search`: protected OpenSearch route for stack knowledge text queries.
 - `knowledge-ingestion`: pipeline monitor and source readiness.
 - `embedding-gpu`: BGE-M3 embedding backend.
 - `embedding-worker`: stages embeddings into Qdrant.

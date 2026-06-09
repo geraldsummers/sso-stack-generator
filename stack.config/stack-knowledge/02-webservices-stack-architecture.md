@@ -26,7 +26,7 @@ Internet
 
 - Infrastructure: Caddy, Docker proxy, Keycloak, oauth2-proxy gateway.
 - Data: PostgreSQL, MariaDB, Valkey, Qdrant.
-- AI/ML: inference gateway, embedding service, workspace provisioner, search service, model-context services.
+- AI/ML: inference gateway, embedding service, OpenSearch, Qdrant, workspace provisioner, and model-context services.
 - Pipeline: document ingestion, vectorization, and staging.
 - Collaboration: BookStack, Seafile, OnlyOffice, Vaultwarden, SOGo, Donetick, ERPNext.
 - Media and home: Jellyfin, Home Assistant.

@@ -19,7 +19,7 @@ URLs are shown as `https://<subdomain>.<domain>`. Replace `<domain>` with the si
 
 | Service | URL | Purpose |
 | --- | --- | --- |
-| Search Service | `https://search.<domain>` | Knowledge search API and search UI for platform knowledge. |
+| Search | `https://search.<domain>` | Protected OpenSearch text search for platform knowledge, paired with internal Qdrant vector search. |
 
 ## Collaboration
 

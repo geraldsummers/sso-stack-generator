@@ -456,70 +456,70 @@ if __name__ == "__main__":
         print("---")
 ```
 
-## Search Service Integration Template
+## Search API Integration Template
 
 ```python
 """
-webservices Search Service Integration
+webservices OpenSearch integration
 """
 import requests
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any
 
-class SearchService:
-    """Client for webservices Search Service."""
+class SearchClient:
+    """Client for the protected OpenSearch route."""
 
-    def __init__(self, base_url: str = "http://search-service:8098"):
+    def __init__(self, base_url: str = "https://search.example.test"):
         """Initialize search client."""
         self.base_url = base_url
 
-    def search(self, query: str, mode: str = "hybrid",
-              collections: Optional[List[str]] = None,
-              limit: int = 10, min_score: float = 0.0) -> List[Dict[str, Any]]:
-        """Search across collections."""
+    def search(self, index: str, query: str, limit: int = 10) -> List[Dict[str, Any]]:
+        """Run a text query against an OpenSearch index."""
         payload = {
-            "query": query,
-            "mode": mode,
-            "collections": collections or ["*"],
-            "limit": limit,
-            "min_score": min_score
+            "query": {
+                "multi_match": {
+                    "query": query,
+                    "fields": ["title^3", "text", "metadata.*"]
+                }
+            },
+            "size": limit
         }
 
         try:
             response = requests.post(
-                f"{self.base_url}/search",
+                f"{self.base_url}/{index}/_search",
                 json=payload,
                 timeout=30
             )
             response.raise_for_status()
             data = response.json()
-            return data.get("results", [])
+            return [hit["_source"] | {"score": hit["_score"]} for hit in data["hits"]["hits"]]
         except requests.exceptions.RequestException as e:
             print(f"Search failed: {e}")
             return []
 
     def get_context_for_rag(self, query: str, max_results: int = 5) -> str:
         """Get formatted context for RAG applications."""
-        results = self.search(query, mode="hybrid", limit=max_results)
+        results = self.search("stack_knowledge", query, limit=max_results)
 
         context_parts = []
         for i, result in enumerate(results, 1):
             context_parts.append(
                 f"[Source {i}] {result.get('title', 'Untitled')} "
-                f"({result.get('source', 'unknown')})\n"
-                f"{result.get('content', '')}\n"
+                f"({result.get('metadata', {}).get('source', 'unknown')})\n"
+                f"{result.get('text', '')}\n"
             )
 
         return "\n".join(context_parts)
 
 # Usage example
 if __name__ == "__main__":
-    search = SearchService()
+    search = SearchClient()
 
     # Simple search
-    results = search.search("docker compose networking", mode="hybrid", limit=5)
+    results = search.search("stack_knowledge", "docker compose networking", limit=5)
     for result in results:
         print(f"[{result['score']:.2f}] {result['title']}")
-        print(f"  {result['content'][:100]}...")
+        print(f"  {result['text'][:100]}...")
         print()
 
     # RAG context

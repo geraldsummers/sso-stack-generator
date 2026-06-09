@@ -17,9 +17,9 @@
         description: Disposable SSH workspaces on labware
 
 - Data & Analytics:
-    - Search Service:
+    - Search:
         href: https://search.{{DOMAIN}}
-        description: Knowledge Base Search
+        description: OpenSearch knowledge search
 
 
 - Collaboration:

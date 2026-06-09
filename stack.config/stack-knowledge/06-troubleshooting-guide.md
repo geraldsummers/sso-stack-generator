@@ -300,7 +300,7 @@ curl http://localhost:6333/collections
      -d '{"vectors": {"size": 1024, "distance": "Cosine"}}'
    ```
 
-## AI And Search Service Issues
+## AI And Search Issues
 
 ### Embedding Service Not Responding
 
@@ -366,28 +366,31 @@ curl http://workspace-provisioner:8120/api/oidc/discovery
    - Check that workspace and notebook image contexts exist and build cleanly
 
 2. **Workspace knowledge access fails**
-   - Verify the controller has search-service reachability
+   - Verify the controller has OpenSearch and Qdrant reachability
    - Check the workspace token expiry and helper env file
    - Confirm the requested document id exists in `document_staging`
 
-### Search Service Issues
+### Search Runtime Issues
 
 **Diagnostic**:
 ```bash
-# Check if search-service is running
-systemctl --user status webservices-search-service.service --no-pager -l
-docker ps --format '{{.Names}}\t{{.Status}}' | grep search-service
+# Check if OpenSearch and Qdrant are running
+systemctl --user status webservices-opensearch.service --no-pager -l
+systemctl --user status webservices-qdrant.service --no-pager -l
+docker ps --format '{{.Names}}\t{{.Status}}' | grep -E 'opensearch|qdrant'
 
 # Check logs
-docker logs search-service | tail -100
+docker logs opensearch | tail -100
+docker logs qdrant | tail -100
 
-# Test health
-curl http://search-service:8098/health
+# Test backend reachability
+curl http://opensearch:9200
+curl http://qdrant:6333/collections
 
-# Test search
-curl -X POST http://search-service:8098/search \
+# Test text search
+curl -X POST http://opensearch:9200/stack_knowledge/_search \
   -H "Content-Type: application/json" \
-  -d '{"query":"test","mode":"hybrid","limit":5}'
+  -d '{"query":{"multi_match":{"query":"test","fields":["title^3","text"]}},"size":5}'
 ```
 
 **Common issues**:

@@ -6,7 +6,7 @@
 | --- | --- | --- | --- |
 | Secure Core | tiny teams/private operators | SSO, docs, passwords, homepage, backups, basic monitoring | mail, AI/data, heavy migration |
 | Ops Platform | small teams | files, projects, chat, mail/calendar, Git, observability | advanced AI/data workflows |
-| AI Sovereign Lab | technical teams | Jupyter, workspaces, search, Qdrant, connector tooling | custom model hosting unless scoped |
+| AI Sovereign Lab | technical teams | Jupyter, workspaces, OpenSearch, Qdrant, connector tooling | custom model hosting unless scoped |
 
 ## Secure Core
 
@@ -50,9 +50,9 @@ Typical scope:
 - everything in Ops Platform
 - JupyterHub
 - disposable workspaces
-- Qdrant/search
+- OpenSearch and Qdrant
 - ChatGPT connector/MCP tooling
-- knowledge ingestion/search workflows where applicable
+- knowledge ingestion and search workflows where applicable
 
 ## Common Inclusions
 
@@ -82,7 +82,7 @@ Choose Ops Platform when the team wants to replace several internal SaaS tools
 with a shared private workspace.
 
 Choose AI Sovereign Lab when the team already has technical workflows that need
-private notebooks, workspaces, search, or connector tooling.
+private notebooks, workspaces, search backends, or connector tooling.
 
 ## Scope Boundaries
 

@@ -2,7 +2,7 @@
 
 This is the agent-facing contract for adding new knowledge ingestion sources to the webservices stack.
 
-The goal is that an agent can add a source, stage it for embedding, publish it to BookStack when useful, and query it through the search API without inventing a separate ingestion path.
+The goal is that an agent can add a source, stage it for embedding, publish it to BookStack when useful, and query it through the search layer without inventing a separate ingestion path.
 
 ## Architecture
 
@@ -14,7 +14,7 @@ StandardizedSource<T : Chunkable>
   -> DocumentStagingStore in Postgres
   -> embedding-worker
   -> Qdrant collection
-  -> search-service
+  -> OpenSearch index + Qdrant collection
   -> optional content-publisher to BookStack
 ```
 
@@ -227,7 +227,7 @@ When publishing, set or preserve these metadata keys if applicable:
 - `presentation_url=<public BookStack URL>`
 - `search_ready=true`
 
-The search service prefers a usable `presentation_url` or `bookstack_url` for human-friendly results.
+The search layer prefers a usable `presentation_url` or `bookstack_url` for human-friendly results.
 
 ## Querying The New Source
 

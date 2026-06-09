@@ -239,18 +239,12 @@ results = client.search(
 ### Hybrid Search (Vector + Keywords)
 Best for: Combining semantic and keyword matching
 
-**In webservices**: Search Service provides hybrid search that combines Qdrant vector search with BM25 keyword search.
+**In webservices**: the active search layer combines Qdrant vector search with OpenSearch BM25 text search.
 
 ```python
-# Via webservices Search Service
+# Prefer the stack search helpers or the protected OpenSearch route at
+# https://search.<domain> for text queries.
 import requests
-
-response = requests.post("http://search-service:8098/search", json={
-    "query": "docker networking",
-    "mode": "hybrid",  # Combines vector + BM25
-    "collections": ["*"],
-    "limit": 10
-})
 ```
 
 ## Best Practices
@@ -367,18 +361,10 @@ Query all collections:
 curl http://qdrant:6333/collections
 ```
 
-### Via Search Service (Recommended)
+### Via Stack Search Helpers (Recommended)
 ```python
-import requests
-
-response = requests.post("http://search-service:8098/search", json={
-    "query": "your search query",
-    "mode": "vector",  # or "bm25" or "hybrid"
-    "collections": ["*"],  # or specific: ["wikipedia", "bookstack"]
-    "limit": 10
-})
-
-results = response.json()
+# Prefer stack-search or direct OpenSearch for text queries.
+# Use direct Qdrant access when you specifically need vector-only workflows.
 ```
 
 ### Direct Qdrant Access
