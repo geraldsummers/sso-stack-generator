@@ -7,7 +7,7 @@
   SOGoLanguage = "${SOGO_LANGUAGE}";
   SOGoMemcachedHost = "${SOGO_MEMCACHED_HOST}";
   SOGoTrustProxyAuthentication = NO;
-  SOGoXSRFValidationEnabled = YES;
+  SOGoXSRFValidationEnabled = ${SOGO_XSRF_VALIDATION_ENABLED};
   OCSOpenIdURL = "mysql://${SOGO_DB_USER}:${SOGO_DB_PASSWORD}@${SOGO_DB_HOST}:${SOGO_DB_PORT}/${SOGO_DB_NAME}/sogo_openid";
   SOGoOpenIdConfigUrl = "${SOGO_OPENID_CONFIG_URL}";
   SOGoOpenIdClient = "${SOGO_OPENID_CLIENT}";
@@ -26,12 +26,14 @@
       isAddressBook = YES;
       LoginFieldNames = (c_uid, mail);
       MailFieldNames = (mail);
+      IMAPLoginFieldName = mail;
     }
   );
   SOGoProfileURL = "mysql://${SOGO_DB_USER}:${SOGO_DB_PASSWORD}@${SOGO_DB_HOST}:${SOGO_DB_PORT}/${SOGO_DB_NAME}/sogo_user_profile";
   OCSFolderInfoURL = "mysql://${SOGO_DB_USER}:${SOGO_DB_PASSWORD}@${SOGO_DB_HOST}:${SOGO_DB_PORT}/${SOGO_DB_NAME}/sogo_folder_info";
   OCSSessionsFolderURL = "mysql://${SOGO_DB_USER}:${SOGO_DB_PASSWORD}@${SOGO_DB_HOST}:${SOGO_DB_PORT}/${SOGO_DB_NAME}/sogo_sessions_folder";
   SOGoMailDomain = "${SOGO_MAIL_DOMAIN}";
+  SOGoForceIMAPLoginWithEmail = YES;
   SOGoIMAPServer = "${SOGO_IMAP_SERVER}";
   SOGoSieveServer = "${SOGO_SIEVE_SERVER}";
   SOGoSMTPServer = "${SOGO_SMTP_SERVER}";
