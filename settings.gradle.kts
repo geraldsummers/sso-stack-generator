@@ -11,6 +11,7 @@ include(":workspace-provisioner")
 include(":keycloak-onboarding-listener")
 include(":chatgpt-connector")
 include(":progression")
+include(":portal")
 
 project(":pipeline-common").projectDir = file("stack.kotlin/pipeline-common")
 project(":gpu-bootstrap-arbiter").projectDir = file("stack.kotlin/gpu-bootstrap-arbiter")
@@ -23,3 +24,4 @@ project(":workspace-provisioner").projectDir = file("stack.kotlin/workspace-prov
 project(":keycloak-onboarding-listener").projectDir = file("stack.kotlin/keycloak-onboarding-listener")
 project(":chatgpt-connector").projectDir = file("stack.kotlin/chatgpt-connector")
 project(":progression").projectDir = file("stack.kotlin/progression")
+project(":portal").projectDir = file("stack.kotlin/portal")
