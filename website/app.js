@@ -88,6 +88,27 @@
     },
   ];
 
+  const operationModes = [
+    {
+      name: "Handoff / Self-Service",
+      fit: "For clients who want the stack deployed, documented, and handed over.",
+      items: [
+        "You own the server, domain, accounts, and admin decisions",
+        "You get verification results, docs, and next maintenance steps",
+        "Planned support or updates can be scoped separately",
+      ],
+    },
+    {
+      name: "Managed Operations",
+      fit: "For clients who want the stack but do not want to run day-to-day ops themselves.",
+      items: [
+        "I stay involved for planned updates, monitoring review, and troubleshooting",
+        "Coverage, response times, access, and billing are agreed up front",
+        "Emergency or 24/7 support is only included when explicitly contracted",
+      ],
+    },
+  ];
+
   const audience = [
     "Privacy-conscious small teams",
     "Small businesses reducing SaaS costs",
@@ -177,6 +198,7 @@
         el("a", { className: "brand", href: "#top", text: "SSO Stack Generator" }),
         el("div", { className: "nav-links" }, [
           el("a", { href: "#buyer-proof", text: "Buyer Proof" }),
+          el("a", { href: "#operation-modes", text: "Ops Modes" }),
           el("a", { href: "#packages", text: "Packages" }),
           el("a", { href: "#repo-proof", text: "Repo" }),
           el("a", { href: "#fit", text: "Who It's For" }),
@@ -261,10 +283,31 @@
           }),
           el("p", {
             text:
-              "When a private stack is the right move, the repo-backed generator provides a repeatable build, explicit deployment contract, verification steps, and buyer-readable documentation.",
+              "When a private stack is the right move, there are two engagement modes: a repo-backed handoff your team can operate, or managed operations where I stay responsible for agreed ongoing work.",
           }),
         ]),
       ]),
+    ]);
+  }
+
+  function renderOperationModes() {
+    return el("section", { className: "band", id: "operation-modes" }, [
+      sectionHeading(
+        "Operation modes",
+        "Choose who runs the stack after launch.",
+        "The same underlying platform can be delivered as a self-service handoff or retained as managed operations. The difference is ongoing responsibility, response expectations, and support scope.",
+      ),
+      el(
+        "div",
+        { className: "mode-grid" },
+        operationModes.map((mode) =>
+          el("article", { className: "mode-card" }, [
+            el("h3", { text: mode.name }),
+            el("p", { className: "fit", text: mode.fit }),
+            list(mode.items),
+          ]),
+        ),
+      ),
     ]);
   }
 
@@ -316,7 +359,7 @@
       sectionHeading(
         "Packages",
         "Choose the smallest useful platform.",
-        "The audit should reduce scope, not inflate it. Each package is a starting point for a private platform, not a promise that every app should be migrated.",
+        "Packages define what gets deployed. Operation mode defines who keeps it healthy afterward.",
       ),
       el(
         "div",
@@ -337,13 +380,13 @@
       el("div", { className: "section-grid" }, [
         el("div", {}, [
           el("p", { className: "eyebrow", text: "Works best for" }),
-          el("h2", { text: "Teams that want ownership without hiding operations." }),
+          el("h2", { text: "Teams that want either visible ownership or managed operations." }),
         ]),
         el("div", {}, [
           el("p", {
             className: "section-note",
             text:
-              "The strongest projects have a clear owner, a real reason to reduce SaaS dependency, and enough tolerance for visible operational decisions.",
+              "The strongest projects have a clear owner, a real reason to reduce SaaS dependency, and an explicit choice about who handles ongoing operations.",
           }),
           list(audience, "check-list"),
         ]),
@@ -374,6 +417,7 @@
         renderProblem(),
         renderBuyerProof(),
         renderOffer(),
+        renderOperationModes(),
         renderRepoProof(),
         renderPackages(),
         renderFit(),
