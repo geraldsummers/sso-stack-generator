@@ -952,10 +952,16 @@ reconcile_target() {
 }
 
 reload_deploy_reconcile_units() {
-  local units=()
   local unit
+  local configured_units="${DEPLOY_RECONCILE_RELOAD_UNITS:-webservices-caddy.service}"
 
-  for unit in "${units[@]}"; do
+  if [ "$PARTIAL_DEPLOY" = "1" ]; then
+    deploy_log "skipping post-reconcile reloads for scoped deploy"
+    return 0
+  fi
+
+  for unit in $configured_units; do
+    [ -f "$BUNDLE_ROOT/systemd-user/$unit" ] || continue
     if ! user_systemctl is-active --quiet "$unit"; then
       continue
     fi
