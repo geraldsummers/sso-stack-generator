@@ -66,19 +66,21 @@ function renderDashboard() {
 
   dashboardRoot.innerHTML = `
     <section class="visual-stage" style="--accent:${esc(dashboard.visualLanguage.accent)}">
-      <article class="panel role-panel">
-        <div class="meta-row">
-          ${tag(dashboard.profile.defaultView, "attention")}
-          ${tag(dashboard.visualLanguage.motif)}
-        </div>
-        <h2>${esc(dashboard.profile.name)}</h2>
-        <div class="signal-strip">
-          ${dashboard.kpis.slice(0, 4).map(renderSignal).join("")}
-        </div>
-      </article>
-      <article class="panel proof-panel">
-        ${renderProofDial(dashboard)}
-      </article>
+      <div class="dashboard-rail">
+        <article class="panel role-panel">
+          <div class="meta-row">
+            ${tag(dashboard.profile.defaultView, "attention")}
+            ${tag(dashboard.visualLanguage.motif)}
+          </div>
+          <h2>${esc(dashboard.profile.name)}</h2>
+          <div class="signal-strip">
+            ${dashboard.kpis.slice(0, 4).map(renderSignal).join("")}
+          </div>
+        </article>
+        <article class="panel proof-panel">
+          ${renderProofDial(dashboard)}
+        </article>
+      </div>
       <div class="hero-visual-grid">
         ${dashboard.heroVisuals.map(renderHeroVisual).join("")}
       </div>
@@ -174,7 +176,7 @@ function renderHeroVisual(visual) {
   };
   const renderer = renderers[visual.type] || renderBars;
   return `
-    <article class="visual-card visual-${esc(visual.type)}" data-visual-kind="${esc(visual.type)}">
+    <article class="visual-card visual-${esc(visual.type)} ${visualLayoutClass(visual)}" data-visual-kind="${esc(visual.type)}">
       <div class="visual-head">
         <h3>${esc(visual.title)}</h3>
         ${tag(visual.type, visual.tone)}
@@ -183,6 +185,12 @@ function renderHeroVisual(visual) {
       <small>${esc(visual.summary)}</small>
     </article>
   `;
+}
+
+function visualLayoutClass(visual) {
+  if (["sparkline", "timeline"].includes(visual.type)) return "visual-card-wide";
+  if (["ring", "lanes"].includes(visual.type)) return "visual-card-compact";
+  return "visual-card-medium";
 }
 
 function renderBars(visual) {
