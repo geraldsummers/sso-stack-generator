@@ -13,6 +13,17 @@ services:
           cp /ca/caddy-ca.crt /usr/local/share/ca-certificates/caddy-ca.crt
           update-ca-certificates
         fi
+        if [ "${ONLYOFFICE_DISABLE_PLUGIN_UPDATES:-true}" = "true" ] && [ -x /usr/bin/documentserver-pluginsmanager.sh ]; then
+          if [ ! -e /usr/bin/documentserver-pluginsmanager.sh.orig ]; then
+            mv /usr/bin/documentserver-pluginsmanager.sh /usr/bin/documentserver-pluginsmanager.sh.orig
+          fi
+          cat >/usr/bin/documentserver-pluginsmanager.sh <<'EOF'
+        #!/bin/bash
+        echo "OnlyOffice plugin marketplace update skipped by ONLYOFFICE_DISABLE_PLUGIN_UPDATES=true"
+        exit 0
+        EOF
+          chmod +x /usr/bin/documentserver-pluginsmanager.sh
+        fi
         exec /app/ds/run-document-server.sh
     networks:
       caddy:
@@ -24,6 +35,7 @@ services:
       JWT_SECRET: ${ONLYOFFICE_JWT_SECRET}
       JWT_HEADER: AuthorizationJwt
       JWT_IN_BODY: true
+      ONLYOFFICE_DISABLE_PLUGIN_UPDATES: ${ONLYOFFICE_DISABLE_PLUGIN_UPDATES:-true}
       NODE_EXTRA_CA_CERTS: /ca/caddy-ca.crt
       SSL_CERT_FILE: /ca/caddy-ca.crt
       CURL_CA_BUNDLE: /ca/caddy-ca.crt

@@ -80,6 +80,8 @@ jq -e '.components.homepage.composeFiles == [] and (.components.homepage.depende
 jq -e '.components.apps.dependencies | index("portal") and (index("homepage") | not)' "$catalog" >/dev/null
 jq -e '.components.onlyoffice.dependencies | index("seafile")' "$catalog" >/dev/null
 jq -e '.components.onlyoffice.capabilities | index("seafile-editor-backend")' "$contracts" >/dev/null
+grep -Fq 'ONLYOFFICE_DISABLE_PLUGIN_UPDATES: ${ONLYOFFICE_DISABLE_PLUGIN_UPDATES:-true}' "$ROOT_DIR/stack.compose/onlyoffice.yml"
+grep -Fq 'documentserver-pluginsmanager.sh.orig' "$ROOT_DIR/stack.compose/onlyoffice.yml"
 jq -e '.components.observability.dependencies | index("crowdsec")' "$catalog" >/dev/null
 jq -e '.components.crowdsec.composeFiles == ["crowdsec.yml"]' "$catalog" >/dev/null
 jq -e '.components.crowdsec.evidence.expectations | index("crowdsec.simulated_decision")' "$contracts" >/dev/null
