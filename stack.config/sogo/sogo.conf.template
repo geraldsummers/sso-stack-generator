@@ -36,8 +36,8 @@
   SOGoSieveServer = "${SOGO_SIEVE_SERVER}";
   SOGoSMTPServer = "${SOGO_SMTP_SERVER}";
   SOGoMailingMechanism = smtp;
-  NGImap4AuthMechanism = xoauth2;
-  SOGoSMTPAuthenticationType = xoauth2;
+  NGImap4AuthMechanism = ${SOGO_IMAP_AUTH_MECHANISM};
+  SOGoSMTPAuthenticationType = ${SOGO_SMTP_AUTHENTICATION_TYPE};
   NGImap4ConnectionStringSeparator = "/";
   SOGoMailSpoolPath = "/var/spool/sogo";
   SOGoMaximumPingInterval = 3540;
