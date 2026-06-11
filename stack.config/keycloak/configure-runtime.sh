@@ -294,6 +294,45 @@ EOF_MAPPER
   "$KC" create "clients/$client_id/protocol-mappers/models" -r "$REALM" -f "$mapper_json" >/dev/null
 }
 
+ensure_user_property_claim_mapper() {
+  local client_id_value="$1"
+  local mapper_name="$2"
+  local user_attribute="$3"
+  local claim_name="$4"
+  local client_id
+
+  client_id="$("$KC" get clients -r "$REALM" -q clientId="$client_id_value" | first_json_id)"
+  if [ -z "$client_id" ]; then
+    echo "[keycloak-configure] cannot add $mapper_name mapper; $client_id_value client is missing"
+    return 0
+  fi
+
+  if "$KC" get "clients/$client_id/protocol-mappers/models" -r "$REALM" | grep -q '"name"[[:space:]]*:[[:space:]]*"'"$mapper_name"'"'; then
+    return 0
+  fi
+
+  echo "[keycloak-configure] adding $mapper_name mapper to $client_id_value client"
+  mapper_json="$(mktemp)"
+  cat > "$mapper_json" <<EOF_MAPPER
+{
+  "name": "$mapper_name",
+  "protocol": "openid-connect",
+  "protocolMapper": "oidc-usermodel-property-mapper",
+  "consentRequired": false,
+  "config": {
+    "user.attribute": "$user_attribute",
+    "claim.name": "$claim_name",
+    "jsonType.label": "String",
+    "id.token.claim": "true",
+    "access.token.claim": "true",
+    "userinfo.token.claim": "true",
+    "introspection.token.claim": "true"
+  }
+}
+EOF_MAPPER
+  "$KC" create "clients/$client_id/protocol-mappers/models" -r "$REALM" -f "$mapper_json" >/dev/null
+}
+
 ensure_confidential_client \
   "webservices-edge" \
   "Webservices edge auth gateway" \
@@ -307,6 +346,7 @@ ensure_confidential_client "bookstack" "BookStack" "${BOOKSTACK_OAUTH_SECRET:-}"
 # webservices-component-end bookstack
 # webservices-component-start sogo
 ensure_confidential_client "sogo" "SOGo" "${SOGO_OAUTH_SECRET:-}" "[\"https://sogo.$DOMAIN/*\"]" "[\"https://sogo.$DOMAIN\"]"
+ensure_user_property_claim_mapper "sogo" "sogo-dovecot-email" "email" "email"
 # webservices-component-end sogo
 # webservices-component-start jellyfin
 ensure_confidential_client "jellyfin" "Jellyfin" "${JELLYFIN_OIDC_SECRET:-}" "[\"https://jellyfin.$DOMAIN/sso/OID/redirect/keycloak\"]" "[\"https://jellyfin.$DOMAIN\"]"
