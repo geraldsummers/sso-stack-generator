@@ -42,10 +42,16 @@ class JellyfinConfigTest {
         assertTrue(compose.contains("JELLYFIN_ADMIN_USERS: \${JELLYFIN_ADMIN_USERS:-}"))
         assertTrue(entrypoint.contains("promote_configured_admin_users()"))
         assertTrue(entrypoint.contains("configure_playback_policy()"))
+        assertTrue(entrypoint.contains("configure_hardware_acceleration()"))
         assertTrue(entrypoint.contains("INSERT INTO Permissions"))
         assertTrue(entrypoint.contains("WHERE Kind = 0"))
         assertTrue(compose.contains("JELLYFIN_ENABLE_PLAYBACK_REMUXING: \${JELLYFIN_ENABLE_PLAYBACK_REMUXING:-true}"))
+        assertTrue(compose.contains("JELLYFIN_HARDWARE_ACCELERATION: \${JELLYFIN_HARDWARE_ACCELERATION:-none}"))
+        assertTrue(compose.contains("JELLYFIN_HARDWARE_DECODING_CODECS: \${JELLYFIN_HARDWARE_DECODING_CODECS:-h264,vc1}"))
+        assertTrue(compose.contains("JELLYFIN_ENABLE_TONEMAPPING: \${JELLYFIN_ENABLE_TONEMAPPING:-false}"))
         assertTrue(entrypoint.contains("JELLYFIN_ENABLE_PLAYBACK_REMUXING:-true"))
+        assertTrue(entrypoint.contains("HardwareAccelerationType"))
+        assertTrue(entrypoint.contains("HardwareDecodingCodecs"))
         assertTrue(entrypoint.contains("WHERE Kind = 19"))
     }
 

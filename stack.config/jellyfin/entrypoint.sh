@@ -137,6 +137,63 @@ WHERE Kind = 19
 SQL
 }
 
+set_xml_element_value() {
+    local file="$1"
+    local element="$2"
+    local value="$3"
+
+    value="$(escape_sed_replacement "$value")"
+    if grep -q "<${element}>" "$file"; then
+        sed -i "s|<${element}>.*</${element}>|<${element}>${value}</${element}>|" "$file"
+    elif grep -q "</EncodingOptions>" "$file"; then
+        sed -i "s|</EncodingOptions>|  <${element}>${value}</${element}>\\n</EncodingOptions>|" "$file"
+    fi
+}
+
+configure_hardware_acceleration() {
+    local encoding_config="/config/config/encoding.xml"
+    local acceleration="${JELLYFIN_HARDWARE_ACCELERATION:-none}"
+    local codecs="${JELLYFIN_HARDWARE_DECODING_CODECS:-h264,vc1}"
+    local tonemapping="${JELLYFIN_ENABLE_TONEMAPPING:-false}"
+    local codec codec_xml=""
+
+    if [ ! -f "$encoding_config" ]; then
+        echo "Jellyfin encoding.xml not present yet; skipping hardware acceleration reconciliation"
+        return 0
+    fi
+
+    acceleration="$(printf '%s' "$acceleration" | tr '[:upper:]' '[:lower:]')"
+    tonemapping="$(printf '%s' "$tonemapping" | tr '[:upper:]' '[:lower:]')"
+    case "$tonemapping" in
+        1|true|yes|on)
+            tonemapping="true"
+            ;;
+        *)
+            tonemapping="false"
+            ;;
+    esac
+
+    IFS=',' read -ra hardware_codecs <<< "$codecs"
+    for codec in "${hardware_codecs[@]}"; do
+        codec="$(printf '%s' "$codec" | xargs)"
+        if [ -n "$codec" ]; then
+            codec_xml="${codec_xml}    <string>${codec}</string>\n"
+        fi
+    done
+
+    if [ -z "$codec_xml" ]; then
+        codec_xml="    <string>h264</string>\n    <string>vc1</string>\n"
+    fi
+
+    set_xml_element_value "$encoding_config" "HardwareAccelerationType" "$acceleration"
+    set_xml_element_value "$encoding_config" "EnableHardwareEncoding" "true"
+    set_xml_element_value "$encoding_config" "EnableEnhancedNvdecDecoder" "true"
+    set_xml_element_value "$encoding_config" "PreferSystemNativeHwDecoder" "true"
+    set_xml_element_value "$encoding_config" "EnableTonemapping" "$tonemapping"
+
+    sed -i "/<HardwareDecodingCodecs>/,/<\\/HardwareDecodingCodecs>/c\\  <HardwareDecodingCodecs>\\n${codec_xml}  </HardwareDecodingCodecs>" "$encoding_config"
+}
+
 render_branding() {
     : "${DOMAIN:?ERROR: DOMAIN not set}"
 
@@ -180,6 +237,7 @@ install_sso_plugin
 mark_startup_wizard_completed
 promote_configured_admin_users
 configure_playback_policy
+configure_hardware_acceleration
 render_branding
 
 mkdir -p /config/plugins/configurations
