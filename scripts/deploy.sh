@@ -592,6 +592,7 @@ cleanup_excluded_service_containers() {
       "$BUNDLE_ROOT" \
       "$DEPLOY_ROOT/runtime/stack.env" \
       rm -f -s "$service" >/dev/null 2>&1 || true
+    docker rm -f "$service" "${PROJECT_NAME}-${service}-1" >/dev/null 2>&1 || true
   done
 }
 

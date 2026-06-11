@@ -167,6 +167,7 @@
     }
   ],
   "excludedServices": [
+    "homepage",
     "jupyter-notebook-build"
   ],
   "onDemandServices": [],
