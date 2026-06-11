@@ -109,11 +109,17 @@
       "dependencies": ["core"],
       "composeFiles": ["homeassistant.yml"]
     },
-    "homepage": {
-      "name": "Homepage",
-      "description": "Internal service dashboard.",
+    "portal": {
+      "name": "Stack Portal",
+      "description": "Contract-driven portal for selected services, profile dashboards, and validation evidence.",
       "dependencies": ["core"],
-      "composeFiles": ["homepage.yml"]
+      "composeFiles": ["portal.yml"]
+    },
+    "homepage": {
+      "name": "Homepage compatibility redirect",
+      "description": "Compatibility alias that selects the canonical portal and redirects homepage.<domain> to portal.<domain>.",
+      "dependencies": ["portal"],
+      "composeFiles": []
     },
     "jellyfin": {
       "name": "Jellyfin",
@@ -164,8 +170,8 @@
     },
     "onlyoffice": {
       "name": "OnlyOffice",
-      "description": "Document editing backend.",
-      "dependencies": ["core"],
+      "description": "Document editing backend for Seafile.",
+      "dependencies": ["seafile"],
       "composeFiles": ["onlyoffice.yml"]
     },
     "planka": {
@@ -201,7 +207,7 @@
         "erpnext",
         "forgejo",
         "homeassistant",
-        "homepage",
+        "portal",
         "jellyfin",
         "jupyterhub",
         "kopia",

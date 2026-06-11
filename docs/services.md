@@ -1,8 +1,8 @@
 # Services
 
-This page explains what the user-facing services are for. The homepage catalog is generated from `stack.config/homepage/services.yaml`, so service names here should match the UI.
+This page explains what the user-facing services are for. The portal catalog is generated from `stack.config/service-contracts.json`, so service names here should match the UI.
 
-![Sanitized platform homepage screenshot](assets/platform-home.svg)
+![Sanitized platform portal screenshot](assets/platform-home.svg)
 
 URLs are shown as `https://<subdomain>.<domain>`. Replace `<domain>` with the site domain from the manifest.
 

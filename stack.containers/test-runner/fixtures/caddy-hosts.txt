@@ -29,6 +29,7 @@ api.element
 mastodon
 api.mastodon
 apex
+portal
 homepage
 progress
 workspaces

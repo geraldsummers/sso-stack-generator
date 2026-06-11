@@ -4,7 +4,7 @@
 
 | Package | Best for | Includes | Excludes |
 | --- | --- | --- | --- |
-| Secure Core | tiny teams/private operators | SSO, docs, passwords, homepage, backups, basic monitoring | mail, AI/data, heavy migration |
+| Secure Core | tiny teams/private operators | SSO, docs, passwords, portal, backups, basic monitoring | mail, AI/data, heavy migration |
 | Ops Platform | small teams | files, projects, chat, mail/calendar, Git, observability | advanced AI/data workflows |
 | AI Sovereign Lab | technical teams | Jupyter, workspaces, OpenSearch, Qdrant, connector tooling | custom model hosting unless scoped |
 
@@ -17,7 +17,7 @@ Typical scope:
 
 - Caddy
 - Keycloak
-- service homepage/catalog
+- service portal/catalog
 - Vaultwarden
 - BookStack
 - basic monitoring

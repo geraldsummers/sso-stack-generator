@@ -12,44 +12,49 @@ suspend fun TestRunner.utilityServicesTests() = suite("Utility Services Tests") 
     
     
 
-    test("Homepage dashboard loads") {
-        val response = client.getRawResponse("${env.endpoints.homepage!!}")
+    test("Stack Portal dashboard loads") {
+        val response = client.getRawResponse("${env.endpoints.portal!!}")
         require(response.status == HttpStatusCode.OK) {
-            "Homepage not accessible: ${response.status}"
+            "Stack Portal not accessible: ${response.status}"
         }
 
         val body = response.bodyAsText()
-        require(body.contains("homepage") || body.contains("dashboard") || body.contains("<html")) {
-            "Homepage content not detected"
+        require(body.contains("Stack Portal") && body.contains("contract-backed modules")) {
+            "Stack Portal content not detected"
         }
 
-        println("      ✓ Homepage dashboard loads")
+        println("      ✓ Stack Portal dashboard loads")
     }
 
-    test("Homepage serves static assets") {
+    test("Stack Portal serves generated module API") {
         
-        val response = client.getRawResponse("${env.endpoints.homepage!!}/") {
+        val response = client.getRawResponse("${env.endpoints.portal!!}/api/modules") {
             headers {
-                append(HttpHeaders.Accept, "text/html")
+                append(HttpHeaders.Accept, "application/json")
             }
         }
 
         require(response.status == HttpStatusCode.OK) {
-            "Static assets not loading: ${response.status}"
+            "Portal module API not loading: ${response.status}"
         }
 
-        println("      ✓ Homepage static assets accessible")
+        val body = response.bodyAsText()
+        require(body.contains("\"component\"") || body == "[]") {
+            "Portal module API returned unexpected payload: $body"
+        }
+
+        println("      ✓ Stack Portal generated module API accessible")
     }
 
-    test("Homepage API endpoint accessible") {
+    test("Stack Portal profile API endpoint accessible") {
         
-        val response = client.getRawResponse("${env.endpoints.homepage!!}/api/widgets")
+        val response = client.getRawResponse("${env.endpoints.portal!!}/api/profiles")
         
-        require(response.status == HttpStatusCode.OK || response.status == HttpStatusCode.NotFound) {
-            "Homepage widgets API should respond directly or be absent, got ${response.status}"
+        require(response.status == HttpStatusCode.OK) {
+            "Portal profile API should respond, got ${response.status}"
         }
 
-        println("      ✓ Homepage API endpoint responds")
+        println("      ✓ Stack Portal profile API endpoint responds")
     }
 
     

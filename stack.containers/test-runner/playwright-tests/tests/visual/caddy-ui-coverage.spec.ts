@@ -20,6 +20,7 @@ const explicitVisualCoverageHosts = [
 
 const excludedVisualCoverageHosts = new Set([
   'www',
+  'homepage',
   ...(process.env.TESTDEV_SKIP_GPU_INGESTION === '1' ? ['pipeline'] : []),
 ]);
 const genericVisualHosts = new Set(visualRoutes.map((route) => route.host));
@@ -53,12 +54,12 @@ test.describe('Caddy UI Visual Coverage', () => {
   test.describe('Explicit Visual Snapshots', () => {
     test.use({ storageState: authenticatedSessionState });
 
-    test('Apex homepage snapshot', async ({ page }) => {
+    test('Apex portal snapshot', async ({ page }) => {
       await testForwardAuthService(
         page,
-        'Apex Homepage',
+        'Apex Portal',
         rootUrl('/'),
-        /(Homepage|AI & Development|Collaboration|System)/i,
+        /(Stack Portal|contract-backed modules|SOGo)/i,
         {
           screenshotSuffix: 'authenticated',
           screenshotFullPage: true,

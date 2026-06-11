@@ -112,7 +112,7 @@ and partial upgrades.
 | Area | Included capabilities |
 | --- | --- |
 | Edge and identity | Caddy, Keycloak, OIDC clients, forward auth, group-based RBAC |
-| App platform | Homepage catalog, service routing, health checks, generated config |
+| App platform | Contract-driven portal, service routing, health checks, generated config |
 | Collaboration | BookStack, Seafile, SOGo, Element, Planka, Vaultwarden |
 | Productivity and media | ERPNext, Donetick, Home Assistant, Jellyfin, Mastodon |
 | AI and development | JupyterHub, disposable workspaces, Forgejo, OpenSearch, Qdrant, knowledge ingestion, ChatGPT Connector |

@@ -364,7 +364,7 @@ describe('browser-route-driver', () => {
           'input[name="password"], input[type="password"], #password-textfield, #password': createLocator(),
         },
         onGoto: (_url, currentPage) => {
-          currentPage.__setUrl('https://keycloak.datamancy.net/?rd=https%3A%2F%2Fhomepage.datamancy.net%2F');
+          currentPage.__setUrl('https://keycloak.datamancy.net/?rd=https%3A%2F%2Fportal.datamancy.net%2F');
           currentPage.__setBody('Keycloak Sign in Username Password');
         },
       });
@@ -373,7 +373,7 @@ describe('browser-route-driver', () => {
         label: 'www homepage',
         anonymous: {
           kind: 'canonical_redirect',
-          targetHost: 'homepage',
+          targetHost: 'portal',
           followup: 'forward_auth',
         },
       });

@@ -27,7 +27,7 @@
     <rect x="462" y="398" width="228" height="46" rx="8" fill="#e8f3ff"/>
     <text x="482" y="427" font-size="15" fill="#2463a6">webservices-mastodon-runtime</text>
     <rect x="462" y="464" width="228" height="46" rx="8" fill="#e8f3ff"/>
-    <text x="482" y="493" font-size="15" fill="#2463a6">webservices-homepage.service</text>
+    <text x="482" y="493" font-size="15" fill="#2463a6">webservices-portal.service</text>
 
     <rect x="832" y="190" width="250" height="378" rx="12" fill="#fbfcff" stroke="#cfd6e6"/>
     <text x="864" y="232" font-size="21" font-weight="700" fill="#172033">Compose Shards</text>
@@ -38,7 +38,7 @@
     <rect x="864" y="386" width="174" height="42" rx="8" fill="#edf7ed"/>
     <text x="884" y="412" font-size="14" fill="#2a6d3f">mastodon-runtime.json</text>
     <rect x="864" y="446" width="174" height="42" rx="8" fill="#edf7ed"/>
-    <text x="884" y="472" font-size="14" fill="#2a6d3f">homepage.compose.json</text>
+    <text x="884" y="472" font-size="14" fill="#2a6d3f">portal.compose.json</text>
   </g>
 
   <g stroke="#8da0ba" stroke-width="3" fill="none">

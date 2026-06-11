@@ -614,17 +614,17 @@ api.mastodon.{$DOMAIN}, api.social.{$DOMAIN} {
 }
 # webservices-component-end mastodon
 
-# webservices-component-start !homepage
-# Minimal apex route for stacks that do not include the Homepage component.
+# webservices-component-start !portal
+# Minimal apex route for stacks that do not include the Portal component.
 {$DOMAIN} {
 	import access_observability
 	respond "webservices core stack" 200
 }
-# webservices-component-end !homepage
+# webservices-component-end !portal
 
-# Homepage - apex domain and homepage subdomain
-# webservices-component-start homepage
-{$DOMAIN}, homepage.{$DOMAIN} {
+# Portal - canonical generated stack dashboard.
+# webservices-component-start portal
+{$DOMAIN}, portal.{$DOMAIN} {
 	import access_observability
 	route {
 		@matrix_client_well_known path /.well-known/matrix/client
@@ -643,11 +643,16 @@ api.mastodon.{$DOMAIN}, api.social.{$DOMAIN} {
 			respond "{\"m.server\":\"matrix.{$DOMAIN}:443\"}" 200
 		}
 
-		import keycloak_auth homepage
-		reverse_proxy homepage:3000
+		import keycloak_auth portal
+		reverse_proxy portal:8080
 	}
 }
-# webservices-component-end homepage
+
+homepage.{$DOMAIN} {
+	import access_observability
+	redir https://portal.{$DOMAIN}{uri} permanent
+}
+# webservices-component-end portal
 
 # Sovereign compute progression layer.
 # webservices-component-start progression
@@ -660,7 +665,7 @@ progress.{$DOMAIN} {
 }
 # webservices-component-end progression
 
-# Homepage - www redirects to apex
+# Portal - www redirects to apex
 www.{$DOMAIN} {
 	import access_observability
 	redir https://{$DOMAIN}{uri} permanent

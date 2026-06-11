@@ -15,7 +15,7 @@ The browser tests verify that protected routes land on the intended service UI, 
 - Prometheus: `/Prometheus|Graph|Alerts|Status|Time Series/i`
 - Grafana: `/Grafana|Dashboards|Explore|Connections|Data sources|Loki/i`
 - Vaultwarden forward-auth boundary: must not remain on `#/login`, `#/sso`, or setup screens.
-- Homepage: `/Homepage|AI & Development|Collaboration|System/i`
+- Stack Portal: `/Stack Portal|contract-backed modules|SOGo/i`
 - Seafile: `/Seafile|Libraries|My Libraries|Shared with me|Favorites|Shared Links|Devices|Wiki/i`
 - ntfy: `/ntfy/i`
 - Search: `/webservices Search|Search Knowledge Base|Hybrid|Semantic|Keyword/i`

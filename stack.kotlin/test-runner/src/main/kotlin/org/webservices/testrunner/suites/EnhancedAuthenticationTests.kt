@@ -155,7 +155,7 @@ suspend fun TestRunner.enhancedAuthenticationTests() = suite("Enhanced Authentic
         ensureSharedEdgeSession()
 
         val response = auth.authenticatedGet(caddyUrl(endpoints.caddy)) {
-            applyCaddyVirtualHost(caddyHost("homepage"))
+            applyCaddyVirtualHost(caddyHost("portal"))
         }
 
         require(response.status.value in 200..399) {

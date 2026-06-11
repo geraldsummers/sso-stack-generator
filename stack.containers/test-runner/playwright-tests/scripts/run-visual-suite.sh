@@ -49,7 +49,7 @@ preflight_visual_stack() {
     keycloak \
     keycloak-auth-gateway \
     alertmanager \
-    homepage \
+    portal \
     bookstack \
     chatgpt-connector \
     sogo \

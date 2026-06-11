@@ -52,7 +52,7 @@ import java.io.File
  * @property prometheus Prometheus metrics collection endpoint
  * @property grafana Grafana monitoring dashboard endpoint
  * @property kopia Kopia backup server endpoint
- * @property homepage Homepage dashboard endpoint
+ * @property portal Stack Portal endpoint
  * @property radicale Radicale CalDAV/CardDAV server endpoint
  * @property ntfy Ntfy notification service endpoint
  * @property qbittorrent qBittorrent torrent client endpoint
@@ -102,6 +102,7 @@ data class ServiceEndpoints(
 
     val kopia: String,
 
+    val portal: String? = null,
     val homepage: String? = null,
     val radicale: String? = null,
     val ntfy: String? = null,
@@ -179,7 +180,8 @@ data class ServiceEndpoints(
             
             kopia = env("KOPIA_URL") ?: "http://kopia:51515",
             
-            homepage = env("HOMEPAGE_URL") ?: "http://homepage:3000",
+            portal = env("PORTAL_URL") ?: "http://portal:8080",
+            homepage = env("HOMEPAGE_URL"),
             radicale = env("RADICALE_URL"),
             ntfy = env("NTFY_URL") ?: "http://ntfy:80",
             qbittorrent = env("QBITTORRENT_URL") ?: "http://qbittorrent:8080",
@@ -242,7 +244,8 @@ data class ServiceEndpoints(
             
             kopia = "http://localhost:51515",
             
-            homepage = "http://localhost:3003",
+            portal = env("PORTAL_URL") ?: "http://localhost:8083",
+            homepage = env("HOMEPAGE_URL"),
             radicale = env("RADICALE_URL"),
             ntfy = "http://localhost:8081",
             qbittorrent = "http://localhost:8082",

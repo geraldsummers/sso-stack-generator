@@ -60,14 +60,15 @@ class ChatGptConnectorConfigTest {
     }
 
     @Test
-    fun `connector is registered in homepage route catalog and visual coverage`() {
-        val homepageServices = repoFileText("stack.config/homepage/services.yaml")
+    fun `connector is registered in portal route catalog and visual coverage`() {
+        val contracts = repoFileText("stack.config/service-contracts.json")
         val routeCatalog = repoFileText("stack.containers/test-runner/playwright-tests/utils/route-catalog.ts")
         val caddyHosts = repoFileText("stack.containers/test-runner/fixtures/caddy-hosts.txt")
         val visualRunner = repoFileText("stack.containers/test-runner/playwright-tests/scripts/run-visual-suite.sh")
 
-        assertTrue(homepageServices.contains("- ChatGPT Connector:"))
-        assertTrue(homepageServices.contains("href: https://chatgpt-connector.{{DOMAIN}}"))
+        assertTrue(contracts.contains("\"chatgpt-connector\""))
+        assertTrue(contracts.contains("\"hrefHost\": \"chatgpt-connector\""))
+        assertTrue(contracts.contains("\"description\": \"Managed ChatGPT connector accounts and MCP endpoint status.\""))
 
         assertTrue(routeCatalog.contains("host: 'chatgpt-connector'"))
         assertTrue(routeCatalog.contains("fileStem: 'chatgpt-connector-authenticated'"))

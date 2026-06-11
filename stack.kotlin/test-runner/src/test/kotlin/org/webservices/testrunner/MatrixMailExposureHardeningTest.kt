@@ -22,29 +22,29 @@ class MatrixMailExposureHardeningTest {
     fun `apex Matrix discovery stays public for external clients`() {
         val caddyfile = repoFileText("stack.config/caddy/Caddyfile")
         val domainToken = "{${'$'}DOMAIN}"
-        val homepageBlock = siteBlock(caddyfile, "$domainToken, homepage.$domainToken")
+        val portalBlock = siteBlock(caddyfile, "$domainToken, portal.$domainToken")
         val matrixBlock = siteBlock(caddyfile, "matrix.$domainToken")
 
-        assertTrue(homepageBlock.contains("@matrix_client_well_known path /.well-known/matrix/client"))
-        assertTrue(homepageBlock.contains("@matrix_server_well_known path /.well-known/matrix/server"))
-        assertTrue(homepageBlock.contains("\\\"m.homeserver\\\":{\\\"base_url\\\":\\\"https://matrix.$domainToken/\\\"}"))
-        assertTrue(homepageBlock.contains("\\\"io.element.e2ee\\\":{\\\"default\\\":true}"))
-        assertTrue(homepageBlock.contains("\\\"org.matrix.msc4143.rtc_foci\\\":[{\\\"type\\\":\\\"livekit\\\",\\\"livekit_service_url\\\":\\\"https://matrix-rtc.$domainToken/livekit/jwt\\\"}]"))
-        assertTrue(homepageBlock.contains("\\\"m.server\\\":\\\"matrix.$domainToken:443\\\""))
+        assertTrue(portalBlock.contains("@matrix_client_well_known path /.well-known/matrix/client"))
+        assertTrue(portalBlock.contains("@matrix_server_well_known path /.well-known/matrix/server"))
+        assertTrue(portalBlock.contains("\\\"m.homeserver\\\":{\\\"base_url\\\":\\\"https://matrix.$domainToken/\\\"}"))
+        assertTrue(portalBlock.contains("\\\"io.element.e2ee\\\":{\\\"default\\\":true}"))
+        assertTrue(portalBlock.contains("\\\"org.matrix.msc4143.rtc_foci\\\":[{\\\"type\\\":\\\"livekit\\\",\\\"livekit_service_url\\\":\\\"https://matrix-rtc.$domainToken/livekit/jwt\\\"}]"))
+        assertTrue(portalBlock.contains("\\\"m.server\\\":\\\"matrix.$domainToken:443\\\""))
         assertTrue(matrixBlock.contains("@matrix_host_client_well_known path /.well-known/matrix/client"))
         assertTrue(matrixBlock.contains("\\\"org.matrix.msc4143.rtc_foci\\\":[{\\\"type\\\":\\\"livekit\\\",\\\"livekit_service_url\\\":\\\"https://matrix-rtc.$domainToken/livekit/jwt\\\"}]"))
         assertFalse(matrixBlock.contains("jitsi", ignoreCase = true))
 
-        val clientHandler = handlerBlock(homepageBlock, "matrix_client_well_known")
+        val clientHandler = handlerBlock(portalBlock, "matrix_client_well_known")
         val matrixClientHandler = handlerBlock(matrixBlock, "matrix_host_client_well_known")
-        val serverHandler = handlerBlock(homepageBlock, "matrix_server_well_known")
-        val authIndex = homepageBlock.indexOf("import keycloak_auth homepage")
+        val serverHandler = handlerBlock(portalBlock, "matrix_server_well_known")
+        val authIndex = portalBlock.indexOf("import keycloak_auth portal")
 
         assertTrue(clientHandler.contains("Access-Control-Allow-Origin \"*\""))
         assertTrue(matrixClientHandler.contains("Access-Control-Allow-Origin \"*\""))
         assertTrue(serverHandler.contains("Access-Control-Allow-Origin \"*\""))
-        assertTrue(homepageBlock.indexOf("@matrix_client_well_known") in 0 until authIndex)
-        assertTrue(homepageBlock.indexOf("@matrix_server_well_known") in 0 until authIndex)
+        assertTrue(portalBlock.indexOf("@matrix_client_well_known") in 0 until authIndex)
+        assertTrue(portalBlock.indexOf("@matrix_server_well_known") in 0 until authIndex)
     }
 
     @Test

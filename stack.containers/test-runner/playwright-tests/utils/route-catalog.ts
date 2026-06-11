@@ -78,10 +78,23 @@ export function readCaddyHostsInventory(): string[] {
 export const browserRouteCatalog: BrowserRoute[] = [
   {
     host: 'apex',
-    label: 'Apex Homepage',
+    label: 'Apex Portal',
     kind: 'forward_auth',
     anonymous: { kind: 'forward_auth' },
-    ownership: { route: true, smoke: false, visual: false, deep: false },
+    smoke: {
+      matcher: /Stack Portal|Profile dashboards|contract-backed modules|SOGo/i,
+      selector: 'text=/Stack Portal|contract-backed modules|SOGo/i',
+      disallowMatcher: /\bSign in to your account\b|\b503 Service Unavailable\b/i,
+    },
+    visual: {
+      fileStem: 'apex-portal-authenticated',
+      matcher: /Stack Portal|Profile dashboards|contract-backed modules|SOGo/i,
+      selector: 'text=/Stack Portal|contract-backed modules|SOGo/i',
+      disallowMatcher: /\bSign in to your account\b|\b503 Service Unavailable\b/i,
+      quality: 85,
+      fullPage: true,
+    },
+    ownership: { route: true, smoke: true, visual: true, deep: false },
   },
   {
     host: 'onboarding',
@@ -313,13 +326,30 @@ export const browserRouteCatalog: BrowserRoute[] = [
     ownership: { route: true, smoke: false, visual: false, deep: false },
   },
   {
-    host: 'homepage',
-    label: 'Homepage',
+    host: 'portal',
+    label: 'Stack Portal',
     kind: 'forward_auth',
     anonymous: { kind: 'forward_auth' },
-    smoke: { matcher: /Homepage|AI & Development|Collaboration|System/i },
-    visual: { fileStem: 'homepage-authenticated', matcher: /Homepage|AI & Development|Collaboration|System/i, quality: 85 },
+    smoke: {
+      matcher: /Stack Portal|Profile dashboards|contract-backed modules|SOGo/i,
+      selector: 'text=/Stack Portal|contract-backed modules|SOGo/i',
+      disallowMatcher: /\bSign in to your account\b|\b503 Service Unavailable\b/i,
+    },
+    visual: {
+      fileStem: 'portal-authenticated',
+      matcher: /Stack Portal|Profile dashboards|contract-backed modules|SOGo/i,
+      selector: 'text=/Stack Portal|contract-backed modules|SOGo/i',
+      disallowMatcher: /\bSign in to your account\b|\b503 Service Unavailable\b/i,
+      quality: 85,
+    },
     ownership: { route: true, smoke: true, visual: true, deep: true },
+  },
+  {
+    host: 'homepage',
+    label: 'Homepage Compatibility Redirect',
+    kind: 'public',
+    anonymous: { kind: 'canonical_redirect', targetHost: 'portal', followup: 'forward_auth' },
+    ownership: { route: true, smoke: false, visual: false, deep: true },
   },
   {
     host: 'progress',

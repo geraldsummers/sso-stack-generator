@@ -78,7 +78,7 @@ A strong service change usually touches several layers:
 - `stack.config/` for app config and entrypoints
 - `stack.systemd/` when lifecycle grouping changes
 - `stack.kotlin/` or Playwright tests for behavior
-- `stack.config/homepage/services.yaml` for discoverability
+- `stack.config/service-contracts.json` for discoverability and evidence contracts
 - `docs/` for operator and contributor context
 
 That is deliberate. A platform service is not complete just because a container

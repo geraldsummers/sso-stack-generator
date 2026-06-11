@@ -55,6 +55,9 @@ fi
 log "running component selection checks"
 "$SCRIPT_DIR/test-component-selection.sh" >&2
 
+log "running service contract checks"
+"$SCRIPT_DIR/test-service-contracts.sh" >&2
+
 log "running deploy-state guard checks"
 "$SCRIPT_DIR/test-deploy-state.sh" >&2
 

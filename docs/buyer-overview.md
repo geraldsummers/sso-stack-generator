@@ -19,7 +19,7 @@ monitoring, backups, and documentation.
 Typical capabilities include:
 
 - single sign-on and group-based access
-- service homepage/catalog
+- service portal/catalog
 - private docs and files
 - password management
 - monitoring and logs

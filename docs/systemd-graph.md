@@ -143,8 +143,8 @@ lifecycle units.
 Scoped unit names are restricted to systemd service/target references and are
 rejected before any filesystem lookup or `systemctl` invocation.
 
-Component scope is direct by default: `--component homepage` targets the Compose
-files owned by `homepage`, not `core` and every runtime dependency. Use
+Component scope is direct by default: `--component portal` targets the Compose
+files owned by `portal`, not `core` and every runtime dependency. Use
 `--include-component-dependencies` when the dependency components themselves are
 part of the intended operational change.
 

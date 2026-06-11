@@ -114,14 +114,34 @@ component_selection_write_metadata() {
   local manifest_path="$1"
   local catalog="$2"
   local output_file="$3"
-  local temp_components
+  local temp_components contracts_file
 
   temp_components="$(mktemp)"
   component_selection_resolve "$manifest_path" "$catalog" > "$temp_components"
-  jq -n \
-    --arg generatedAt "$(iso_timestamp_utc)" \
-    --slurpfile components <(jq -R . "$temp_components" | jq -s .) \
-    '{generatedAt: $generatedAt, components: $components[0]}' > "$output_file"
+  contracts_file="$(dirname "$catalog")/service-contracts.json"
+  if [ -f "$contracts_file" ]; then
+    jq -n \
+      --arg generatedAt "$(iso_timestamp_utc)" \
+      --slurpfile components <(jq -R . "$temp_components" | jq -s .) \
+      --slurpfile contracts "$contracts_file" \
+      '{
+        generatedAt: $generatedAt,
+        components: $components[0],
+        serviceContracts: {
+          contractVersion: $contracts[0].contractVersion,
+          components: (
+            $components[0]
+            | map({key: ., value: $contracts[0].components[.]})
+            | from_entries
+          )
+        }
+      }' > "$output_file"
+  else
+    jq -n \
+      --arg generatedAt "$(iso_timestamp_utc)" \
+      --slurpfile components <(jq -R . "$temp_components" | jq -s .) \
+      '{generatedAt: $generatedAt, components: $components[0]}' > "$output_file"
+  fi
   rm -f "$temp_components"
 }
 

@@ -40,11 +40,11 @@ Explain that secrets render only on the target host.
 
 ## 6. Login Through SSO
 
-Open the service homepage and log in through Keycloak.
+Open the service portal and log in through Keycloak.
 
 ## 7. Show Service Catalog
 
-Show the homepage/catalog and point out docs, files, passwords, monitoring, and
+Show the portal/catalog and point out docs, files, passwords, monitoring, and
 package-specific services.
 
 ## 8. Show Auth Boundary

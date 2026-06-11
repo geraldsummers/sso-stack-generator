@@ -98,12 +98,12 @@ At minimum, add coverage for:
 
 For web UIs, add screenshot coverage. Screenshots should prove the app is visible, themed acceptably, and not stuck on a login or error page.
 
-## Homepage
+## Portal
 
-Add the user-facing entry in:
+Add the user-facing entry in the service contract:
 
 ```text
-stack.config/homepage/services.yaml
+stack.config/service-contracts.json
 ```
 
 Use a plain description that tells a user what the app does. Keep names consistent with docs and tests.

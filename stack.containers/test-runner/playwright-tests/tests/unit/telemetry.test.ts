@@ -331,16 +331,16 @@ describe('telemetry', () => {
     page.__handlers.request({
       resourceType: () => 'document',
       method: () => 'GET',
-      url: () => 'https://homepage.datamancy.net/',
+      url: () => 'https://portal.datamancy.net/',
     });
     page.__handlers.response({
       request: () => ({ resourceType: () => 'document' }),
       status: () => 200,
-      url: () => 'https://homepage.datamancy.net/',
+      url: () => 'https://portal.datamancy.net/',
     });
 
     const output = logSpy.mock.calls.flat().join('\n');
-    expect(output).toContain('REQUEST: GET https://homepage.datamancy.net/');
-    expect(output).toContain('RESPONSE: 200 https://homepage.datamancy.net/');
+    expect(output).toContain('REQUEST: GET https://portal.datamancy.net/');
+    expect(output).toContain('RESPONSE: 200 https://portal.datamancy.net/');
   });
 });

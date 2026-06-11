@@ -46,7 +46,7 @@ docker cp $(docker compose ps -q test-playwright-e2e):/app/test-results/screensh
 - ✅ Page fully loaded (not blank or stuck loading)
 
 **Example Good Screenshots:**
-- Homepage: Shows service cards/dashboard
+- Stack Portal: Shows contract-backed service cards/dashboard
 - Ntfy: Shows "All notifications" sidebar
 - Forgejo: Shows "Beyond coding. We forge." landing page
 - Prometheus: Shows query interface with "Execute" button
@@ -122,11 +122,11 @@ Open in browser to see gallery view of all screenshots with metadata.
 
 ### ✅ Good: Service Working
 
-**Homepage:**
+**Stack Portal:**
 ```
-Shows: Service cards, categories, search bar
-URL: homepage.datamancy.net
-Title: "Homepage"
+Shows: Service cards, profile dashboards, filter
+URL: portal.datamancy.net
+Title: "Stack Portal"
 ```
 
 **Prometheus:**

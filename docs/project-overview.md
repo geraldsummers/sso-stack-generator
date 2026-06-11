@@ -4,7 +4,7 @@ This project is a self-hosted platform stack generator. It takes source template
 
 It is designed to show practical platform engineering rather than a toy demo. The stack includes identity, routing, secrets handling, app integration, observability, runtime provisioning, and automated validation.
 
-![Sanitized platform homepage screenshot](assets/platform-home.svg)
+![Sanitized platform portal screenshot](assets/platform-home.svg)
 
 ## In One Sentence
 

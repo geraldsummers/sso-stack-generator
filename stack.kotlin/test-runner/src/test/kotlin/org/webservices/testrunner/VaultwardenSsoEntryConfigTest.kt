@@ -9,14 +9,16 @@ import kotlin.test.assertTrue
 class VaultwardenSsoEntryConfigTest {
 
     @Test
-    fun `vaultwarden homepage entry preselects internal sso organization`() {
+    fun `vaultwarden portal entry preselects internal sso organization`() {
         val caddyfile = repoFileText("stack.config/caddy/Caddyfile")
-        val homepageServices = repoFileText("stack.config/homepage/services.yaml")
+        val contracts = repoFileText("stack.config/service-contracts.json")
 
         assertTrue(caddyfile.contains("@vw_sso_login path /sso-login /sso-login/"))
         assertTrue(caddyfile.contains("import keycloak_auth vaultwarden"))
         assertTrue(caddyfile.contains("redir * \"/#/sso?identifier={\$VAULTWARDEN_ORG_ID}&email={http.request.header.Remote-Email}\" 302"))
-        assertTrue(homepageServices.contains("href: https://vaultwarden.{{DOMAIN}}/sso-login"))
+        assertTrue(contracts.contains("\"vaultwarden\""))
+        assertTrue(contracts.contains("\"hrefHost\": \"vaultwarden\""))
+        assertTrue(contracts.contains("\"path\": \"/sso-login\""))
     }
 
     @Test
@@ -32,26 +34,22 @@ class VaultwardenSsoEntryConfigTest {
     }
 
     @Test
-    fun `embedding service is not exposed in homepage visible config`() {
-        val homepageServices = repoFileText("stack.config/homepage/services.yaml")
-        val homepageBookmarks = repoFileText("stack.config/homepage/bookmarks.yaml")
-        val homepageWidgets = repoFileText("stack.config/homepage/widgets.yaml")
+    fun `embedding service is not exposed in portal visible config`() {
+        val contracts = repoFileText("stack.config/service-contracts.json")
+        val inferenceBlock = contracts.substringAfter("\"inference\"").substringBefore("\"search\"")
 
-        assertFalse(homepageServices.contains("Embedding API"))
-        assertFalse(homepageServices.contains("https://models.{{DOMAIN}}"))
-        assertFalse(homepageBookmarks.contains("embedding", ignoreCase = true))
-        assertFalse(homepageBookmarks.contains("models.{{DOMAIN}}"))
-        assertFalse(homepageWidgets.contains("embedding", ignoreCase = true))
-        assertFalse(homepageWidgets.contains("models.{{DOMAIN}}"))
+        assertTrue(inferenceBlock.contains("\"visible\": false"))
+        assertFalse(inferenceBlock.contains("\"hrefHost\": \"models\""))
     }
 
     @Test
-    fun `homepage exposes restored keycloak backed sogo web ui`() {
-        val homepageServices = repoFileText("stack.config/homepage/services.yaml")
+    fun `portal exposes restored keycloak backed sogo web ui`() {
+        val contracts = repoFileText("stack.config/service-contracts.json")
+        val sogoBlock = contracts.substringAfter("\"sogo\"").substringBefore("\"vaultwarden\"")
 
-        assertTrue(homepageServices.contains("- SOGo:"))
-        assertTrue(homepageServices.contains("href: https://sogo.{{DOMAIN}}"))
-        assertTrue(homepageServices.contains("description: Mail, calendar, and contacts"))
+        assertTrue(sogoBlock.contains("\"name\": \"SOGo\""))
+        assertTrue(sogoBlock.contains("\"hrefHost\": \"sogo\""))
+        assertTrue(sogoBlock.contains("\"description\": \"Mail, calendar, and contacts with deterministic evidence views.\""))
     }
 
     private fun repoFileText(relativePath: String): String =

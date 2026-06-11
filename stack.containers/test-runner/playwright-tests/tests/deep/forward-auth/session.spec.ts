@@ -39,9 +39,9 @@ test.use({ storageState: authenticatedSessionState });
         options: { skipScreenshot: true },
       },
       {
-        name: 'Homepage',
-        path: serviceUrl('homepage'),
-        pattern: /Homepage|AI & Development|Collaboration|System/i,
+        name: 'Stack Portal',
+        path: serviceUrl('portal'),
+        pattern: /Stack Portal|contract-backed modules|SOGo/i,
         options: { skipScreenshot: true },
       },
     ];

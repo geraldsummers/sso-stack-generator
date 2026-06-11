@@ -13,7 +13,7 @@ When adding a new screenshot:
 
 Current assets:
 
-- `platform-home.svg`: homepage/catalog view
+- `platform-home.svg`: portal/catalog view
 - `build-deploy-verify.svg`: operator flow
 - `trust-boundary.svg`: auth and secret boundary
 - `systemd-orchestration.svg`: generated systemd graph

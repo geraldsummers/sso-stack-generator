@@ -24,6 +24,7 @@ services:
           - donetick.${DOMAIN}
           - erpnext.${DOMAIN}
           - jupyterhub.${DOMAIN}
+          - portal.${DOMAIN}
           - homepage.${DOMAIN}
           - seafile.${DOMAIN}
           - api.seafile.${DOMAIN}
@@ -72,6 +73,7 @@ services:
           - api.pass.${DOMAIN}
           - prometheus.${DOMAIN}
           - alerts.${DOMAIN}
+          - portal.${DOMAIN}
           - homepage.${DOMAIN}
           - ntfy.${DOMAIN}
           - mastodon.${DOMAIN}

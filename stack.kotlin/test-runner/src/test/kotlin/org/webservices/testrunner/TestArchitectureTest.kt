@@ -243,6 +243,7 @@ class TestArchitectureTest {
                 "test-deploy-state.sh",
                 "test-docs.sh",
                 "test-env-file-security.sh",
+                "test-service-contracts.sh",
                 "verify.sh",
             ),
             topLevelFiles,

@@ -1,0 +1,26 @@
+services:
+  portal:
+    image: webservices/portal:local-build
+    build:
+      context: .
+      dockerfile: ./stack.containers/portal/Dockerfile
+    container_name: portal
+    restart: unless-stopped
+    networks:
+      caddy:
+    depends_on:
+      caddy:
+        condition: service_started
+    environment:
+      DOMAIN: ${DOMAIN}
+      PORTAL_CONTRACTS_PATH: /contracts/service-contracts.json
+      PORTAL_COMPONENT_LOCK_PATH: /contracts/components.lock.json
+    volumes:
+      - ./configs/service-contracts.json:/contracts/service-contracts.json:ro
+      - ./build/site/components.lock.json:/contracts/components.lock.json:ro
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8080/health', timeout=5).read()"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
