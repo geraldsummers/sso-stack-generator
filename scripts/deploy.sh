@@ -144,6 +144,13 @@ dump_deploy_diagnostics() {
   if [ -f "$DEPLOY_ROOT/runtime/stack.env" ]; then
     deploy_log "docker container snapshot"
     docker ps -a --format '{{.Names}}\t{{.Status}}\t{{.Image}}' 2>&1 | sort || true
+    if [ -x "$BUNDLE_ROOT/scripts/mount-diagnostics.sh" ]; then
+      deploy_log "mount diagnostics summary"
+      "$BUNDLE_ROOT/scripts/mount-diagnostics.sh" \
+        --bundle-root "$BUNDLE_ROOT" \
+        --runtime-env-file "$DEPLOY_ROOT/runtime/stack.env" 2>/dev/null \
+        | jq -c '{summary, findings}' 2>/dev/null || true
+    fi
   fi
 
   deploy_log "diagnostics end"
