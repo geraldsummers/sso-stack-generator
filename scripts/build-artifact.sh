@@ -58,6 +58,9 @@ log "running component selection checks"
 log "running service contract checks"
 "$SCRIPT_DIR/test-service-contracts.sh" >&2
 
+log "running contract report checks"
+"$SCRIPT_DIR/test-contract-reports.sh" >&2
+
 log "running mount diagnostics checks"
 "$SCRIPT_DIR/test-mount-diagnostics.sh" >&2
 

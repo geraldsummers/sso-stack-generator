@@ -70,6 +70,11 @@ sha256sum "$DIST_DIR/build/artifact.tar" | awk '{print $1}' > "$DIST_DIR/build/a
 stage_site_manifest_bundle "$site_manifest_path" "$DIST_DIR/build/site"
 component_catalog="$DIST_DIR/build/stack.config/components.json"
 component_selection_write_metadata "$site_manifest_path" "$component_catalog" "$DIST_DIR/build/site/components.lock.json"
+"$SCRIPT_DIR/scripts/generate-contract-reports.sh" \
+  --catalog "$component_catalog" \
+  --contracts "$DIST_DIR/build/stack.config/service-contracts.json" \
+  --lock "$DIST_DIR/build/site/components.lock.json" \
+  --output-dir "$DIST_DIR/build/reports"
 log "selected components: $(jq -r '.components | join(", ")' "$DIST_DIR/build/site/components.lock.json")"
 build_merged_compose "$DIST_DIR/build" "$DIST_DIR/build/docker-compose.yml" "$site_manifest_path"
 rewrite_compose_runtime_paths "$DIST_DIR/build/docker-compose.yml"

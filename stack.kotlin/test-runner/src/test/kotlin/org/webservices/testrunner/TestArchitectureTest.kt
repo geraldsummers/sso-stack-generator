@@ -235,11 +235,13 @@ class TestArchitectureTest {
             listOf(
                 "build-artifact.sh",
                 "deploy.sh",
+                "generate-contract-reports.sh",
                 "init-site.sh",
                 "mount-diagnostics.sh",
                 "security-audit.sh",
                 "stackctl.sh",
                 "test-component-selection.sh",
+                "test-contract-reports.sh",
                 "test-deploy-scope.sh",
                 "test-deploy-state.sh",
                 "test-docs.sh",
