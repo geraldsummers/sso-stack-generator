@@ -44,12 +44,13 @@ class JellyfinConfigTest {
         assertTrue(entrypoint.contains("configure_playback_policy()"))
         assertTrue(entrypoint.contains("INSERT INTO Permissions"))
         assertTrue(entrypoint.contains("WHERE Kind = 0"))
-        assertTrue(entrypoint.contains("JELLYFIN_ENABLE_PLAYBACK_REMUXING:-false"))
+        assertTrue(compose.contains("JELLYFIN_ENABLE_PLAYBACK_REMUXING: \${JELLYFIN_ENABLE_PLAYBACK_REMUXING:-true}"))
+        assertTrue(entrypoint.contains("JELLYFIN_ENABLE_PLAYBACK_REMUXING:-true"))
         assertTrue(entrypoint.contains("WHERE Kind = 19"))
     }
 
     @Test
-    fun `jellyfin transcode wrapper keeps generated video browser safe`() {
+    fun `jellyfin keeps native playback defaults unless compatibility mode is enabled`() {
         val compose = repoFileText("stack.compose/jellyfin.yml")
         val entrypoint = repoFileText("stack.config/jellyfin/entrypoint.sh")
         val wrapper = repoFileText("stack.config/jellyfin/ffmpeg-websafe.sh")
@@ -57,6 +58,7 @@ class JellyfinConfigTest {
 
         assertFalse(compose.contains("JELLYFIN_DISABLE_BROWSER_HEVC_DIRECT_PLAY"))
         assertTrue(dockerfile.contains("ln -sf /usr/lib/jellyfin-ffmpeg/ffprobe /usr/local/bin/ffprobe"))
+        assertTrue(compose.contains("JELLYFIN_FORCE_BROWSER_SAFE_H264: \${JELLYFIN_FORCE_BROWSER_SAFE_H264:-false}"))
         assertTrue(compose.contains("JELLYFIN_TRANSCODE_H264_LEVEL: \${JELLYFIN_TRANSCODE_H264_LEVEL:-31}"))
         assertTrue(compose.contains("JELLYFIN_TRANSCODE_MAX_WIDTH: \${JELLYFIN_TRANSCODE_MAX_WIDTH:-1280}"))
         assertTrue(compose.contains("JELLYFIN_TRANSCODE_MAX_HEIGHT: \${JELLYFIN_TRANSCODE_MAX_HEIGHT:-720}"))
@@ -65,6 +67,7 @@ class JellyfinConfigTest {
         assertFalse(entrypoint.contains("preferFmp4HlsContainer"))
         assertFalse(entrypoint.contains("MediaSource.isTypeSupported"))
         assertFalse(entrypoint.contains("HTMLMediaElement.prototype.canPlayType"))
+        assertTrue(wrapper.contains("JELLYFIN_FORCE_BROWSER_SAFE_H264:-false"))
         assertTrue(wrapper.contains("JELLYFIN_TRANSCODE_H264_LEVEL:-31"))
         assertTrue(wrapper.contains("JELLYFIN_TRANSCODE_MAX_WIDTH:-1280"))
         assertTrue(wrapper.contains("JELLYFIN_TRANSCODE_MAX_HEIGHT:-720"))
@@ -83,42 +86,30 @@ class JellyfinConfigTest {
     }
 
     @Test
-    fun `jellyfin native hls requests are normalized to h264 before proxying`() {
+    fun `jellyfin route keeps sso boundary without playback rewriting sidecar`() {
         val caddyfile = repoFileText("stack.config/caddy/Caddyfile")
         val compose = repoFileText("stack.compose/jellyfin.yml")
         val deploy = repoFileText("scripts/deploy.sh")
         val graph = repoFileText("stack.systemd/graph.json")
-        val proxy = repoFileText("stack.containers/jellyfin-profile-proxy/jellyfin_profile_proxy.py")
 
-        assertTrue(compose.contains("jellyfin-profile-proxy:"))
-        assertTrue(compose.contains("dockerfile: ./stack.containers/jellyfin-profile-proxy/Dockerfile"))
-        assertTrue(compose.contains("JELLYFIN_UPSTREAM_HOST: jellyfin"))
-        assertTrue(graph.contains("\"jellyfin-profile-proxy\""))
-        assertTrue(
-            deploy.contains("webservices-jellyfin-profile-proxy.service"),
-            "Deploy should reload the Jellyfin profile proxy when its image or bundled code changes"
-        )
-        assertTrue(caddyfile.contains("@jellyfin_playback_info path /Items/*/PlaybackInfo"))
-        assertTrue(caddyfile.contains("handle @jellyfin_playback_info"))
-        assertTrue(caddyfile.contains("reverse_proxy jellyfin-profile-proxy:8080"))
+        assertFalse(compose.contains("jellyfin-profile-proxy:"))
+        assertFalse(compose.contains("dockerfile: ./stack.containers/jellyfin-profile-proxy/Dockerfile"))
+        assertFalse(compose.contains("JELLYFIN_UPSTREAM_HOST: jellyfin"))
+        assertFalse(graph.contains("\"jellyfin-profile-proxy\""))
+        assertFalse(deploy.contains("webservices-jellyfin-profile-proxy.service"))
+        assertFalse(caddyfile.contains("@jellyfin_playback_info path /Items/*/PlaybackInfo"))
+        assertFalse(caddyfile.contains("handle @jellyfin_playback_info"))
+        assertFalse(caddyfile.contains("reverse_proxy jellyfin-profile-proxy:8080"))
         assertTrue(caddyfile.contains("reverse_proxy jellyfin:8096"))
         assertTrue(caddyfile.contains("header_up Host {host}"))
         assertTrue(caddyfile.contains("header_up X-Forwarded-Host {host}"))
         assertTrue(caddyfile.contains("header_up X-Forwarded-Proto {scheme}"))
-        assertTrue(caddyfile.contains("@jellyfin_native_hls_hevc"))
-        assertTrue(caddyfile.contains("path /videos/*/hls1/main/*"))
-        assertTrue(caddyfile.contains("query VideoCodec=*hevc*"))
-        assertTrue(caddyfile.contains("uri @jellyfin_native_hls_hevc query {"))
-        assertTrue(caddyfile.contains("VideoCodec h264"))
-        assertTrue(caddyfile.contains("RequireAvc true"))
-        assertTrue(caddyfile.contains("TranscodeReasons VideoCodecNotSupported,AudioChannelsNotSupported"))
-        assertTrue(caddyfile.contains("-hevc-level"))
-        assertTrue(caddyfile.contains("-hevc-videobitdepth"))
-        assertTrue(caddyfile.contains("-hevc-profile"))
-        assertTrue(proxy.contains("maybe_rewrite_playback_info"))
-        assertTrue(proxy.contains("\"/PlaybackInfo\""))
-        assertTrue(proxy.contains("normalized HEVC from PlaybackInfo request"))
-        assertTrue(proxy.contains("jellyfin"))
+        assertTrue(caddyfile.contains("@jellyfin_password_login"))
+        assertTrue(caddyfile.contains("respond @jellyfin_password_login"))
+        assertFalse(caddyfile.contains("@jellyfin_native_hls_hevc"))
+        assertFalse(caddyfile.contains("query VideoCodec=*hevc*"))
+        assertFalse(caddyfile.contains("RequireAvc true"))
+        assertFalse(caddyfile.contains("TranscodeReasons VideoCodecNotSupported,AudioChannelsNotSupported"))
     }
 
     private fun repoFileText(relativePath: String): String =

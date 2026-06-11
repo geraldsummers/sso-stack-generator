@@ -3,7 +3,7 @@ set -euo pipefail
 
 real_ffmpeg="${JELLYFIN_REAL_FFMPEG:-/usr/lib/jellyfin-ffmpeg/ffmpeg}"
 
-if [ "${JELLYFIN_FORCE_BROWSER_SAFE_H264:-true}" != "true" ]; then
+if [ "${JELLYFIN_FORCE_BROWSER_SAFE_H264:-false}" != "true" ]; then
     exec "$real_ffmpeg" "$@"
 fi
 

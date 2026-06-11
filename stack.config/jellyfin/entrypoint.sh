@@ -109,7 +109,7 @@ SQL
 
 configure_playback_policy() {
     local database="/config/data/jellyfin.db"
-    local enable_remuxing="${JELLYFIN_ENABLE_PLAYBACK_REMUXING:-false}"
+    local enable_remuxing="${JELLYFIN_ENABLE_PLAYBACK_REMUXING:-true}"
     local remuxing_value="0"
 
     if ! jellyfin_permissions_table_ready "$database"; then

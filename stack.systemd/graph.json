@@ -117,7 +117,6 @@
         "homeassistant",
         "portal",
         "jellyfin",
-        "jellyfin-profile-proxy",
         "jupyterhub",
         "kopia",
         "livekit",

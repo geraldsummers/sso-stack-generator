@@ -326,41 +326,16 @@ sogo.{$DOMAIN} {
 jellyfin.{$DOMAIN} {
 	import access_observability
 	route {
-		@jellyfin_native_hls_hevc {
-			path /videos/*/hls1/main/*
-			query VideoCodec=*hevc*
-		}
-		uri @jellyfin_native_hls_hevc query {
-			VideoCodec h264
-			RequireAvc true
-			TranscodeReasons VideoCodecNotSupported,AudioChannelsNotSupported
-			-hevc-level
-			-hevc-videobitdepth
-			-hevc-profile
-		}
-
 		@jellyfin_password_login {
 			path /Users/AuthenticateByName /Users/authenticatebyname
 		}
 		respond @jellyfin_password_login "Jellyfin password login is disabled; use Keycloak SSO" 403
-		@jellyfin_playback_info path /Items/*/PlaybackInfo
-		handle @jellyfin_playback_info {
-			reverse_proxy jellyfin-profile-proxy:8080 {
-				header_up Host {host}
-				header_up X-Forwarded-Host {host}
-				header_up X-Forwarded-Server {host}
-				header_up X-Forwarded-Proto {scheme}
-				header_up X-Forwarded-Port {server_port}
-			}
-		}
-		handle {
-			reverse_proxy jellyfin:8096 {
-				header_up Host {host}
-				header_up X-Forwarded-Host {host}
-				header_up X-Forwarded-Server {host}
-				header_up X-Forwarded-Proto {scheme}
-				header_up X-Forwarded-Port {server_port}
-			}
+		reverse_proxy jellyfin:8096 {
+			header_up Host {host}
+			header_up X-Forwarded-Host {host}
+			header_up X-Forwarded-Server {host}
+			header_up X-Forwarded-Proto {scheme}
+			header_up X-Forwarded-Port {server_port}
 		}
 	}
 }
