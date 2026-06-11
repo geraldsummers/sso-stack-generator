@@ -1,21 +1,42 @@
 # Website
 
-This directory contains the buyer-facing static website.
+This directory contains the buyer-facing Cloudflare Pages site for the public
+proof repo.
+
+It is a dependency-free CSR site:
+
+- `index.html` is the shell
+- `app.js` renders the page client-side
+- `styles.css` owns layout and visual treatment
+- `_headers` and `_redirects` are Cloudflare Pages static config files
 
 ## Local Preview
 
-Open `index.html` in a browser.
+From the repository root:
 
-## Deployment Options
+```bash
+python3 -m http.server 4173 --directory website
+```
 
-- GitHub Pages
-- static file host
-- Caddy-served static site
-- personal domain
+Then open `http://127.0.0.1:4173/`.
+
+## Cloudflare Pages
+
+Use these settings:
+
+- Framework preset: None
+- Build command: empty
+- Build output directory: `website`
+- Root directory: repository root
+
+The deployed site intentionally links to absolute GitHub URLs for source and
+docs proof. Do not use `../docs/...` links here; those work in a checkout but
+not when only `website/` is published.
 
 ## Update Checklist
 
-- proof links still work
-- package claims match docs
+- proof links point to the public repo
+- package claims match `docs/packages.md`
 - no compliance overclaims
-- CTA is current
+- CTA points to `docs/client-intake.md`
+- local preview renders with JavaScript enabled
