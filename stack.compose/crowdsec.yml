@@ -5,6 +5,7 @@ services:
     restart: unless-stopped
     networks:
       caddy:
+      docker-proxy:
       monitoring:
     depends_on:
       caddy:
