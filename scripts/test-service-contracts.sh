@@ -72,6 +72,14 @@ jq -e '.components.homepage.composeFiles == [] and (.components.homepage.depende
 jq -e '.components.apps.dependencies | index("portal") and (index("homepage") | not)' "$catalog" >/dev/null
 jq -e '.components.onlyoffice.dependencies | index("seafile")' "$catalog" >/dev/null
 jq -e '.components.onlyoffice.capabilities | index("seafile-editor-backend")' "$contracts" >/dev/null
+jq -e '.components.observability.dependencies | index("crowdsec")' "$catalog" >/dev/null
+jq -e '.components.crowdsec.composeFiles == ["crowdsec.yml"]' "$catalog" >/dev/null
+jq -e '.components.crowdsec.evidence.expectations | index("crowdsec.simulated_decision")' "$contracts" >/dev/null
+
+grep -Fq './configs/crowdsec/acquis.yaml:/etc/crowdsec/acquis.yaml:ro' "$ROOT_DIR/stack.compose/crowdsec.yml"
+grep -Fq './configs/crowdsec/simulate-alert.sh:/usr/local/bin/webservices-crowdsec-simulate-alert:ro' "$ROOT_DIR/stack.compose/crowdsec.yml"
+grep -Fq 'cscli decisions add' "$ROOT_DIR/stack.config/crowdsec/simulate-alert.sh"
+grep -Fq 'webservices-simulated-alert' "$ROOT_DIR/stack.config/crowdsec/simulate-alert.sh"
 
 if rg -n 'gethomepage|homepage:3000|ghcr\.io/gethomepage' "$ROOT_DIR/stack.compose" "$ROOT_DIR/stack.config/caddy" >/dev/null; then
   printf '[service-contract-test] gethomepage runtime references must not remain in compose or Caddy\n' >&2

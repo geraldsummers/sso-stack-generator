@@ -51,6 +51,7 @@
         "alloy",
         "autoheal",
         "cadvisor",
+        "crowdsec",
         "docker-health-exporter",
         "dozzle",
         "grafana",

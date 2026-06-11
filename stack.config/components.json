@@ -22,7 +22,7 @@
     "observability": {
       "name": "Observability",
       "description": "Metrics, logs, dashboards, health automation, and update monitoring.",
-      "dependencies": ["core", "ntfy"],
+      "dependencies": ["core", "crowdsec", "ntfy"],
       "composeFiles": [
         "alertmanager.yml",
         "alloy.yml",
@@ -84,6 +84,12 @@
       "description": "Household task and routine tracking.",
       "dependencies": ["core"],
       "composeFiles": ["donetick.yml"]
+    },
+    "crowdsec": {
+      "name": "CrowdSec",
+      "description": "Security event detection, local decisions, and alert simulation evidence.",
+      "dependencies": ["core"],
+      "composeFiles": ["crowdsec.yml"]
     },
     "erpnext": {
       "name": "ERPNext",

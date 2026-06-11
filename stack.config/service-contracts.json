@@ -199,6 +199,25 @@
       "access": {"offboarding": "keycloak_user_disable", "owner": "apps"},
       "artifacts": {"json": ["reports/donetick.json"]}
     },
+    "crowdsec": {
+      "name": "CrowdSec",
+      "description": "Security event detection, local decisions, and alert simulation evidence.",
+      "moduleType": "capability",
+      "primaryHost": "crowdsec",
+      "routes": [],
+      "auth": {"mode": "internal_cli"},
+      "rbac": {"groups": ["admins", "operators"]},
+      "state": {"mode": "volumes", "stores": ["crowdsec_config", "crowdsec_data"]},
+      "backup": {"policy": "kopia", "targets": ["crowdsec_config", "crowdsec_data"]},
+      "restore": {"drills": ["metrics", "decision-list", "simulated-alert"]},
+      "observability": {"health": true, "logs": true, "metrics": true},
+      "evidence": {"expectations": ["crowdsec.metrics", "crowdsec.simulated_decision", "crowdsec.caddy_acquisition"]},
+      "screenshots": [],
+      "portal": {"visible": false, "category": "Security", "profiles": ["admin", "operator"], "description": "IDS decisions and security evidence integration."},
+      "slo": {"availability": "98.5%", "latencyMs": 3000},
+      "access": {"offboarding": "operator_group_removal", "owner": "security"},
+      "artifacts": {"json": ["reports/security.json", "reports/crowdsec.json"]}
+    },
     "erpnext": {
       "name": "ERPNext",
       "description": "ERPNext application runtime.",
