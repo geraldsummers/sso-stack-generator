@@ -88,23 +88,14 @@
     },
   ];
 
-  const fitLists = {
-    good: [
-      "Privacy-conscious small teams",
-      "Small businesses reducing SaaS costs",
-      "Open-source-friendly operators",
-      "Technical founders",
-      "Makerspaces, co-ops, and community groups",
-      "Clients willing to own domain, DNS, and admin decisions",
-    ],
-    poor: [
-      "One-click desktop app expectations",
-      "No ongoing care expectations",
-      "Urgent same-day managed service expectations",
-      "Regulated compliance without process or legal review",
-      "Teams that want all operational detail hidden",
-    ],
-  };
+  const audience = [
+    "Privacy-conscious small teams",
+    "Small businesses reducing SaaS costs",
+    "Open-source-friendly operators",
+    "Technical founders",
+    "Makerspaces, co-ops, and community groups",
+    "Clients willing to own domain, DNS, and admin decisions",
+  ];
 
   const painPoints = [
     "subscription sprawl",
@@ -188,7 +179,7 @@
           el("a", { href: "#buyer-proof", text: "Buyer Proof" }),
           el("a", { href: "#packages", text: "Packages" }),
           el("a", { href: "#repo-proof", text: "Repo" }),
-          el("a", { href: "#fit", text: "Fit" }),
+          el("a", { href: "#fit", text: "Who It's For" }),
           el("a", { href: "#next", text: "Audit" }),
         ]),
       ]),
@@ -343,16 +334,18 @@
 
   function renderFit() {
     return el("section", { className: "band", id: "fit" }, [
-      el("div", { className: "columns" }, [
+      el("div", { className: "section-grid" }, [
         el("div", {}, [
-          el("p", { className: "eyebrow", text: "Good fit" }),
-          el("h2", { text: "Teams that want ownership and visible operations." }),
-          list(fitLists.good, "check-list"),
+          el("p", { className: "eyebrow", text: "Works best for" }),
+          el("h2", { text: "Teams that want ownership without hiding operations." }),
         ]),
         el("div", {}, [
-          el("p", { className: "eyebrow", text: "Poor fit" }),
-          el("h2", { text: "Projects that need hidden complexity or instant rescue work." }),
-          list(fitLists.poor, "check-list muted"),
+          el("p", {
+            className: "section-note",
+            text:
+              "The strongest projects have a clear owner, a real reason to reduce SaaS dependency, and enough tolerance for visible operational decisions.",
+          }),
+          list(audience, "check-list"),
         ]),
       ]),
     ]);

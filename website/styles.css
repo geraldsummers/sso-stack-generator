@@ -205,6 +205,11 @@ h3 {
   font-size: 1.08rem;
 }
 
+.section-note {
+  color: var(--muted);
+  font-size: 1.08rem;
+}
+
 .pill-list {
   display: flex;
   flex-wrap: wrap;
