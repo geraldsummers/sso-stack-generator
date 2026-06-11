@@ -37,7 +37,7 @@ import { logPageTelemetry, savePageHTML, setupNetworkLogging } from '../../../ut
 
 export const testUser = lazyTestUser();
 export const authenticatedSessionState = authArtifactPath(defaultIdentityProvider.sessionArtifactName);
-export const seafileOnlyOfficeFixturePath = path.join(__dirname, '../fixtures/seafile-onlyoffice-demo.docx');
+export const seafileOnlyOfficeFixturePath = path.join(__dirname, '../../../fixtures/seafile-onlyoffice-demo.docx');
 export const screenshotRoot = process.env.PLAYWRIGHT_SCREENSHOTS_DIR || '/app/test-results/screenshots';
 export const domain = stackDomain;
 const embeddedSeafileOnlyOfficeFixtureBase64 =
