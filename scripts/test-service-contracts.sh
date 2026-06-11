@@ -5,6 +5,10 @@ trap 'status=$?; printf "[service-contract-test] failed at line %s: %s (exit %s)
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd -P)"
 catalog="$ROOT_DIR/stack.config/components.json"
 contracts="$ROOT_DIR/stack.config/service-contracts.json"
+profiles="$ROOT_DIR/stack.config/portal-profiles.json"
+theme="$ROOT_DIR/stack.config/theme-contract.json"
+demo_content="$ROOT_DIR/stack.config/demo-content-contract.json"
+pos_exploration="$ROOT_DIR/stack.config/pos-exploration.json"
 caddy_hosts="$ROOT_DIR/stack.containers/test-runner/fixtures/caddy-hosts.txt"
 
 require_cmd() {
@@ -18,6 +22,10 @@ require_cmd jq
 
 jq -e '.schemaVersion == 1 and (.components | type == "object")' "$catalog" >/dev/null
 jq -e '.contractVersion == 1 and (.components | type == "object")' "$contracts" >/dev/null
+jq -e '.schemaVersion == 1 and (.profiles | length >= 15) and .defaultProfile == "personal"' "$profiles" >/dev/null
+jq -e '.schemaVersion == 1 and .mode == "dark" and .evidencePolicy.rejectMixedModeScreenshots == true' "$theme" >/dev/null
+jq -e '.schemaVersion == 1 and (.personas | length >= 6) and (.requiredEvidence.onlyoffice | index("presentation_edit"))' "$demo_content" >/dev/null
+jq -e '.schemaVersion == 1 and .status == "exploration-only" and .excludedFromBuild == true' "$pos_exploration" >/dev/null
 
 catalog_keys="$(mktemp)"
 contract_keys="$(mktemp)"
@@ -75,6 +83,7 @@ jq -e '.components.onlyoffice.capabilities | index("seafile-editor-backend")' "$
 jq -e '.components.observability.dependencies | index("crowdsec")' "$catalog" >/dev/null
 jq -e '.components.crowdsec.composeFiles == ["crowdsec.yml"]' "$catalog" >/dev/null
 jq -e '.components.crowdsec.evidence.expectations | index("crowdsec.simulated_decision")' "$contracts" >/dev/null
+grep -Fq './configs/portal-profiles.json:/contracts/portal-profiles.json:ro' "$ROOT_DIR/stack.compose/portal.yml"
 
 grep -Fq './configs/crowdsec/acquis.yaml:/etc/crowdsec/acquis.yaml:ro' "$ROOT_DIR/stack.compose/crowdsec.yml"
 grep -Fq './configs/crowdsec/simulate-alert.sh:/usr/local/bin/webservices-crowdsec-simulate-alert:ro' "$ROOT_DIR/stack.compose/crowdsec.yml"

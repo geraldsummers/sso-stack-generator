@@ -11,6 +11,7 @@ from urllib.parse import urlparse
 DOMAIN = os.environ.get("DOMAIN", "example.test")
 CONTRACTS_PATH = Path(os.environ.get("PORTAL_CONTRACTS_PATH", "/contracts/service-contracts.json"))
 LOCK_PATH = Path(os.environ.get("PORTAL_COMPONENT_LOCK_PATH", "/contracts/components.lock.json"))
+PROFILES_PATH = Path(os.environ.get("PORTAL_PROFILES_PATH", "/contracts/portal-profiles.json"))
 
 
 def read_json(path: Path, default: dict) -> dict:
@@ -32,6 +33,10 @@ def selected_components() -> list[str]:
 
 def contracts() -> dict:
     return read_json(CONTRACTS_PATH, {"components": {}})
+
+
+def profile_contract() -> dict:
+    return read_json(PROFILES_PATH, {"profiles": []})
 
 
 def portal_modules() -> list[dict]:
@@ -68,13 +73,25 @@ def portal_modules() -> list[dict]:
 
 def profile_widgets() -> list[dict]:
     modules = portal_modules()
-    profile_names = ["operator", "admin", "developer", "learner"]
+    contract_profiles = profile_contract().get("profiles", [])
     widgets = []
-    for profile in profile_names:
-        matching = [module for module in modules if profile in module.get("profiles", [])]
+    for entry in contract_profiles:
+        if not isinstance(entry, dict):
+            continue
+        profile = str(entry.get("id") or "").strip()
+        if not profile:
+            continue
+        declared_services = {str(value) for value in entry.get("services", []) if isinstance(value, str)}
+        matching = [
+            module for module in modules
+            if profile in module.get("profiles", []) or module.get("component") in declared_services
+        ]
         widgets.append(
             {
                 "profile": profile,
+                "name": entry.get("name", profile),
+                "defaultView": entry.get("defaultView", ""),
+                "purpose": entry.get("purpose", ""),
                 "moduleCount": len(matching),
                 "modules": [module["component"] for module in matching[:8]],
             }
@@ -235,8 +252,8 @@ INDEX_HTML = """<!doctype html>
     function renderProfiles(profiles) {
       profilesEl.innerHTML = profiles.map((profile) => `
         <article class="profile">
-          <strong>${profile.profile}</strong>
-          <span>${profile.moduleCount} contract-backed modules</span>
+          <strong>${profile.name || profile.profile}</strong>
+          <span>${profile.defaultView || 'dashboard'} · ${profile.moduleCount} contract-backed modules</span>
         </article>
       `).join('');
     }

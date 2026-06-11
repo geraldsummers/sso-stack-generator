@@ -1,0 +1,126 @@
+{
+  "schemaVersion": 1,
+  "defaultProfile": "personal",
+  "profiles": [
+    {
+      "id": "personal",
+      "name": "Personal / Individual",
+      "defaultView": "today",
+      "purpose": "Daily execution for one person.",
+      "widgets": ["meetings", "assigned_tasks", "mentions", "recent_docs", "ai_next_actions"],
+      "services": ["sogo", "planka", "donetick", "element", "bookstack", "seafile", "erpnext"]
+    },
+    {
+      "id": "team-lead",
+      "name": "Team Lead / Delivery",
+      "defaultView": "team-workboard",
+      "purpose": "Coordinate people, deadlines, blocked work, and handoffs.",
+      "widgets": ["active_work", "blocked_tasks", "overdue_work", "team_workload", "recent_decisions"],
+      "services": ["planka", "erpnext", "sogo", "bookstack", "element", "forgejo"]
+    },
+    {
+      "id": "project-client-owner",
+      "name": "Project / Client Owner",
+      "defaultView": "client-project-command",
+      "purpose": "Operate from a client, engagement, or delivery context.",
+      "widgets": ["project_summary", "open_tasks", "recent_files", "meeting_history", "invoices", "risks"],
+      "services": ["erpnext", "planka", "bookstack", "seafile", "sogo", "element", "forgejo", "search"]
+    },
+    {
+      "id": "business-owner",
+      "name": "Business Owner / Executive",
+      "defaultView": "business-macro",
+      "purpose": "Sparse business health and strategic signal.",
+      "widgets": ["revenue", "cash_runway", "receivables", "pipeline", "delivery_health", "executive_brief"],
+      "services": ["erpnext", "planka", "sogo", "bookstack", "search", "chatgpt-connector"]
+    },
+    {
+      "id": "finance-admin",
+      "name": "Finance / Admin",
+      "defaultView": "finance-operations",
+      "purpose": "Invoices, payables, purchases, approvals, and business hygiene.",
+      "widgets": ["unpaid_invoices", "overdue_payments", "payables", "purchase_orders", "approval_docs"],
+      "services": ["erpnext", "seafile", "sogo", "bookstack", "vaultwarden"]
+    },
+    {
+      "id": "sales-relationship",
+      "name": "Sales / Relationship",
+      "defaultView": "pipeline-pulse",
+      "purpose": "Leads, proposals, renewals, follow-up, and customer communication.",
+      "widgets": ["leads", "opportunities", "proposals", "last_contact", "next_follow_up", "ai_drafts"],
+      "services": ["erpnext", "sogo", "element", "mastodon", "bookstack", "seafile", "chatgpt-connector"]
+    },
+    {
+      "id": "knowledge-steward",
+      "name": "Knowledge Steward",
+      "defaultView": "knowledge-health",
+      "purpose": "Keep business memory clean, searchable, and reviewed.",
+      "widgets": ["stale_docs", "missing_docs", "recent_changes", "search_gaps", "decision_log"],
+      "services": ["bookstack", "search", "pipeline", "seafile", "chatgpt-connector"]
+    },
+    {
+      "id": "ai-data-analyst",
+      "name": "AI / Data Analyst",
+      "defaultView": "analysis-lab",
+      "purpose": "Notebooks, datasets, ingestion jobs, search, and report drafts.",
+      "widgets": ["datasets", "recent_notebooks", "workspace_launcher", "ingestion_jobs", "analysis_prompts"],
+      "services": ["jupyterhub", "workspaces", "search", "chatgpt-connector", "seafile", "forgejo", "bookstack"]
+    },
+    {
+      "id": "developer-builder",
+      "name": "Developer / Builder",
+      "defaultView": "engineering-delivery",
+      "purpose": "Repos, issues, release work, workspaces, and engineering docs.",
+      "widgets": ["repos", "open_prs", "issues", "runner_status", "release_notes", "workspace_launch"],
+      "services": ["forgejo", "forgejo-runner", "workspaces", "jupyterhub", "planka", "bookstack"]
+    },
+    {
+      "id": "platform-operator",
+      "name": "Platform Operator",
+      "defaultView": "operator-health",
+      "purpose": "Service health, routes, auth, backups, alerts, logs, and tests.",
+      "widgets": ["service_health", "route_health", "auth_health", "backup_status", "alerts", "test_results"],
+      "services": ["grafana", "prometheus", "loki", "alertmanager", "kopia", "caddy", "keycloak", "crowdsec"]
+    },
+    {
+      "id": "security-identity-admin",
+      "name": "Security / Identity Admin",
+      "defaultView": "access-risk",
+      "purpose": "Accounts, groups, login paths, service access, and risky states.",
+      "widgets": ["users", "groups", "failed_logins", "service_policies", "stale_accounts", "vault_entry_points"],
+      "services": ["keycloak", "vaultwarden", "caddy", "bookstack", "crowdsec"]
+    },
+    {
+      "id": "site-ops",
+      "name": "Site / Facilities",
+      "defaultView": "site-operations",
+      "purpose": "Physical environment, routines, notifications, and local automations.",
+      "widgets": ["sensors", "devices_offline", "automation_failures", "maintenance_routines", "site_calendar"],
+      "services": ["homeassistant", "ntfy", "donetick", "sogo"]
+    },
+    {
+      "id": "publishing-media",
+      "name": "Publishing / Media",
+      "defaultView": "publishing-desk",
+      "purpose": "Posts, media, public docs, training assets, and community publishing.",
+      "widgets": ["recent_posts", "draft_posts", "media_library", "campaign_files", "public_docs"],
+      "services": ["mastodon", "jellyfin", "seafile", "bookstack", "chatgpt-connector"]
+    },
+    {
+      "id": "external-client",
+      "name": "External Client / Guest",
+      "defaultView": "client-portal",
+      "purpose": "Strictly scoped client files, docs, tasks, meetings, and deliverables.",
+      "widgets": ["client_project", "client_files", "client_docs", "client_tasks", "deliverables", "support_links"],
+      "services": ["seafile", "bookstack", "planka", "erpnext", "sogo", "element"]
+    },
+    {
+      "id": "reviewer-buyer",
+      "name": "Reviewer / Buyer",
+      "defaultView": "evidence-proof",
+      "purpose": "Evaluate service catalog, auth model, backup proof, test results, and runbooks.",
+      "widgets": ["service_catalog", "auth_model", "backup_proof", "restore_drills", "test_results", "screenshots"],
+      "services": ["portal", "bookstack", "grafana", "kopia", "progression"]
+    }
+  ]
+}

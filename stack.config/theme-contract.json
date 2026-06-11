@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 1,
+  "mode": "dark",
+  "sourceOfTruth": "stack.config/theme-contract.json",
+  "tokens": {
+    "background": "#101417",
+    "surface": "#171d20",
+    "surfaceStrong": "#1f282b",
+    "text": "#eef4f1",
+    "muted": "#aab7b2",
+    "line": "#314044",
+    "accent": "#37d3b7",
+    "warning": "#e6ba5e",
+    "danger": "#ef7d78",
+    "info": "#76a9fa"
+  },
+  "evidencePolicy": {
+    "playwrightColorScheme": "dark",
+    "rejectMixedModeScreenshots": true,
+    "forbidAdHocThemeTokens": true
+  }
+}
