@@ -95,7 +95,7 @@ class JellyfinConfigTest {
         assertFalse(compose.contains("jellyfin-profile-proxy:"))
         assertFalse(compose.contains("dockerfile: ./stack.containers/jellyfin-profile-proxy/Dockerfile"))
         assertFalse(compose.contains("JELLYFIN_UPSTREAM_HOST: jellyfin"))
-        assertFalse(graph.contains("\"jellyfin-profile-proxy\""))
+        assertTrue(graph.contains("\"jellyfin-profile-proxy\""))
         assertFalse(deploy.contains("webservices-jellyfin-profile-proxy.service"))
         assertFalse(caddyfile.contains("@jellyfin_playback_info path /Items/*/PlaybackInfo"))
         assertFalse(caddyfile.contains("handle @jellyfin_playback_info"))

@@ -167,6 +167,7 @@
   ],
   "excludedServices": [
     "homepage",
+    "jellyfin-profile-proxy",
     "jupyter-notebook-build"
   ],
   "onDemandServices": [],
