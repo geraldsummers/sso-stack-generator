@@ -102,6 +102,13 @@
 	}
 }
 
+(keycloak_group_allow) {
+	@rbac_denied_{args[0]} {
+		not header_regexp Remote-Groups (^|.*[,[:space:]])({args[1]})([,[:space:]].*|$)
+	}
+	respond @rbac_denied_{args[0]} "{args[0]} requires a permitted Keycloak group" 403
+}
+
 # Keycloak portal.
 keycloak.{$DOMAIN} {
 	import access_observability
@@ -175,6 +182,7 @@ kopia.{$DOMAIN} {
 	import access_observability
 	route {
 		import keycloak_auth kopia
+		import keycloak_group_allow kopia admins|operators
 		reverse_proxy kopia:51515 {
 			header_up Authorization "{$KOPIA_PROXY_AUTHORIZATION}"
 		}
@@ -188,6 +196,7 @@ prometheus.{$DOMAIN} {
 	import access_observability
 	route {
 		import keycloak_auth prometheus
+		import keycloak_group_allow prometheus admins|operators
 		reverse_proxy prometheus:9090
 	}
 }
@@ -197,6 +206,7 @@ alerts.{$DOMAIN} {
 	import access_observability
 	route {
 		import keycloak_auth alerts
+		import keycloak_group_allow alerts admins|operators
 		reverse_proxy alertmanager:9093
 	}
 }
@@ -210,6 +220,7 @@ grafana.{$DOMAIN} {
 	}
 	handle {
 		import keycloak_auth grafana
+		import keycloak_group_allow grafana admins|operators
 		reverse_proxy grafana:3000 {
 			header_up Remote-User {header.Remote-User}
 			header_up Remote-Groups {header.Remote-Groups}
@@ -230,6 +241,7 @@ vaultwarden.{$DOMAIN}, pass.{$DOMAIN} {
 	@vw_sso_login path /sso-login /sso-login/
 	handle @vw_sso_login {
 		import keycloak_auth vaultwarden
+		import keycloak_group_allow vaultwarden admins|operators|users
 		# The generic web-vault SSO button asks for an email/domain before it can
 		# choose an organization. This stack is single-tenant, so preselect the
 		# internal organization and carry the trusted Keycloak email when the web
@@ -348,13 +360,10 @@ donetick.{$DOMAIN} {
 	route {
 		vars donetick_upstream_authorization {http.request.header.Authorization}
 		import keycloak_auth donetick
-		@donetick_users header_regexp Remote-Groups (^|.*[,[:space:]])(users|operators|admins)([,[:space:]].*|$)
-		handle @donetick_users {
-			reverse_proxy donetick:2021 {
-				header_up Authorization {vars.donetick_upstream_authorization}
-			}
+		import keycloak_group_allow donetick users|operators|admins
+		reverse_proxy donetick:2021 {
+			header_up Authorization {vars.donetick_upstream_authorization}
 		}
-		respond "Donetick requires the users, operators, or admins Keycloak group" 403
 	}
 }
 # webservices-component-end donetick
@@ -365,6 +374,7 @@ erpnext.{$DOMAIN} {
 	import access_observability
 	route {
 		import keycloak_auth erpnext
+		import keycloak_group_allow erpnext admins|operators
 		reverse_proxy erpnext:8080
 	}
 }
@@ -407,6 +417,7 @@ seafile.{$DOMAIN}, files.{$DOMAIN} {
 		}
 
 		import keycloak_auth seafile
+		import keycloak_group_allow seafile admins|operators|users
 		reverse_proxy seafile:80
 	}
 }
@@ -619,6 +630,7 @@ api.mastodon.{$DOMAIN}, api.social.{$DOMAIN} {
 		}
 
 		import keycloak_auth portal
+		import keycloak_group_allow portal admins|operators|users
 		reverse_proxy portal:8080
 	}
 }
@@ -635,6 +647,7 @@ progress.{$DOMAIN} {
 	import access_observability
 	route {
 		import keycloak_auth progression
+		import keycloak_group_allow progression admins|operators|users
 		reverse_proxy progression:8130
 	}
 }
@@ -659,6 +672,7 @@ workspaces.{$DOMAIN} {
 		handle @workspace_shell {
 			route {
 				import keycloak_auth workspaces_shell
+				import keycloak_group_allow workspaces_shell admins|operators|agents
 				request_header X-Remote-User {header.Remote-User}
 				request_header X-Remote-Groups {header.Remote-Groups}
 				request_header X-Remote-Name {header.Remote-Name}
@@ -684,6 +698,7 @@ workspaces.{$DOMAIN} {
 		handle @workspace_notebook {
 			route {
 				import keycloak_auth workspaces_notebook
+				import keycloak_group_allow workspaces_notebook admins|operators|agents
 				request_header X-Remote-User {header.Remote-User}
 				request_header X-Remote-Groups {header.Remote-Groups}
 				request_header X-Remote-Name {header.Remote-Name}
@@ -730,6 +745,7 @@ workspaces.{$DOMAIN} {
 			}
 		}
 		import keycloak_auth workspaces
+		import keycloak_group_allow workspaces admins|operators|agents
 		reverse_proxy workspace-provisioner:8120 {
 			transport http {
 				response_header_timeout 5m
@@ -768,6 +784,7 @@ jupyterhub.{$DOMAIN} {
 
 		handle {
 			import keycloak_auth jupyterhub
+			import keycloak_group_allow jupyterhub admins|operators|developers
 			reverse_proxy jupyterhub:8000 {
 				header_up Remote-User {header.Remote-User}
 				header_up Remote-Groups {header.Remote-Groups}
@@ -804,6 +821,7 @@ homeassistant.{$DOMAIN}, home.{$DOMAIN} {
 	# All other paths use forward_auth
 	route {
 		import keycloak_auth homeassistant
+		import keycloak_group_allow homeassistant admins|operators
 		reverse_proxy homeassistant:8123 {
 			header_up -X-Forwarded-For
 			header_up Remote-User {header.Remote-User}
@@ -902,6 +920,7 @@ ntfy.{$DOMAIN} {
 	import access_observability
 	route {
 		import keycloak_auth ntfy
+		import keycloak_group_allow ntfy admins|operators
 		reverse_proxy ntfy:80
 	}
 }
@@ -912,6 +931,7 @@ models.{$DOMAIN} {
 	import access_observability
 	route {
 		import keycloak_auth models
+		import keycloak_group_allow models admins|operators|agents
 		reverse_proxy embedding-gpu:8080
 	}
 }
@@ -953,6 +973,7 @@ search.{$DOMAIN} {
 	import access_observability
 	route {
 		import keycloak_auth search
+		import keycloak_group_allow search admins|operators|agents
 		reverse_proxy http://opensearch:9200 {
 			header_up Authorization "Basic {$OPENSEARCH_BASIC_AUTH}"
 		}
@@ -966,6 +987,7 @@ pipeline.{$DOMAIN} {
 	import access_observability
 	route {
 		import keycloak_auth pipeline
+		import keycloak_group_allow pipeline admins|operators
 		reverse_proxy airflow-webserver:8080
 	}
 }
@@ -979,6 +1001,7 @@ chatgpt-connector.{$DOMAIN} {
 			@mcp path /mcp
 			reverse_proxy @mcp chatgpt-connector:8130
 			import keycloak_auth chatgpt_connector
+			import keycloak_group_allow chatgpt_connector admins|operators|agents
 			reverse_proxy chatgpt-connector:8130 {
 				header_up X-Trusted-Proxy-Secret {$CHATGPT_CONNECTOR_TRUSTED_PROXY_SECRET}
 			}

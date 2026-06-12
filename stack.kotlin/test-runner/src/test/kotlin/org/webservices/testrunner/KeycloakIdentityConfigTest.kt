@@ -44,6 +44,7 @@ class KeycloakIdentityConfigTest {
         assertTrue(caddyfile.contains("reverse_proxy keycloak:8080"))
         assertTrue(caddyfile.contains("(keycloak_auth)"))
         assertTrue(caddyfile.contains("(keycloak_auth_base)"))
+        assertTrue(caddyfile.contains("(keycloak_group_allow)"))
         assertTrue(caddyfile.contains("forward_auth keycloak-auth-gateway:4180"))
         assertTrue(caddyfile.contains("header X-Trusted-Proxy-Secret {\$WORKSPACE_PROXY_AUTH_SECRET}"))
         assertTrue(caddyfile.contains("remote_ip private_ranges"))
@@ -76,6 +77,7 @@ class KeycloakIdentityConfigTest {
         assertTrue(configureRuntime.contains("\"eventsEnabled\": true"))
         assertTrue(configureRuntime.contains("\"webservices-edge\""))
         assertTrue(configureRuntime.contains("https://keycloak-auth.\$DOMAIN/oauth2/callback"))
+        assertTrue(configureRuntime.contains("ensure_group \"developers\""))
         assertFalse(configureRuntime.contains("jq "))
 
         assertFalse(compose.contains("authelia"))
@@ -94,6 +96,7 @@ class KeycloakIdentityConfigTest {
         assertTrue(realm.contains("\"name\": \"admins\""))
         assertTrue(realm.contains("\"name\": \"operators\""))
         assertTrue(realm.contains("\"name\": \"users\""))
+        assertTrue(realm.contains("\"name\": \"developers\""))
         assertTrue(realm.contains("\"name\": \"agents\""))
         assertTrue(realm.contains("\"name\": \"onboarding_required\""))
         assertTrue(realm.contains("\"clientId\": \"test-runner\""))
@@ -195,7 +198,7 @@ class KeycloakIdentityConfigTest {
     }
 
     @Test
-    fun `new service routes enforce keycloak group rbac at the edge`() {
+    fun `service routes enforce keycloak group rbac at the edge`() {
         val caddyfile = repoFileText("stack.config/caddy/Caddyfile")
         val donetickCompose = repoFileText("stack.compose/donetick.yml")
         val erpnextBootstrap = repoFileText("stack.config/erpnext/bootstrap-site.sh")
@@ -203,10 +206,16 @@ class KeycloakIdentityConfigTest {
         assertTrue(caddyfile.contains("Jellyfin password login is disabled; use Keycloak SSO"))
         assertTrue(caddyfile.contains("request_header X-Remote-User {header.Remote-User}"))
         assertTrue(caddyfile.contains("header_up X-Remote-User {header.X-Remote-User}"))
-        assertTrue(caddyfile.contains("@donetick_users header_regexp Remote-Groups"))
+        assertTrue(caddyfile.contains("not header_regexp Remote-Groups (^|.*[,[:space:]])({args[1]})([,[:space:]].*|$)"))
+        assertTrue(caddyfile.contains("import keycloak_group_allow donetick users|operators|admins"))
+        assertTrue(caddyfile.contains("import keycloak_group_allow erpnext admins|operators"))
+        assertTrue(caddyfile.contains("import keycloak_group_allow jupyterhub admins|operators|developers"))
+        assertTrue(caddyfile.contains("import keycloak_group_allow workspaces_shell admins|operators|agents"))
+        assertTrue(caddyfile.contains("import keycloak_group_allow workspaces_notebook admins|operators|agents"))
+        assertTrue(caddyfile.contains("import keycloak_group_allow search admins|operators|agents"))
+        assertTrue(caddyfile.contains("import keycloak_group_allow pipeline admins|operators"))
         assertTrue(caddyfile.contains("vars donetick_upstream_authorization {http.request.header.Authorization}"))
         assertTrue(caddyfile.contains("header_up Authorization {vars.donetick_upstream_authorization}"))
-        assertTrue(caddyfile.contains("Donetick requires the users, operators, or admins Keycloak group"))
         assertTrue(donetickCompose.contains("DT_OAUTH2_CLIENT_ID: donetick"))
         assertTrue(donetickCompose.contains("DT_OAUTH2_SCOPES: openid profile email groups"))
         assertTrue(donetickCompose.contains("DONETICK_DISABLE_SIGNUP: \"true\""))

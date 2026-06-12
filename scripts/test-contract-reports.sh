@@ -33,7 +33,7 @@ jq -e '.components[] | select(.component == "seafile" and .backup.policy == "kop
 jq -e '.components[] | select(.component == "portal" and .access.offboarding == "keycloak_group_removal")' "$reports_dir/access-offboarding.json" >/dev/null
 jq -e '.components[] | select(.component == "core" and .slo.availability == "99.0%")' "$reports_dir/slo.json" >/dev/null
 jq -e '.components[] | select(.component == "crowdsec" and (.evidence | index("crowdsec.simulated_decision")))' "$reports_dir/security.json" >/dev/null
-jq -e '.profiles[] | select(.id == "project-client-owner" and .defaultView == "client-project-command")' "$reports_dir/profile-widgets.json" >/dev/null
+jq -e '.profiles[] | select(.id == "employee" and .defaultView == "work-home")' "$reports_dir/profile-widgets.json" >/dev/null
 jq -e '.theme.evidencePolicy.playwrightColorScheme == "dark"' "$reports_dir/theme.json" >/dev/null
 jq -e '.requiredEvidence.onlyoffice | index("spreadsheet_edit")' "$reports_dir/demo-content.json" >/dev/null
 jq -e '.secrets[] | select(.component == "seafile" and .rotation == "site-owned SOPS update and redeploy")' "$reports_dir/secret-inventory.json" >/dev/null

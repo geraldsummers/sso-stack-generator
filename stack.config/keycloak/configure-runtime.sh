@@ -167,6 +167,7 @@ EOF_REALM_THEME
 
 ensure_groups_client_scope
 ensure_group "agents"
+ensure_group "developers"
 
 ensure_confidential_client() {
   local client_id_value="$1"

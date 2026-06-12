@@ -5,6 +5,8 @@ trap 'status=$?; printf "[service-contract-test] failed at line %s: %s (exit %s)
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd -P)"
 catalog="$ROOT_DIR/stack.config/components.json"
 contracts="$ROOT_DIR/stack.config/service-contracts.json"
+keycloak_realm="$ROOT_DIR/stack.config/keycloak/realm/webservices-realm.json.template"
+keycloak_runtime="$ROOT_DIR/stack.config/keycloak/configure-runtime.sh"
 profiles="$ROOT_DIR/stack.config/portal-profiles.json"
 theme="$ROOT_DIR/stack.config/theme-contract.json"
 demo_content="$ROOT_DIR/stack.config/demo-content-contract.json"
@@ -22,14 +24,16 @@ require_cmd jq
 
 jq -e '.schemaVersion == 1 and (.components | type == "object")' "$catalog" >/dev/null
 jq -e '.contractVersion == 1 and (.components | type == "object")' "$contracts" >/dev/null
-jq -e '.schemaVersion == 1 and (.profiles | length >= 15) and .defaultProfile == "personal"' "$profiles" >/dev/null
+jq -e '.schemaVersion == 1 and (.profiles | length >= 6) and .defaultProfile == "employee"' "$profiles" >/dev/null
 jq -e '.schemaVersion == 1 and .mode == "dark" and .evidencePolicy.rejectMixedModeScreenshots == true' "$theme" >/dev/null
 jq -e '.schemaVersion == 1 and (.personas | length >= 6) and (.requiredEvidence.onlyoffice | index("presentation_edit"))' "$demo_content" >/dev/null
 jq -e '.schemaVersion == 1 and .status == "exploration-only" and .excludedFromBuild == true' "$pos_exploration" >/dev/null
 
 catalog_keys="$(mktemp)"
 contract_keys="$(mktemp)"
-trap 'rm -f "$catalog_keys" "$contract_keys"' EXIT
+contract_groups="$(mktemp)"
+keycloak_groups="$(mktemp)"
+trap 'rm -f "$catalog_keys" "$contract_keys" "$contract_groups" "$keycloak_groups"' EXIT
 
 jq -r '.components | keys[]' "$catalog" > "$catalog_keys"
 jq -r '.components | keys[]' "$contracts" > "$contract_keys"
@@ -66,6 +70,44 @@ jq -e '
   printf '[service-contract-test] every contract must declare route/auth/rbac/state/backup/restore/observability/evidence/screenshot/portal/slo/access/artifact metadata\n' >&2
   exit 1
 }
+
+jq -e '
+  .components
+  | all(.[]; all(.routes[]; .rbacEnforcement as $mode |
+      ($mode | type == "string") and
+      ([
+        "edge_group_allow",
+        "native_group_mapping",
+        "non_browser_token",
+        "internal_token",
+        "signed_integration",
+        "redirect",
+        "internal_cli"
+      ] | index($mode))
+    ))
+' "$contracts" >/dev/null || {
+  printf '[service-contract-test] every route must declare a supported rbacEnforcement mode\n' >&2
+  exit 1
+}
+
+jq -e '
+  .components
+  | all(.[]; all(.routes[]; if .auth == "forward_auth" and .host != "onboarding" then .rbacEnforcement == "edge_group_allow" else true end))
+' "$contracts" >/dev/null || {
+  printf '[service-contract-test] forward_auth routes must use edge_group_allow unless explicitly exempted\n' >&2
+  exit 1
+}
+
+jq -r '.components[].rbac.groups[]?' "$contracts" | sort -u > "$contract_groups"
+{
+  jq -r '.groups[].name' "$keycloak_realm"
+  sed -n 's/^[[:space:]]*ensure_group "\([^"]*\)".*/\1/p' "$keycloak_runtime"
+} | sort -u > "$keycloak_groups"
+if ! comm -23 "$contract_groups" "$keycloak_groups" | sed 's/^/[service-contract-test] missing Keycloak group: /' >&2 | grep -q '^'; then
+  :
+else
+  exit 1
+fi
 
 jq -e '
   .components

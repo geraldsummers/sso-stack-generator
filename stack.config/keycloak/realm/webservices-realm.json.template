@@ -32,6 +32,7 @@
     { "name": "admins" },
     { "name": "operators" },
     { "name": "users" },
+    { "name": "developers" },
     { "name": "agents" },
     { "name": "onboarding_required" }
   ],

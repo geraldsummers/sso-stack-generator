@@ -25,6 +25,7 @@ class JupyterHubConfigTest {
     @Test
     fun `jupyterhub remote user login handler authenticates from proxy headers directly`() {
         val text = jupyterHubContainerConfigText()
+        val compose = Files.readString(findRepoRoot().resolve("stack.compose/jupyterhub.yml"))
 
         assertTrue(
             text.contains("auth_model = await self.authenticator.authenticate(self, None)"),
@@ -45,6 +46,10 @@ class JupyterHubConfigTest {
         assertFalse(
             text.contains("""re.split(r'[,;|\\s]+', raw_groups)"""),
             "JupyterHub remote-user auth should not use the double-escaped split pattern because it breaks group names containing the letter 's'"
+        )
+        assertTrue(
+            compose.contains("JUPYTERHUB_ALLOWED_REMOTE_GROUPS: \${JUPYTERHUB_ALLOWED_REMOTE_GROUPS:-admins,operators,developers}"),
+            "JupyterHub's default group allowlist should match the service contract"
         )
     }
 

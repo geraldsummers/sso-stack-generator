@@ -27,7 +27,7 @@ services:
       JUPYTER_NOTEBOOK_UID: "1000"
       JUPYTER_NOTEBOOK_GID: "100"
       DOCKER_HOST: tcp://docker-socket-controller-proxy:2375
-      JUPYTERHUB_ALLOWED_REMOTE_GROUPS: ${JUPYTERHUB_ALLOWED_REMOTE_GROUPS:-users,admins}
+      JUPYTERHUB_ALLOWED_REMOTE_GROUPS: ${JUPYTERHUB_ALLOWED_REMOTE_GROUPS:-admins,operators,developers}
       POSTGRES_HOST: postgres-ssd
       POSTGRES_PORT: "5432"
       POSTGRES_DB: webservices
