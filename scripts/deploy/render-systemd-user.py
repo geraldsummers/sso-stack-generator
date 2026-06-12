@@ -405,6 +405,15 @@ def collect_path_contracts(domain: Domain, compose_config: dict, local_deploy_ro
             source = mount.get("source")
             if not source:
                 continue
+            if "$" in source:
+                contract_source = source
+                deploy_root_prefix = f"{local_deploy_root.as_posix()}/"
+                if contract_source.startswith(deploy_root_prefix):
+                    contract_source = contract_source[len(deploy_root_prefix):]
+                existing = contracts.get(contract_source)
+                if existing is None or existing.kind == "exists":
+                    contracts[contract_source] = PathContract(path=contract_source, kind="exists")
+                continue
             project_relative = project_relative_source(source, local_deploy_root)
             if project_relative is None:
                 continue
@@ -589,6 +598,16 @@ def render_infra_unit(description: str, exec_start: str, part_of_targets: List[s
     return "\n".join(lines) + "\n"
 
 
+def render_path_contract_condition(contract: PathContract) -> str:
+    test_flag = {
+        "file": "-f",
+        "dir": "-d",
+    }.get(contract.kind, "-e")
+    if "$" in contract.path:
+        return f"ExecCondition=/bin/sh -c {shlex.quote(f'test {test_flag} {contract.path}')}"
+    return f"ExecCondition=/usr/bin/test {test_flag} {contract.path}"
+
+
 def render_preflight_lines(runtime_env_file: str, compose_file: str, project_directory: str, path_contracts: List[PathContract]) -> Tuple[List[str], List[str]]:
     unit_lines = [
         f"ConditionPathExists={runtime_env_file}",
@@ -598,12 +617,7 @@ def render_preflight_lines(runtime_env_file: str, compose_file: str, project_dir
     ]
     service_lines: List[str] = []
     for contract in path_contracts:
-        if contract.kind == "file":
-            service_lines.append(f"ExecCondition=/usr/bin/test -f {contract.path}")
-        elif contract.kind == "dir":
-            service_lines.append(f"ExecCondition=/usr/bin/test -d {contract.path}")
-        else:
-            service_lines.append(f"ExecCondition=/usr/bin/test -e {contract.path}")
+        service_lines.append(render_path_contract_condition(contract))
     return unit_lines, service_lines
 
 
