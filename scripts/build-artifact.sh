@@ -55,6 +55,9 @@ fi
 log "running component selection checks"
 "$SCRIPT_DIR/test-component-selection.sh" >&2
 
+log "running external module checks"
+"$SCRIPT_DIR/test-external-modules.sh" >&2
+
 log "running service contract checks"
 "$SCRIPT_DIR/test-service-contracts.sh" >&2
 

@@ -10,6 +10,8 @@ source "$SCRIPT_DIR/scripts/lib/site-manifest.sh"
 source "$SCRIPT_DIR/scripts/lib/compose.sh"
 # shellcheck source=scripts/lib/components.sh
 source "$SCRIPT_DIR/scripts/lib/components.sh"
+# shellcheck source=scripts/lib/external-modules.sh
+source "$SCRIPT_DIR/scripts/lib/external-modules.sh"
 
 SITE_MANIFEST_PATH=""
 BUILD_PROFILE="production"
@@ -55,6 +57,7 @@ case "$BUILD_PROFILE" in
 esac
 site_manifest_path="$(resolve_site_manifest_file "$SITE_MANIFEST_PATH")"
 
+external_modules_resolve "$site_manifest_path"
 artifact_path="$("$SCRIPT_DIR/scripts/build-artifact.sh")"
 mkdir -p "$OUT_DIR"
 printf '%s\n' "$artifact_path" > "$OUT_DIR/latest-artifact-path.txt"
@@ -63,12 +66,22 @@ rm -rf "$DIST_DIR"
 mkdir -p "$DIST_DIR/build"
 
 tar -xf "$artifact_path" -C "$DIST_DIR/build"
+external_modules_overlay_into "$DIST_DIR/build"
 cp "$OUT_DIR/latest-build.json" "$DIST_DIR/build/build-info.json"
+external_modules_metadata="$(external_modules_metadata_path)"
+if [ -f "$external_modules_metadata" ]; then
+  build_info_temp="$(mktemp)"
+  jq --slurpfile externalModules "$external_modules_metadata" \
+    '. + {externalModules: $externalModules[0]}' \
+    "$DIST_DIR/build/build-info.json" > "$build_info_temp"
+  mv "$build_info_temp" "$DIST_DIR/build/build-info.json"
+fi
 cp "$artifact_path" "$DIST_DIR/build/artifact.tar"
 sha256sum "$DIST_DIR/build/artifact.tar" | awk '{print $1}' > "$DIST_DIR/build/artifact.sha256"
 
 stage_site_manifest_bundle "$site_manifest_path" "$DIST_DIR/build/site"
 component_catalog="$DIST_DIR/build/stack.config/components.json"
+component_catalog_merge_external "$component_catalog"
 component_selection_write_metadata "$site_manifest_path" "$component_catalog" "$DIST_DIR/build/site/components.lock.json"
 "$SCRIPT_DIR/scripts/generate-contract-reports.sh" \
   --catalog "$component_catalog" \

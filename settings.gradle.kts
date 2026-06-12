@@ -25,3 +25,14 @@ project(":keycloak-onboarding-listener").projectDir = file("stack.kotlin/keycloa
 project(":chatgpt-connector").projectDir = file("stack.kotlin/chatgpt-connector")
 project(":progression").projectDir = file("stack.kotlin/progression")
 project(":portal").projectDir = file("stack.kotlin/portal")
+
+file("out/external-modules/materialized/stack.kotlin")
+    .takeIf { it.isDirectory }
+    ?.listFiles()
+    ?.filter { File(it, "build.gradle.kts").isFile }
+    ?.sortedBy { it.name }
+    ?.forEach { moduleDir ->
+        val projectName = moduleDir.name
+        include(":$projectName")
+        project(":$projectName").projectDir = moduleDir
+    }

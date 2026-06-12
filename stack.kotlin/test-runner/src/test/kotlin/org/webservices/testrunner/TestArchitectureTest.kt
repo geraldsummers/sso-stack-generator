@@ -246,6 +246,7 @@ class TestArchitectureTest {
                 "test-deploy-state.sh",
                 "test-docs.sh",
                 "test-env-file-security.sh",
+                "test-external-modules.sh",
                 "test-jellyfin-ffmpeg-websafe.sh",
                 "test-mount-diagnostics.sh",
                 "test-service-contracts.sh",

@@ -3,10 +3,11 @@
 The build is split into two stages.
 
 1. `./build.sh --manifest <path-to-manifest.json>`
+   - Resolves any pinned external module manifest from the site's `.webservices-generator.json`.
    - Runs TypeScript compile + unit tests, Gradle tests + shadow jars, and Bazel packaging.
    - Writes a deployable secret-free bundle to `dist/`.
    - Bundles the manifest-selected encrypted site files under `dist/build/site/`.
-   - Resolves `manifest.json` `components` against `stack.config/components.json`.
+   - Resolves `manifest.json` `components` against the base component catalog plus module-provided catalogs.
    - Generates Compose and systemd output only for the selected components.
    - Does not call `sops`.
    - Does not render runtime env or secret-bearing config files.
@@ -52,6 +53,42 @@ The build is split into two stages.
 `dist/build/site/components.lock.json` records the resolved component set used
 for that build. Deploy uses that lock to render component-aware runtime config,
 including Caddy routes and Keycloak clients.
+
+## External Modules
+
+Sites can pin a private module-manifest repo from `.webservices-generator.json`:
+
+```json
+{
+  "moduleManifestRemote": "git@github.com:owner/module-manifest.git",
+  "moduleManifestRef": "main",
+  "moduleManifestCommit": "0123456789abcdef",
+  "moduleManifestPath": "modules.json"
+}
+```
+
+The module manifest is not stored in this public repo. It contains pinned module
+repos:
+
+```json
+{
+  "modules": [
+    {
+      "name": "portable-service",
+      "git": "git@github.com:owner/portable-service.git",
+      "ref": "main",
+      "commit": "0123456789abcdef",
+      "path": "."
+    }
+  ]
+}
+```
+
+Module repos may contribute `stack.compose/`, `stack.config/`,
+`stack.containers/`, `stack.kotlin/`, `stack.js/`, `scripts/modules/`, and
+`docs/modules/`. A module `stack.config/components.json` is merged into the base
+catalog. Any module file that replaces a base generator file must be listed in
+that module's `overrides` array.
 
 ## Runtime Layout
 

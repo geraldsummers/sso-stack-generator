@@ -24,6 +24,37 @@ component_catalog_validate() {
   ' "$catalog" >/dev/null || die "invalid component catalog: $catalog"
 }
 
+component_catalog_merge_external() {
+  local catalog="$1"
+  local external_dir
+  local temp_catalog
+  local -a external_catalogs=()
+
+  external_dir="$(dirname "$catalog")/components.external"
+  [ -d "$external_dir" ] || return 0
+
+  while IFS= read -r external_catalog; do
+    external_catalogs+=( "$external_catalog" )
+  done < <(find "$external_dir" -maxdepth 1 -type f -name '*.json' | sort)
+  [ "${#external_catalogs[@]}" -gt 0 ] || return 0
+
+  component_catalog_validate "$catalog"
+  for external_catalog in "${external_catalogs[@]}"; do
+    component_catalog_validate "$external_catalog"
+  done
+
+  temp_catalog="$(mktemp)"
+  jq -s '
+    reduce .[] as $catalog (
+      {schemaVersion: 1, defaultComponents: [], components: {}};
+      .schemaVersion = 1
+      | .defaultComponents = ((.defaultComponents + ($catalog.defaultComponents // [])) | unique)
+      | .components = (.components + ($catalog.components // {}))
+    )
+  ' "$catalog" "${external_catalogs[@]}" > "$temp_catalog"
+  mv "$temp_catalog" "$catalog"
+}
+
 component_manifest_requested() {
   local manifest_path="$1"
   local catalog="$2"

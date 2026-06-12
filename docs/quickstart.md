@@ -55,10 +55,10 @@ New site repos enable `core` by default. Edit `manifest.json` or re-run the
 initializer with `--components` to opt into apps, observability, search, or the
 full stack.
 
-`.webservices-generator.json` pins the downstream generator fork used by the
-site. When this source checkout also has an `upstream` remote, the initializer
-records that original parent remote too, so `stack-update.sh` can report the
-fork's upstream parent while still updating from the downstream fork.
+`.webservices-generator.json` pins the generator used by the site. Sites that
+need private portable services can also pin a private module-manifest repo there;
+the build clones that manifest and its module repos at exact commits and merges
+their component catalogs into the generated bundle.
 
 To check for upstream generator updates later:
 
