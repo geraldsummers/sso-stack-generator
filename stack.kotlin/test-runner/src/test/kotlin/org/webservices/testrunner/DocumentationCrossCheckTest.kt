@@ -23,7 +23,7 @@ class DocumentationCrossCheckTest {
 
         assertTrue(caddyfile.contains("sogo.{\$DOMAIN}"))
         assertTrue(caddyfile.contains("Jellyfin password login is disabled; use Keycloak SSO"))
-        assertTrue(caddyfile.contains("@donetick_users header_regexp Remote-Groups"))
+        assertTrue(caddyfile.contains("import keycloak_group_allow donetick users|operators|admins"))
         assertTrue(caddyfile.contains("import keycloak_auth erpnext"))
         assertTrue(keycloakConfigure.contains("ensure_confidential_client \"sogo\""))
         assertTrue(keycloakConfigure.contains("ensure_confidential_client \"jellyfin\""))
