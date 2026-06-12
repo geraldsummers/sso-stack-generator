@@ -15,25 +15,25 @@
   const proofCards = [
     {
       title: "Generated Stack",
-      copy: "The platform is generated from explicit inputs, so modules can be added, removed, and reviewed.",
+      copy: "The stack is generated from explicit inputs, so selected modules can be reviewed and changed deliberately.",
       image: "assets/build-deploy-verify.svg",
       href: `${docsBase}/build-system.md`,
     },
     {
       title: "Access Boundary",
-      copy: "Keycloak/OIDC boundaries separate client surfaces, employee tools, and operator controls.",
+      copy: "Keycloak/OIDC can separate client surfaces, employee tools, and operator controls where that boundary is needed.",
       image: "assets/trust-boundary.svg",
       href: `${docsBase}/security-and-auth.md`,
     },
     {
       title: "Supervised Runtime",
-      copy: "Services are deployed through a defined host contract, with lifecycle and verification hooks.",
+      copy: "Services are deployed through a defined host contract with lifecycle and verification hooks.",
       image: "assets/systemd-orchestration.svg",
       href: `${docsBase}/systemd-graph.md`,
     },
     {
       title: "Handoff Proof",
-      copy: "Verification, docs, recovery notes, and next steps are part of delivery.",
+      copy: "Delivery can include verification, docs, recovery notes, and next steps depending on scope.",
       image: "assets/verification-suite.svg",
       href: `${docsBase}/testing.md`,
     },
@@ -55,35 +55,35 @@
   const packages = [
     {
       name: "Private Core",
-      fit: "For teams that need owned login, docs, files, backups, and a clear portal.",
+      fit: "For deployments that need owned login, docs, files, backups, and a clear portal.",
       items: [
-        "Portal, Caddy, Keycloak, and service routing",
-        "BookStack knowledge base and Seafile files",
-        "Vaultwarden or scoped secrets/password workflow",
-        "Kopia backup surface and basic observability",
-        "Verification, docs, and handoff notes",
+        "Portal, Caddy, Keycloak, and service routing where selected",
+        "BookStack knowledge base and Seafile files when useful",
+        "Vaultwarden or another scoped secrets/password workflow",
+        "Backup and basic observability options",
+        "Verification, docs, and handoff notes by scope",
       ],
     },
     {
       name: "Team Platform",
-      fit: "For replacing scattered team SaaS with scoped client and employee surfaces.",
+      fit: "For deployments that benefit from scoped client and employee surfaces.",
       items: [
-        "Everything in Private Core",
-        "Huly for employee work cockpit",
-        "Planka and Donetick for client-visible work",
-        "SOGo, Element, Forgejo, and ERPNext where useful",
-        "Clear client/employee/operator service lanes",
+        "Private Core plus selected collaboration modules",
+        "Huly as an employee work cockpit option",
+        "Planka or Donetick for client-visible work when appropriate",
+        "SOGo, Element, Forgejo, and ERPNext where they fit",
+        "Documented client/employee/operator service lanes",
       ],
     },
     {
       name: "AI And Automation Lab",
-      fit: "For teams that want agent-friendly automation and private technical workspaces.",
+      fit: "For deployments that need agent-friendly automation or private technical workspaces.",
       items: [
-        "Everything in Team Platform",
-        "JupyterHub and disposable workspaces",
+        "Team Platform plus selected technical modules",
+        "JupyterHub and disposable workspaces when needed",
         "Qdrant/OpenSearch-backed knowledge options",
         "AI connector bridge where scoped",
-        "Agent-ready containers and automation paths",
+        "Agent-ready containers and automation paths by design",
       ],
     },
   ];
@@ -91,7 +91,7 @@
   const operationModes = [
     {
       name: "Handoff / Self-Service",
-      fit: "For clients who want the stack deployed, documented, and handed over.",
+      fit: "For clients who want a deployed, documented stack they can operate.",
       items: [
         "You own the server, domain, accounts, and admin decisions",
         "You get verification results, docs, and next maintenance steps",
@@ -100,7 +100,7 @@
     },
     {
       name: "Managed Operations",
-      fit: "For clients who want the stack but do not want to run day-to-day ops themselves.",
+      fit: "For clients who want a private stack but prefer scoped ongoing operational help.",
       items: [
         "I stay involved for planned updates, monitoring review, and troubleshooting",
         "Coverage, response times, access, and billing are agreed up front",
@@ -112,26 +112,26 @@
   const serviceSurfaces = [
     {
       lane: "Client surface",
-      copy: "The tools customers, members, or external collaborators can safely use when enabled for a deployment.",
+      copy: "Tools customers, members, or external collaborators may use when enabled for a deployment.",
       services: ["Portal", "BookStack", "Planka", "Seafile", "SOGo", "Element", "Donetick"],
     },
     {
       lane: "Employee surface",
-      copy: "Internal work and operating context for the people running delivery.",
+      copy: "Internal work and operating context for the people running delivery, where the deployment needs it.",
       services: ["Huly", "ERPNext", "Forgejo", "JupyterHub", "Workspaces", "Progression"],
     },
     {
       lane: "Operator surface",
-      copy: "Private control surfaces for keeping the stack visible, recoverable, and auditable.",
+      copy: "Control surfaces for keeping selected services visible, recoverable, and auditable.",
       services: ["Grafana", "Prometheus", "Alertmanager", "Kopia", "Keycloak", "Caddy"],
     },
   ];
 
   const audience = [
-    "Small teams replacing scattered SaaS accounts",
-    "Agencies that need client-facing delivery portals",
+    "Small teams reviewing whether scattered SaaS accounts should be consolidated",
+    "Agencies that may need client-facing delivery portals",
     "Open-source-friendly businesses",
-    "Technical founders who want agent-ready infrastructure",
+    "Technical founders evaluating agent-ready infrastructure",
     "Communities, co-ops, and private organizations",
     "Clients willing to define ownership, access, and support expectations",
   ];
@@ -150,15 +150,15 @@
   const buyerProof = [
     {
       label: "Inspect the generator",
-      text: "The public repo shows the stack generator, module contracts, docs, tests, and website source.",
+      text: "The public repo shows the generator, module contracts, docs, tests, and website source.",
     },
     {
       label: "Check the boundaries",
-      text: "Client, employee, and operator surfaces are explicit instead of being treated as one shared app pile.",
+      text: "Client, employee, and operator surfaces can be made explicit instead of being treated as one shared app pile.",
     },
     {
       label: "Migrate in stages",
-      text: "The guided migration path decides what to replace now, what to keep, and what to add later.",
+      text: "The migration path can identify what to replace now, what to keep, and what to consider later.",
     },
   ];
 
@@ -231,14 +231,14 @@
           el("p", {
             className: "lede",
             text:
-              "A modular self-hosted SaaS stack with role-aware client, employee, operator, and AI surfaces under one owned system.",
+              "A modular self-hosted stack that can combine client, employee, operator, and AI surfaces under one owned system.",
           }),
           el("p", {
             className: "mission",
-            text: "Start with a guided migration. Add only the modules your team actually needs.",
+            text: "Start with discovery. Add only the modules that fit the deployment.",
           }),
           el("div", { className: "actions", "aria-label": "Calls to action" }, [
-            externalLink(links.intake, "Message about your stack", "button primary"),
+            externalLink(links.intake, "Review the checklist", "button primary"),
             externalLink(links.repo, "Inspect the repo", "button"),
             externalLink(links.packages, "Compare modules", "button"),
           ]),
@@ -257,11 +257,11 @@
       el("div", { className: "section-grid" }, [
         el("div", {}, [
           el("p", { className: "eyebrow", text: "The problem" }),
-          el("h2", { text: "Your tools grew one subscription at a time. Now access, work, and data are scattered." }),
+          el("h2", { text: "Many teams accumulate tools one subscription at a time." }),
         ]),
         el("p", {
           text:
-            "Most small teams do not need a heavyweight enterprise suite. They need a private stack where client-facing tools, employee work, operations, and AI automation have clear boundaries.",
+            "Some teams benefit from bringing selected client-facing tools, employee work, operations, and AI automation into a private stack with clearer boundaries. Some tools should stay SaaS.",
         }),
       ]),
       list(painPoints, "pill-list"),
@@ -272,8 +272,8 @@
     return el("section", { className: "band", id: "surfaces" }, [
       sectionHeading(
         "Role-aware surfaces",
-        "Clients and employees should not see the same system.",
-        "Keycloak enforces who can enter. The Portal presents the right tools for each audience. Employees can manage client surfaces; clients do not see internal tools.",
+        "Client and employee surfaces can be separated when the deployment needs it.",
+        "Keycloak can enforce who enters each surface. The Portal can present different tools by audience. Employees may manage client surfaces while clients remain outside internal tools.",
       ),
       el(
         "div",
@@ -294,7 +294,7 @@
       sectionHeading(
         "Buyer proof",
         "A product page can make claims. A repo lets you check the delivery model.",
-        "Use this page as the public proof layer next to the Upwork product listing: inspect the source, review the module boundaries, and decide whether Platform Zero fits your migration.",
+        "Use this page as the public proof layer next to the Upwork product listing: inspect the source, review the module boundaries, and decide whether this approach fits your migration.",
       ),
       el(
         "div",
@@ -314,16 +314,16 @@
       el("div", { className: "section-grid" }, [
         el("div", {}, [
           el("p", { className: "eyebrow", text: "The offer" }),
-          el("h2", { text: "A modular private stack, not another account pile." }),
+          el("h2", { text: "A modular private stack for cases where ownership matters." }),
         ]),
         el("div", { className: "stacked-copy" }, [
           el("p", {
             text:
-              "The delivery starts with your current tools, users, data, client access, employee workflows, and automation goals. From there, we decide what is worth replacing, what should stay SaaS, and which modules are the smallest useful fit.",
+              "The delivery starts with your current tools, users, data, client access, employee workflows, and automation goals. From there, we identify what may be worth replacing, what should stay SaaS, and which modules are the smallest useful fit.",
           }),
           el("p", {
             text:
-              "When a private stack is the right move, there are two engagement modes: a repo-backed handoff your team can operate, or managed operations where I stay responsible for agreed ongoing work.",
+              "When a private stack is the right move, there are two likely engagement modes: a repo-backed handoff your team can operate, or managed operations where I stay responsible for agreed ongoing work.",
           }),
         ]),
       ]),
@@ -334,7 +334,7 @@
     return el("section", { className: "band", id: "operation-modes" }, [
       sectionHeading(
         "Operation modes",
-        "Choose who runs Platform Zero after launch.",
+        "Decide who runs the stack after launch.",
         "The same underlying stack can be delivered as a self-service handoff or retained as managed operations. The difference is ongoing responsibility, response expectations, and support scope.",
       ),
       el(
@@ -376,7 +376,7 @@
           el("h3", { text: "geraldsummers/sso-stack-generator" }),
           el("p", {
             text:
-              "The repository contains the generator source, service module contracts, deployment contract, verification notes, and this website's source.",
+              "The repository contains generator source, service module contracts, deployment notes, verification notes, and this website's source.",
           }),
         ]),
         el("div", { className: "repo-actions" }, [
@@ -399,7 +399,7 @@
       sectionHeading(
         "Packages",
         "Choose the smallest useful stack.",
-        "Packages define what gets deployed. Operation mode defines who keeps it healthy afterward.",
+        "Packages are starting points, not fixed promises. Final scope depends on the actual deployment.",
       ),
       el(
         "div",
@@ -420,13 +420,13 @@
       el("div", { className: "section-grid" }, [
         el("div", {}, [
           el("p", { className: "eyebrow", text: "Works best for" }),
-          el("h2", { text: "Teams that want private tools without turning them into a mystery server." }),
+          el("h2", { text: "Teams that want private tools with clear ownership expectations." }),
         ]),
         el("div", {}, [
           el("p", {
             className: "section-note",
             text:
-              "The strongest projects have a clear owner, a real reason to reduce SaaS dependency, and an explicit choice about client access, employee workflows, and ongoing operations.",
+              "The strongest projects have a clear owner, a specific reason to reduce or reorganize SaaS dependency, and an explicit choice about client access, employee workflows, and ongoing operations.",
           }),
           list(audience, "check-list"),
         ]),
@@ -437,10 +437,10 @@
   function renderNextStep() {
     return el("section", { className: "cta", id: "next" }, [
       el("p", { className: "eyebrow", text: "Next step" }),
-      el("h2", { text: "Bring the messy tool list." }),
+      el("h2", { text: "Bring the current tool list." }),
       el("p", {
         text:
-          "Send the current SaaS list, user groups, client-facing needs, employee workflows, domain situation, migration goals, and support expectations. I will map what can be replaced, what should stay SaaS, and what Platform Zero would actually need.",
+          "Send the current SaaS list, user groups, client-facing needs, employee workflows, domain situation, migration goals, and support expectations. I will map what might be replaced, what should stay SaaS, and what a private stack would actually need.",
       }),
       el("div", { className: "actions centered" }, [
         externalLink(links.intake, "Open migration checklist", "button primary"),
