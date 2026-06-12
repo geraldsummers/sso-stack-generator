@@ -23,7 +23,14 @@ test.describe('portal role dashboards', () => {
       return await response.json() as ProfileSummary[];
     });
 
-    expect(profiles.length).toBeGreaterThanOrEqual(15);
+    expect(profiles.map((profile) => profile.profile)).toEqual([
+      'employee',
+      'client',
+      'team-lead',
+      'business-owner',
+      'ai-data-analyst',
+      'platform-operator-security',
+    ]);
     fs.mkdirSync(screenshotRoot, { recursive: true });
     await page.goto('/');
     await expect(page.getByRole('heading', { name: 'Stack Portal' })).toBeVisible();

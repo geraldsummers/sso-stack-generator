@@ -150,15 +150,16 @@ class PortalService(
 
     private fun modulesForProfile(profile: ProfileDefinition, modules: List<PortalModule>): List<PortalModule> {
         val serviceSet = profile.services.toSet()
-        return modules.filter { module ->
-            module.component in serviceSet || profile.id in module.profiles || compatibilityProfile(profile.id) in module.profiles
+        val explicitModules = modules.filter { module -> module.component in serviceSet }
+        return explicitModules.ifEmpty {
+            modules.filter { module -> profile.id in module.profiles || compatibilityProfile(profile.id) in module.profiles }
         }
     }
 
     private fun compatibilityProfile(profileId: String): String = when (profileId) {
-        "personal", "external-client", "site-ops", "publishing-media" -> "user"
-        "platform-operator", "developer-builder", "ai-data-analyst", "knowledge-steward" -> "operator"
-        "security-identity-admin", "finance-admin", "business-owner" -> "admin"
+        "employee", "client" -> "user"
+        "platform-operator-security", "ai-data-analyst", "team-lead" -> "operator"
+        "business-owner" -> "admin"
         else -> "operator"
     }
 
@@ -256,17 +257,23 @@ class PortalService(
                 KpiTile("delivery", "Delivery health", "${modules.count { it.category == "Apps" || it.category == "Knowledge" }} areas", "Work, docs, communication, and proof", "good"),
                 KpiTile("risk", "Open risk signal", sources.count { it.status != "ok" }.toString(), "Partial/unavailable sources", if (sources.any { it.status != "ok" }) "attention" else "good")
             )
-            "platform-operator" -> listOf(
+            "platform-operator-security" -> listOf(
                 KpiTile("health", "Health sources", "$liveOk/$liveTotal", "Live operational endpoints", if (liveOk == liveTotal) "good" else "attention"),
                 KpiTile("routes", "Route-backed modules", modules.count { it.href.startsWith("https://") }.toString(), "Contracted service routes", "good"),
-                KpiTile("backups", "Backup targets", backupTargets.toString(), "Kopia/report-backed coverage", "good"),
-                KpiTile("tests", "Evidence checks", evidenceCount.toString(), "Verification expectations", "good")
+                KpiTile("identity", "Identity surface", modulePresent(modules, "core"), "Keycloak, routes, and policies", moduleTone(modules, "core")),
+                KpiTile("access", "Access checks", modules.flatMap { it.evidence }.count { "auth" in it || "access" in it || "route" in it }.toString(), "Access-related evidence", "good")
             )
-            "security-identity-admin" -> listOf(
-                KpiTile("auth", "Auth modes", modules.map { it.auth }.toSet().size.toString(), "Distinct access patterns", "attention"),
-                KpiTile("users", "Identity surface", modulePresent(modules, "core"), "Keycloak and route policies", moduleTone(modules, "core")),
-                KpiTile("vault", "Vault entry point", modulePresent(modules, "vaultwarden"), "No vault contents exposed", moduleTone(modules, "vaultwarden")),
-                KpiTile("evidence", "Access checks", modules.flatMap { it.evidence }.count { "auth" in it || "access" in it || "route" in it }.toString(), "Access-related evidence", "good")
+            "employee" -> listOf(
+                KpiTile("mail", "Inbox signal", modulePresent(modules, "sogo"), "Mail and calendar source", moduleTone(modules, "sogo")),
+                KpiTile("rooms", "Team rooms", modulePresent(modules, "matrix"), "Element / Matrix collaboration", moduleTone(modules, "matrix")),
+                KpiTile("tasks", "Assigned work", modules.count { it.component in setOf("planka", "donetick", "erpnext") }.toString(), "Task and project surfaces", "good"),
+                KpiTile("docs", "Knowledge access", modules.count { it.component in setOf("bookstack", "seafile") }.toString(), "Docs and shared files", "good")
+            )
+            "client" -> listOf(
+                KpiTile("files", "Shared files", modulePresent(modules, "seafile"), "Scoped file delivery", moduleTone(modules, "seafile")),
+                KpiTile("deliverables", "Deliverables", modules.count { it.component in setOf("planka", "erpnext", "bookstack") }.toString(), "Project, docs, and approvals", "good"),
+                KpiTile("meetings", "Meeting trail", modulePresent(modules, "sogo"), "Calendar and email context", moduleTone(modules, "sogo")),
+                KpiTile("invoices", "Billing view", modulePresent(modules, "erpnext"), "Invoice and account status", moduleTone(modules, "erpnext"))
             )
             else -> base.take(if (densityFor(profile.id) == DashboardDensity.EXECUTIVE) 3 else 4)
         }
@@ -314,21 +321,12 @@ class PortalService(
     }
 
     private fun visualLanguageFor(profileId: String): VisualLanguage = when (profileId) {
-        "personal" -> VisualLanguage("#37d3b7", "today cockpit", "timeline-ring-pulse", "calm")
+        "employee" -> VisualLanguage("#37d3b7", "employee work home", "mail-task-docs-rooms", "calm")
+        "client" -> VisualLanguage("#76a9fa", "customer portal", "deliverables-files-approvals", "focused")
         "team-lead" -> VisualLanguage("#76a9fa", "delivery control board", "kanban-heatmap-grid", "operational")
-        "project-client-owner" -> VisualLanguage("#8f7cff", "client command center", "timeline-burndown-strip", "operational")
         "business-owner" -> VisualLanguage("#81d67a", "executive pulse", "sparkline-funnel-quadrant", "sparse")
-        "finance-admin" -> VisualLanguage("#e6ba5e", "finance operations", "aging-calendar-queue", "precise")
-        "sales-relationship" -> VisualLanguage("#f0a15f", "relationship pipeline", "funnel-timeline-stage", "active")
-        "knowledge-steward" -> VisualLanguage("#5ad0f0", "knowledge health map", "freshness-coverage-gap", "curatorial")
         "ai-data-analyst" -> VisualLanguage("#b48cff", "analysis lab", "pipeline-run-queue", "dense")
-        "developer-builder" -> VisualLanguage("#6dd6a5", "engineering delivery", "flow-runner-release", "dense")
-        "platform-operator" -> VisualLanguage("#37d3b7", "ops cockpit", "matrix-coverage-alerts", "cockpit")
-        "security-identity-admin" -> VisualLanguage("#ef7d78", "access risk console", "policy-risk-vault", "cockpit")
-        "site-ops" -> VisualLanguage("#95d66f", "facilities panel", "sensor-device-calendar", "practical")
-        "publishing-media" -> VisualLanguage("#e58bd8", "publishing desk", "calendar-lanes-library", "editorial")
-        "external-client" -> VisualLanguage("#76a9fa", "client portal", "deliverable-approval-progress", "focused")
-        "reviewer-buyer" -> VisualLanguage("#e6ba5e", "proof dashboard", "catalog-proof-coverage", "evidence")
+        "platform-operator-security" -> VisualLanguage("#37d3b7", "ops and access cockpit", "health-policy-alerts", "cockpit")
         else -> VisualLanguage("#37d3b7", "stack dashboard", "coverage-grid", "operational")
     }
 
@@ -340,80 +338,35 @@ class PortalService(
         val proofOk = sources.count { it.status == "ok" }
         val proofTotal = sources.size.coerceAtLeast(1)
         return when (profile.id) {
-            "personal" -> listOf(
-                timeline("today_flow", "Today flow", "Calendar, work, chat, docs", "09:00" to 28.0, "11:30" to 62.0, "14:00" to 38.0, "16:30" to 74.0),
-                ring("task_ring", "Task ring", "Done / active / waiting", 72.0, "%", "good"),
-                lanes("comm_pulse", "Comms pulse", "Mail and team rooms", "Mail" to "6", "Rooms" to "3", "Mentions" to "2")
+            "employee" -> listOf(
+                timeline("workday_flow", "Workday flow", "Mail, meetings, work, docs", "Inbox" to 34.0, "Meetings" to 22.0, "Tasks" to 48.0, "Docs" to 28.0),
+                bars("work_queue", "My work queue", "Assigned work by state", "Due today" to 6.0, "Waiting" to 3.0, "Review" to 4.0, "Done" to 12.0),
+                lanes("workspace_surfaces", "Workspace surfaces", "Integrated staff tools", "Mail" to "ready", "Rooms" to "3", "Files" to "18", "AI" to "on")
+            )
+            "client" -> listOf(
+                timeline("deliverables", "Deliverables", "Scoped client work", "Draft" to 85.0, "Review" to 62.0, "Approval" to 35.0, "Done" to 18.0),
+                bars("client_progress", "Request progress", "Open customer work", "Open" to 8.0, "Doing" to 4.0, "Waiting" to 2.0, "Done" to 15.0),
+                lanes("client_pack", "Client pack", "Shared surfaces", "Files" to "12", "Docs" to "6", "Meetings" to "3", "Invoices" to "2")
             )
             "team-lead" -> listOf(
                 bars("delivery_flow", "Delivery flow", "Backlog to done", "Backlog" to 18.0, "Doing" to 9.0, "Review" to 6.0, "Done" to 24.0),
                 heatmap("blocked_heat", "Blocked work", "Pressure by lane", "API" to 2.0, "Docs" to 1.0, "Client" to 4.0, "Ops" to 1.0),
                 lanes("workload", "Team load", "Synthetic capacity", "Alice" to "82%", "Bob" to "64%", "Charlie" to "91%", "Damian" to "58%")
             )
-            "project-client-owner" -> listOf(
-                timeline("milestones", "Milestones", "Plan through handoff", "Kickoff" to 100.0, "Build" to 68.0, "Review" to 42.0, "Handoff" to 18.0),
-                bars("burndown", "Task burndown", "Open work trend", "Mon" to 31.0, "Tue" to 26.0, "Wed" to 19.0, "Thu" to 14.0),
-                lanes("client_assets", "Client assets", "Files, invoices, notes", "Files" to "12", "Invoices" to "3", "Risks" to "2")
-            )
             "business-owner" -> listOf(
                 spark("revenue", "Revenue pulse", "Seeded month trend", 48.0, 52.0, 58.0, 55.0, 64.0, 71.0),
                 funnel("pipeline", "Pipeline", "Lead to signed", "Leads" to 44.0, "Qualified" to 24.0, "Proposal" to 12.0, "Won" to 5.0),
                 heatmap("risk_quad", "Delivery risk", "Where attention goes", "Finance" to 2.0, "Delivery" to 1.0, "Sales" to 3.0, "Ops" to 1.0)
-            )
-            "finance-admin" -> listOf(
-                bars("invoice_aging", "Invoice aging", "Receivables by age", "0-7" to 11.0, "8-30" to 7.0, "31-60" to 3.0, "60+" to 1.0),
-                timeline("payable_calendar", "Payable calendar", "Upcoming obligations", "Fri" to 3.0, "Mon" to 5.0, "Wed" to 2.0, "Next" to 4.0),
-                lanes("approvals", "Approval queue", "Docs needing action", "Purchases" to "4", "Expenses" to "7", "Contracts" to "2")
-            )
-            "sales-relationship" -> listOf(
-                funnel("lead_funnel", "Lead funnel", "Relationship stages", "Leads" to 36.0, "Calls" to 21.0, "Proposals" to 9.0, "Renewals" to 4.0),
-                timeline("followups", "Follow-ups", "Contact rhythm", "Today" to 8.0, "Tomorrow" to 5.0, "Week" to 12.0, "Late" to 2.0),
-                bars("proposal_stage", "Proposal stages", "Draft to signed", "Draft" to 6.0, "Sent" to 5.0, "Review" to 3.0, "Signed" to 2.0)
-            )
-            "knowledge-steward" -> listOf(
-                heatmap("freshness", "Doc freshness", "Review age by area", "Runbooks" to 1.0, "Client" to 3.0, "Ops" to 2.0, "Sales" to 4.0),
-                bars("coverage", "Coverage", "Missing docs by area", "Services" to 19.0, "Restore" to 11.0, "Access" to 15.0, "Handoff" to 8.0),
-                timeline("decisions", "Decision log", "Recent captured choices", "Mon" to 3.0, "Tue" to 1.0, "Wed" to 4.0, "Thu" to 2.0)
             )
             "ai-data-analyst" -> listOf(
                 bars("data_pipeline", "Data pipeline", "Ingest to report", "Sources" to 18.0, "Indexed" to 15.0, "Notebooks" to 7.0, "Reports" to 4.0),
                 spark("notebook_runs", "Notebook runs", "Executed outputs", 3.0, 4.0, 6.0, 5.0, 9.0, 8.0),
                 lanes("agent_queue", "Agent queue", "Automation-ready work", "Prompts" to "14", "MCP" to "ok", "Workspaces" to "6")
             )
-            "developer-builder" -> listOf(
-                spark("repo_activity", "Repo activity", "Commits and reviews", 8.0, 12.0, 7.0, 15.0, 10.0, 18.0),
-                bars("flow", "Issue flow", "Work state", "Open" to 16.0, "PR" to 5.0, "Review" to 4.0, "Merged" to 9.0),
-                lanes("runner_grid", "Runner grid", "CI capacity", "Runner A" to "online", "Runner B" to "idle", "Workspace" to "ready")
-            )
-            "platform-operator" -> listOf(
-                heatmap("service_matrix", "Service matrix", "Health across surfaces", "Routes" to 1.0, "Auth" to 1.0, "Backups" to 2.0, "Logs" to 1.0),
-                bars("coverage", "Coverage", "Contracted proof", "Routes" to modules.count { it.href.startsWith("https://") }.toDouble(), "Backups" to modules.sumOf { it.backupTargets.size }.toDouble(), "Checks" to modules.sumOf { it.evidence.size }.toDouble(), "Sources" to proofOk.toDouble()),
-                lanes("alerts", "Alerts", "Severity strip", "Critical" to "0", "Warn" to "${proofTotal - proofOk}", "OK" to "$proofOk")
-            )
-            "security-identity-admin" -> listOf(
-                heatmap("policy_matrix", "Policy matrix", "Auth surface by class", "OIDC" to 2.0, "Forward" to 3.0, "Bearer" to 4.0, "Native" to 2.0),
-                spark("failed_logins", "Failed login trend", "Seeded security signal", 2.0, 1.0, 4.0, 2.0, 5.0, 1.0),
-                lanes("vault_map", "Vault exposure", "Safe summary only", "Vault" to "sealed", "Groups" to "mapped", "Stale" to "2")
-            )
-            "site-ops" -> listOf(
-                heatmap("sensor_grid", "Sensor grid", "Local status", "Office" to 1.0, "Rack" to 2.0, "Power" to 1.0, "Climate" to 3.0),
-                lanes("devices", "Devices", "Offline and routines", "Offline" to "1", "Automations" to "18", "Routines" to "7"),
-                timeline("maintenance", "Maintenance", "Upcoming work", "Today" to 2.0, "Week" to 5.0, "Month" to 8.0)
-            )
-            "publishing-media" -> listOf(
-                timeline("publish_calendar", "Publishing calendar", "Draft to public", "Draft" to 7.0, "Edit" to 4.0, "Scheduled" to 3.0, "Live" to 9.0),
-                bars("media_mix", "Media library", "Asset composition", "Docs" to 18.0, "Images" to 32.0, "Video" to 7.0, "Training" to 11.0),
-                lanes("campaigns", "Campaign files", "Current packets", "Launch" to "ready", "Assets" to "23", "Reviews" to "4")
-            )
-            "external-client" -> listOf(
-                timeline("deliverables", "Deliverables", "Scoped client work", "Draft" to 85.0, "Review" to 62.0, "Approval" to 35.0, "Done" to 18.0),
-                bars("client_progress", "Client progress", "Task state", "Open" to 8.0, "Doing" to 4.0, "Waiting" to 2.0, "Done" to 15.0),
-                lanes("client_pack", "Client pack", "Shared surfaces", "Files" to "12", "Docs" to "6", "Meetings" to "3")
-            )
-            "reviewer-buyer" -> listOf(
-                heatmap("catalog_matrix", "Catalog matrix", "Modules by proof", "Apps" to 4.0, "AI" to 3.0, "Ops" to 2.0, "Security" to 2.0),
-                bars("proof_coverage", "Proof coverage", "What can be inspected", "Auth" to 12.0, "Backup" to 11.0, "Restore" to 7.0, "Screens" to 20.0),
-                ring("readiness", "Review readiness", "Demo evidence available", ((proofOk.toDouble() / proofTotal) * 100.0).coerceIn(0.0, 100.0), "%", if (proofOk == proofTotal) "good" else "attention")
+            "platform-operator-security" -> listOf(
+                heatmap("service_policy_matrix", "Service + policy matrix", "Health and access surfaces", "Routes" to 1.0, "Auth" to 2.0, "Backups" to 2.0, "Security" to 3.0),
+                bars("coverage", "Proof coverage", "Operations and security proof", "Routes" to modules.count { it.href.startsWith("https://") }.toDouble(), "Backups" to modules.sumOf { it.backupTargets.size }.toDouble(), "Checks" to modules.sumOf { it.evidence.size }.toDouble(), "Sources" to proofOk.toDouble()),
+                lanes("security_queue", "Alert and access queue", "Safe summary only", "Critical" to "0", "Warn" to "${proofTotal - proofOk}", "Vault" to "sealed", "Stale users" to "2")
             )
             else -> listOf(
                 bars("coverage", "Coverage", "Stack surfaces", "Modules" to modules.size.toDouble(), "Evidence" to modules.sumOf { it.evidence.size }.toDouble()),
@@ -432,25 +385,25 @@ class PortalService(
             ActionItem("Review ${it.label}", it.summary, "high")
         }
         val roleActions = when (profile.id) {
-            "platform-operator" -> listOf(
-                ActionItem("Open service health", "Check live dashboards, logs, and recent alert state.", "high", moduleHref(modules, "observability")),
+            "platform-operator-security" -> listOf(
+                ActionItem("Open service health", "Check dashboards, logs, route state, and alert summaries.", "high", moduleHref(modules, "observability")),
                 ActionItem("Review backup proof", "Confirm snapshots and restore evidence are current.", "normal", moduleHref(modules, "kopia"))
-            )
-            "security-identity-admin" -> listOf(
-                ActionItem("Review access boundary", "Check identity, routes, stale accounts, and vault entry points.", "high", moduleHref(modules, "core")),
-                ActionItem("Confirm vault health", "Open the vault service without exposing secret contents.", "normal", moduleHref(modules, "vaultwarden"))
             )
             "ai-data-analyst" -> listOf(
                 ActionItem("Launch workspace", "Start a disposable analysis workspace for current datasets.", "high", moduleHref(modules, "workspace-provisioner")),
                 ActionItem("Check search coverage", "Open indexed knowledge and query status.", "normal", moduleHref(modules, "search"))
             )
-            "finance-admin" -> listOf(
-                ActionItem("Review finance queue", "Open ERPNext for invoices, payables, and approvals.", "high", moduleHref(modules, "erpnext")),
-                ActionItem("Check approval docs", "Review finance handoff files and admin docs.", "normal", moduleHref(modules, "seafile"))
-            )
             "business-owner" -> listOf(
                 ActionItem("Read executive brief", "Review high-level delivery, finance, and risk signals.", "normal", moduleHref(modules, "bookstack")),
                 ActionItem("Inspect delivery health", "Open projects and active delivery surface.", "normal", moduleHref(modules, "erpnext"))
+            )
+            "employee" -> listOf(
+                ActionItem("Open work home", "Review mail, rooms, assigned tasks, docs, and shared files.", "normal", moduleHref(modules, "sogo")),
+                ActionItem("Draft with AI connector", "Use stack context for a safe first draft or task summary.", "normal", moduleHref(modules, "chatgpt-connector"))
+            )
+            "client" -> listOf(
+                ActionItem("Review deliverables", "Open scoped files, docs, requests, approvals, and invoice state.", "normal", moduleHref(modules, "seafile")),
+                ActionItem("Check meeting trail", "Review recent meetings and follow-up context.", "normal", moduleHref(modules, "sogo"))
             )
             else -> listOf(
                 ActionItem("Open primary module", "Drill into the most relevant live service for this role.", "normal", modules.firstOrNull()?.href),
@@ -499,17 +452,23 @@ class PortalService(
             "users", "groups", "failed_logins", "service_policies", "stale_accounts" -> modules.filter { it.auth.contains("oidc") || it.auth.contains("keycloak") || it.component == "core" }.take(6).map {
                 WidgetItem(it.name, it.auth, "Owner: ${it.owner.ifBlank { "platform" }}", "attention", it.href)
             }
-            "datasets", "recent_notebooks", "workspace_launcher", "ingestion_jobs", "analysis_prompts" -> modules.filter { it.category in setOf("AI", "Knowledge", "Development") }.take(6).map {
+            "datasets", "recent_notebooks", "workspace_launcher", "ingestion_jobs", "analysis_prompts", "search_coverage", "agent_runs" -> modules.filter { it.category in setOf("AI", "Knowledge", "Development") }.take(6).map {
                 WidgetItem(it.name, it.category, it.description, "good", it.href)
             }
-            "invoices", "unpaid_invoices", "overdue_payments", "payables", "purchase_orders", "receivables", "revenue" -> modules.filter { it.component == "erpnext" || it.component == "seafile" || it.component == "bookstack" }.take(6).map {
+            "invoices", "unpaid_invoices", "overdue_payments", "payables", "purchase_orders", "receivables", "revenue", "cash_runway", "client_health" -> modules.filter { it.component == "erpnext" || it.component == "seafile" || it.component == "bookstack" || it.component == "grafana" }.take(6).map {
                 WidgetItem(it.name, it.category, it.description, "neutral", it.href)
             }
-            "recent_files", "client_files", "approval_docs", "campaign_files" -> modules.filter { it.component == "seafile" || it.component == "onlyoffice" || it.component == "bookstack" }.take(6).map {
+            "recent_files", "client_files", "approval_docs", "approval_queue", "campaign_files", "shared_files", "client_docs", "support_links" -> modules.filter { it.component == "seafile" || it.component == "onlyoffice" || it.component == "bookstack" || it.component == "erpnext" }.take(6).map {
                 WidgetItem(it.name, it.category, it.description, "neutral", it.href)
             }
-            "open_tasks", "assigned_tasks", "active_work", "blocked_tasks", "overdue_work", "client_tasks" -> modules.filter { it.component == "planka" || it.component == "donetick" || it.component == "erpnext" }.take(6).map {
+            "open_tasks", "assigned_tasks", "my_tasks", "active_work", "blocked_tasks", "overdue_work", "client_tasks", "client_requests" -> modules.filter { it.component == "planka" || it.component == "donetick" || it.component == "erpnext" }.take(6).map {
                 WidgetItem(it.name, it.category, it.description, "good", it.href)
+            }
+            "mailbox" -> modules.filter { it.component == "sogo" }.take(6).map {
+                WidgetItem(it.name, it.category, it.description, "neutral", it.href)
+            }
+            "team_rooms" -> modules.filter { it.component == "matrix" }.take(6).map {
+                WidgetItem(it.name, it.category, it.description, "neutral", it.href)
             }
             "meetings", "meeting_history", "last_contact", "next_follow_up", "mentions" -> modules.filter { it.component == "sogo" || it.component == "matrix" || it.component == "mastodon" }.take(6).map {
                 WidgetItem(it.name, it.category, it.description, "neutral", it.href)
@@ -527,13 +486,15 @@ class PortalService(
                 WidgetSpec(title, "status_matrix", "Live operational signal and proof state.", "attention")
             "revenue", "cash_runway", "receivables", "pipeline", "delivery_health", "executive_brief" ->
                 WidgetSpec(title, "kpi", "High-level business signal with drill-through.", "neutral")
-            "datasets", "recent_notebooks", "workspace_launcher", "ingestion_jobs", "analysis_prompts" ->
+            "datasets", "recent_notebooks", "workspace_launcher", "ingestion_jobs", "analysis_prompts", "search_coverage", "agent_runs" ->
                 WidgetSpec(title, "activity_feed", "Analysis workspace and knowledge pipeline context.", "good")
             "users", "groups", "failed_logins", "service_policies", "stale_accounts", "vault_entry_points" ->
                 WidgetSpec(title, "risk_queue", "Access, identity, and security review surface.", "attention")
-            "open_tasks", "assigned_tasks", "active_work", "blocked_tasks", "overdue_work", "client_tasks" ->
+            "open_tasks", "assigned_tasks", "my_tasks", "active_work", "blocked_tasks", "overdue_work", "client_tasks", "client_requests" ->
                 WidgetSpec(title, "kanban_summary", "Work queue summarized from project/task services.", "good")
-            "recent_files", "client_files", "approval_docs", "campaign_files", "deliverables" ->
+            "mailbox", "team_rooms", "meetings", "meeting_history" ->
+                WidgetSpec(title, "message_feed", "Mail, calendar, and team room context.", "neutral")
+            "recent_files", "client_files", "shared_files", "approval_docs", "approval_queue", "campaign_files", "deliverables", "client_docs", "support_links" ->
                 WidgetSpec(title, "table", "Files, docs, and deliverables from shared work surfaces.", "neutral")
             else -> WidgetSpec(title, "table", "Stack-backed signals with safe drill-through metadata.", "neutral")
         }
@@ -543,12 +504,14 @@ class PortalService(
         "service_health", "alerts", "route_health" -> moduleHref(modules, "observability")
         "backup_status", "backup_proof", "restore_drills" -> moduleHref(modules, "kopia")
         "workspace_launcher", "workspace_launch" -> moduleHref(modules, "workspace-provisioner")
-        "datasets", "search_gaps" -> moduleHref(modules, "search")
+        "datasets", "search_gaps", "search_coverage" -> moduleHref(modules, "search")
         "users", "groups", "auth_model" -> moduleHref(modules, "core")
         "vault_entry_points" -> moduleHref(modules, "vaultwarden")
         "invoices", "unpaid_invoices", "revenue", "receivables" -> moduleHref(modules, "erpnext")
         "recent_docs", "client_docs", "public_docs" -> moduleHref(modules, "bookstack")
-        "recent_files", "client_files", "deliverables" -> moduleHref(modules, "seafile")
+        "recent_files", "client_files", "shared_files", "deliverables" -> moduleHref(modules, "seafile")
+        "mailbox", "meetings", "meeting_history" -> moduleHref(modules, "sogo")
+        "team_rooms" -> moduleHref(modules, "matrix")
         else -> modules.firstOrNull()?.href
     }
 
@@ -618,8 +581,8 @@ class PortalService(
     }
 
     private fun densityFor(profileId: String): DashboardDensity = when (profileId) {
-        "business-owner", "external-client", "reviewer-buyer" -> DashboardDensity.EXECUTIVE
-        "platform-operator", "security-identity-admin", "developer-builder", "ai-data-analyst" -> DashboardDensity.COCKPIT
+        "business-owner", "client" -> DashboardDensity.EXECUTIVE
+        "platform-operator-security", "ai-data-analyst" -> DashboardDensity.COCKPIT
         else -> DashboardDensity.OPERATIONAL
     }
 

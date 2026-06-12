@@ -88,7 +88,7 @@ data class ComponentLock(val components: List<String> = emptyList())
 @Serializable
 data class PortalProfiles(
     val schemaVersion: Int = 1,
-    val defaultProfile: String = "personal",
+    val defaultProfile: String = "employee",
     val profiles: List<ProfileDefinition> = emptyList()
 )
 
