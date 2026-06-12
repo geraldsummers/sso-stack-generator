@@ -106,9 +106,16 @@ services:
     container_name: test-runner
     restart: "no"
     volumes:
-      - ${TEST_RESULTS_HOST_DIR:?TEST_RESULTS_HOST_DIR must be set by run-tests.sh}:/app/test-results
-      - ${TEST_RUNNER_RUNTIME_HOST_DIR:?TEST_RUNNER_RUNTIME_HOST_DIR must be set by run-tests.sh}:/runtime:ro
-      - ${TEST_RUNNER_HOST_XDG_RUNTIME_DIR:?TEST_RUNNER_HOST_XDG_RUNTIME_DIR must be set by run-tests.sh}:/host-user-runtime
+      - type: bind
+        source: ${TEST_RESULTS_HOST_DIR:?TEST_RESULTS_HOST_DIR must be set by run-tests.sh}
+        target: /app/test-results
+      - type: bind
+        source: ${TEST_RUNNER_RUNTIME_HOST_DIR:?TEST_RUNNER_RUNTIME_HOST_DIR must be set by run-tests.sh}
+        target: /runtime
+        read_only: true
+      - type: bind
+        source: ${TEST_RUNNER_HOST_XDG_RUNTIME_DIR:?TEST_RUNNER_HOST_XDG_RUNTIME_DIR must be set by run-tests.sh}
+        target: /host-user-runtime
     networks:
       - ai
       - caddy
@@ -137,9 +144,16 @@ services:
     command:
       - exec /container-entrypoint.sh ${TEST_RUNNER_MANAGED_COMMAND_LINE:-suite stack-contract}
     volumes:
-      - ${TEST_RESULTS_HOST_DIR:?TEST_RESULTS_HOST_DIR must be set by run-tests.sh}:/app/test-results
-      - ${TEST_RUNNER_RUNTIME_HOST_DIR:?TEST_RUNNER_RUNTIME_HOST_DIR must be set by run-tests.sh}:/runtime:ro
-      - ${TEST_RUNNER_HOST_XDG_RUNTIME_DIR:?TEST_RUNNER_HOST_XDG_RUNTIME_DIR must be set by run-tests.sh}:/host-user-runtime
+      - type: bind
+        source: ${TEST_RESULTS_HOST_DIR:?TEST_RESULTS_HOST_DIR must be set by run-tests.sh}
+        target: /app/test-results
+      - type: bind
+        source: ${TEST_RUNNER_RUNTIME_HOST_DIR:?TEST_RUNNER_RUNTIME_HOST_DIR must be set by run-tests.sh}
+        target: /runtime
+        read_only: true
+      - type: bind
+        source: ${TEST_RUNNER_HOST_XDG_RUNTIME_DIR:?TEST_RUNNER_HOST_XDG_RUNTIME_DIR must be set by run-tests.sh}
+        target: /host-user-runtime
     networks:
       - ai
       - caddy

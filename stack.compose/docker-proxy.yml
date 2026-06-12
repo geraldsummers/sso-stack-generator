@@ -87,7 +87,10 @@ services:
       ISOLATED_DOCKER_VM_LOCAL_SOCKET: /run/docker-labware/docker.sock
       ISOLATED_DOCKER_VM_REMOTE_SOCKET: /var/run/docker.sock
     volumes:
-      - ${ISOLATED_DOCKER_VM_SSH_DIR:?Set ISOLATED_DOCKER_VM_SSH_DIR to a dedicated SSH directory for isolated-docker-vm-tunnel}:/home/tunnel/.ssh:ro
+      - type: bind
+        source: ${ISOLATED_DOCKER_VM_SSH_DIR:?Set ISOLATED_DOCKER_VM_SSH_DIR to a dedicated SSH directory for isolated-docker-vm-tunnel}
+        target: /home/tunnel/.ssh
+        read_only: true
       - /run/docker-labware:/run/docker-labware
     healthcheck:
       test: ["CMD-SHELL", "curl --silent --fail --unix-socket /run/docker-labware/docker.sock http://docker/_ping >/dev/null"]
