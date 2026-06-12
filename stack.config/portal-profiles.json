@@ -24,13 +24,13 @@
       "defaultView": "delivery-board",
       "purpose": "Coordinate team work, blockers, handoffs, docs, meetings, and delivery risk.",
       "widgets": ["active_work", "blocked_tasks", "overdue_work", "team_workload", "recent_decisions", "meeting_history", "approval_queue"],
-      "services": ["planka", "erpnext", "sogo", "matrix", "bookstack", "seafile", "forgejo"]
+      "services": ["planka", "erpnext", "sogo", "matrix", "bookstack", "seafile", "forgejo", "chatgpt-connector"]
     },
     {
       "id": "business-owner",
       "name": "Business Executive",
       "defaultView": "business-pulse",
-      "purpose": "Sparse business health across pipeline, cash, delivery, clients, and operational risk.",
+      "purpose": "A decision cockpit for proposals, cash, delivery, client follow-ups, and delegated next steps.",
       "widgets": ["revenue", "cash_runway", "receivables", "pipeline", "delivery_health", "client_health", "executive_brief"],
       "services": ["erpnext", "planka", "sogo", "bookstack", "seafile", "search", "chatgpt-connector", "grafana"]
     },
@@ -38,7 +38,7 @@
       "id": "ai-data-analyst",
       "name": "AI / Data Analyst",
       "defaultView": "analysis-lab",
-      "purpose": "Notebooks, datasets, ingestion jobs, private search, AI connector workflows, and disposable workspaces.",
+      "purpose": "A launchpad for workspaces, notebooks, datasets, knowledge queries, AI drafts, and repeatable analysis.",
       "widgets": ["datasets", "recent_notebooks", "workspace_launcher", "ingestion_jobs", "analysis_prompts", "search_coverage", "agent_runs"],
       "services": ["jupyterhub", "workspace-provisioner", "search", "chatgpt-connector", "pipeline", "seafile", "forgejo", "bookstack"]
     },

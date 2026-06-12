@@ -252,10 +252,10 @@ class PortalService(
         )
         return when (profile.id) {
             "business-owner" -> listOf(
-                KpiTile("decisions", "Decisions ready", "4", "Briefs, approvals, and follow-ups prepared", "good"),
-                KpiTile("drafts", "Drafts prepared", modulePresent(modules, "chatgpt-connector"), "AI connector can prepare first-pass updates", moduleTone(modules, "chatgpt-connector")),
-                KpiTile("handoffs", "Handoffs", "${modules.count { it.component in setOf("erpnext", "planka", "bookstack", "seafile") }} tools", "Delivery, files, docs, and account context", "good"),
-                KpiTile("focus", "Focus queue", sources.count { it.status != "ok" }.coerceAtLeast(1).toString(), "Items worth an executive decision", "attention")
+                KpiTile("decisions", "Decisions ready", "4", "Approvals and delegations prepared", "good"),
+                KpiTile("drafts", "Briefs drafted", modulePresent(modules, "chatgpt-connector"), "AI connector can prepare first-pass updates", moduleTone(modules, "chatgpt-connector")),
+                KpiTile("handoffs", "Handoff tools", "${modules.count { it.component in setOf("erpnext", "planka", "bookstack", "seafile") }}", "Finance, delivery, docs, and files", "good"),
+                KpiTile("focus", "Needs owner", "2", "Work items ready to delegate", "attention")
             )
             "platform-operator-security" -> listOf(
                 KpiTile("health", "Health sources", "$liveOk/$liveTotal", "Live operational endpoints", if (liveOk == liveTotal) "good" else "attention"),
@@ -264,16 +264,28 @@ class PortalService(
                 KpiTile("access", "Access checks", modules.flatMap { it.evidence }.count { "auth" in it || "access" in it || "route" in it }.toString(), "Access-related evidence", "good")
             )
             "employee" -> listOf(
-                KpiTile("start", "Start here", "4 actions", "Reply, review, update, and file are ready", "good"),
-                KpiTile("draft", "Draft help", modulePresent(modules, "chatgpt-connector"), "AI connector available for first drafts", moduleTone(modules, "chatgpt-connector")),
-                KpiTile("work", "Work surfaces", modules.count { it.component in setOf("planka", "donetick", "erpnext") }.toString(), "Tasks and project tools connected", "good"),
-                KpiTile("knowledge", "Find answers", modules.count { it.component in setOf("bookstack", "seafile") }.toString(), "Docs and shared files connected", "good")
+                KpiTile("start", "Start here", "5 actions", "Reply, review, update, file, hand off", "good"),
+                KpiTile("draft", "Draft assist", modulePresent(modules, "chatgpt-connector"), "AI connector available for first drafts", moduleTone(modules, "chatgpt-connector")),
+                KpiTile("work", "Work tools", modules.count { it.component in setOf("planka", "donetick", "erpnext") }.toString(), "Tasks and project tools connected", "good"),
+                KpiTile("knowledge", "Reference", modules.count { it.component in setOf("bookstack", "seafile") }.toString(), "Docs and shared files connected", "good")
             )
             "client" -> listOf(
-                KpiTile("review", "Ready to review", "3 items", "Deliverables waiting on client action", "attention"),
-                KpiTile("files", "Shared packet", modulePresent(modules, "seafile"), "Scoped files and approvals", moduleTone(modules, "seafile")),
+                KpiTile("review", "Ready to review", "3 items", "Deliverables waiting on client action", "good"),
+                KpiTile("files", "Client packet", modulePresent(modules, "seafile"), "Scoped files and approvals", moduleTone(modules, "seafile")),
                 KpiTile("meeting", "Meeting prep", modulePresent(modules, "sogo"), "Agenda and follow-ups in context", moduleTone(modules, "sogo")),
                 KpiTile("billing", "Billing context", modulePresent(modules, "erpnext"), "Invoices and account notes available", moduleTone(modules, "erpnext"))
+            )
+            "team-lead" -> listOf(
+                KpiTile("unblocks", "Unblocks ready", "3", "People and decisions needing a lead", "attention"),
+                KpiTile("handoffs", "Handoffs", "4", "Packets ready to assign or send", "good"),
+                KpiTile("prompts", "Owner prompts", "4", "Alice, Bob, Charlie, and Damian have next steps", "good"),
+                KpiTile("updates", "Updates drafted", modulePresent(modules, "chatgpt-connector"), "AI connector can draft status updates", moduleTone(modules, "chatgpt-connector"))
+            )
+            "ai-data-analyst" -> listOf(
+                KpiTile("workspace", "Workspace launch", modulePresent(modules, "workspace-provisioner"), "Disposable workbench with context", moduleTone(modules, "workspace-provisioner")),
+                KpiTile("notebook", "Notebook run", modulePresent(modules, "jupyterhub"), "Analysis environment linked", moduleTone(modules, "jupyterhub")),
+                KpiTile("drafts", "Report draft", modulePresent(modules, "chatgpt-connector"), "AI connector can draft findings", moduleTone(modules, "chatgpt-connector")),
+                KpiTile("sources", "Source packets", modules.count { it.component in setOf("seafile", "bookstack", "forgejo") }.toString(), "Files, docs, and repo context attached", "good")
             )
             else -> base.take(if (densityFor(profile.id) == DashboardDensity.EXECUTIVE) 3 else 4)
         }
@@ -339,29 +351,29 @@ class PortalService(
         val proofTotal = sources.size.coerceAtLeast(1)
         return when (profile.id) {
             "employee" -> listOf(
-                timeline("start_plan", "Start plan", "One-click workday path", "Reply" to 34.0, "Review" to 22.0, "Update" to 48.0, "File" to 28.0),
-                bars("next_actions", "Next actions", "Prepared work, not just status", "Draft reply" to 6.0, "Update task" to 3.0, "Review doc" to 4.0, "Send handoff" to 2.0),
-                lanes("workspace_surfaces", "Ready tools", "Launch the tool for the job", "Mail" to "open", "Rooms" to "join", "Files" to "review", "AI" to "draft")
+                timeline("start_plan", "Work path", "Reply to handoff without app hunting", "Reply" to 30.0, "Draft" to 48.0, "Update" to 62.0, "File" to 38.0),
+                lanes("tool_path", "Tool path", "The cockpit opens the right service", "Mail" to "reply", "AI" to "draft", "Tasks" to "update", "Files" to "file"),
+                bars("next_actions", "Action mix", "Useful work waiting now", "Replies" to 3.0, "Reviews" to 4.0, "Updates" to 2.0, "Handoffs" to 1.0)
             )
             "client" -> listOf(
-                timeline("review_path", "Review path", "What the client can do now", "Open" to 85.0, "Comment" to 62.0, "Approve" to 35.0, "Archive" to 18.0),
-                bars("client_actions", "Client actions", "Prepared customer tasks", "Approve" to 3.0, "Answer" to 4.0, "Download" to 6.0, "Pay" to 2.0),
-                lanes("client_pack", "Client packet", "Scoped tools in one place", "Files" to "open", "Docs" to "read", "Meeting" to "join", "Invoice" to "view")
+                timeline("review_path", "Review path", "Open, comment, approve, and keep a copy", "Open" to 82.0, "Comment" to 58.0, "Approve" to 44.0, "Archive" to 28.0),
+                lanes("client_pack", "Client packet", "Scoped tools in one place", "Files" to "open", "Docs" to "read", "Meeting" to "join", "Invoice" to "view"),
+                bars("client_actions", "Action mix", "Customer-facing work ready now", "Approve" to 2.0, "Answer" to 3.0, "Download" to 4.0, "Pay" to 1.0)
             )
             "team-lead" -> listOf(
-                bars("handoff_queue", "Handoff queue", "Prepared team actions", "Assign" to 7.0, "Unblock" to 4.0, "Review" to 6.0, "Send update" to 3.0),
-                heatmap("unblock_map", "Unblock map", "Where action helps today", "API" to 2.0, "Docs" to 1.0, "Client" to 4.0, "Ops" to 1.0),
-                lanes("team_prompts", "Team prompts", "Useful nudges by person", "Alice" to "review", "Bob" to "handoff", "Charlie" to "ship", "Damian" to "unblock")
+                bars("handoff_queue", "Handoff queue", "Prepared team actions", "Assign" to 4.0, "Unblock" to 3.0, "Review" to 5.0, "Update" to 2.0),
+                lanes("team_prompts", "Team prompts", "Useful nudges by person", "Alice" to "review", "Bob" to "handoff", "Charlie" to "ship", "Damian" to "unblock"),
+                heatmap("unblock_map", "Unblock map", "Where one action helps", "Client" to 4.0, "API" to 2.0, "Docs" to 1.0, "Ops" to 1.0)
             )
             "business-owner" -> listOf(
-                spark("decision_value", "Decision value", "Prepared choices over time", 48.0, 52.0, 58.0, 55.0, 64.0, 71.0),
-                funnel("opportunity_builder", "Opportunity builder", "Turn signal into action", "Leads" to 44.0, "Drafts" to 24.0, "Proposals" to 12.0, "Follow-ups" to 5.0),
-                heatmap("delegate_map", "Delegate map", "Where one decision moves work", "Finance" to 2.0, "Delivery" to 1.0, "Sales" to 3.0, "Ops" to 1.0)
+                funnel("decision_flow", "Decision flow", "Signal to delegated action", "Briefs" to 12.0, "Decisions" to 6.0, "Delegated" to 4.0, "Done" to 2.0),
+                lanes("delegate_map", "Delegate map", "Prepared owners for next steps", "Finance" to "Alice", "Delivery" to "Bob", "Sales" to "Charlie", "Ops" to "Damian"),
+                spark("decision_value", "Decision value", "Choices prepared over time", 48.0, 52.0, 58.0, 55.0, 64.0, 71.0)
             )
             "ai-data-analyst" -> listOf(
-                bars("workbench_steps", "Workbench steps", "From question to draft", "Collect" to 18.0, "Search" to 15.0, "Analyze" to 7.0, "Draft" to 4.0),
-                spark("draft_outputs", "Draft outputs", "Reports prepared for review", 3.0, 4.0, 6.0, 5.0, 9.0, 8.0),
-                lanes("agent_workbench", "Agent workbench", "Launchable automation", "Prompts" to "open", "MCP" to "ready", "Workspace" to "launch", "Notebook" to "run")
+                timeline("workbench_steps", "Workbench path", "Question to reviewed output", "Collect" to 34.0, "Query" to 50.0, "Analyze" to 72.0, "Draft" to 44.0),
+                lanes("agent_workbench", "Agent workbench", "Launchable automation", "Prompt" to "open", "MCP" to "ready", "Workspace" to "launch", "Notebook" to "run"),
+                spark("draft_outputs", "Draft outputs", "Reports prepared for review", 3.0, 4.0, 6.0, 5.0, 9.0, 8.0)
             )
             "platform-operator-security" -> listOf(
                 heatmap("service_policy_matrix", "Service + policy matrix", "Health and access surfaces", "Routes" to 1.0, "Auth" to 2.0, "Backups" to 2.0, "Security" to 3.0),
@@ -387,31 +399,57 @@ class PortalService(
         val roleActions = when (profile.id) {
             "platform-operator-security" -> listOf(
                 ActionItem("Open service health", "Check dashboards, logs, route state, and alert summaries.", "high", moduleHref(modules, "observability")),
-                ActionItem("Review backup proof", "Confirm snapshots and restore evidence are current.", "normal", moduleHref(modules, "kopia"))
+                ActionItem("Review access policy", "Open identity and route policy before changing exposure.", "high", moduleHref(modules, "core")),
+                ActionItem("Review backup proof", "Confirm snapshots and restore evidence are current.", "normal", moduleHref(modules, "kopia")),
+                ActionItem("Open vault entry points", "Check operator-only secret access paths without exposing values.", "normal", moduleHref(modules, "vaultwarden"))
             )
             "ai-data-analyst" -> listOf(
-                ActionItem("Launch workspace", "Start a disposable analysis workspace with current docs and files.", "high", moduleHref(modules, "workspace-provisioner")),
-                ActionItem("Draft report", "Use search and the AI connector to prepare a first-pass report.", "normal", moduleHref(modules, "chatgpt-connector"))
+                ActionItem("Launch analysis workspace", "Start a disposable workspace with docs, files, and repo context mounted.", "high", moduleHref(modules, "workspace-provisioner")),
+                ActionItem("Open notebook run", "Continue the churn analysis notebook and capture the next chart.", "normal", moduleHref(modules, "jupyterhub")),
+                ActionItem("Draft report from evidence", "Use the AI connector to turn findings into a reviewed first draft.", "normal", moduleHref(modules, "chatgpt-connector")),
+                ActionItem("Open source files", "Review the shared CSV and notes before publishing results.", "normal", moduleHref(modules, "seafile")),
+                ActionItem("Update analysis runbook", "Record inputs, assumptions, and the repeatable workflow.", "normal", moduleHref(modules, "bookstack"))
             )
             "business-owner" -> listOf(
-                ActionItem("Open decision brief", "Review prepared choices, owners, and next follow-ups.", "normal", moduleHref(modules, "bookstack")),
-                ActionItem("Delegate follow-up", "Open the business system behind a prepared action.", "normal", moduleHref(modules, "erpnext"))
+                ActionItem("Approve proposal packet", "Review the prepared scope, price, and delivery note before sending.", "high", moduleHref(modules, "erpnext")),
+                ActionItem("Delegate finance follow-up", "Assign Alice the overdue invoice note with account context attached.", "normal", moduleHref(modules, "erpnext")),
+                ActionItem("Open executive brief", "Read the short decision memo and supporting project evidence.", "normal", moduleHref(modules, "bookstack")),
+                ActionItem("Send client update", "Use the drafted message and attach the current delivery packet.", "normal", moduleHref(modules, "sogo")),
+                ActionItem("Ask for a board summary", "Generate a one-page summary from projects, docs, and finance context.", "normal", moduleHref(modules, "chatgpt-connector"))
             )
             "employee" -> listOf(
-                ActionItem("Start next action", "Open the prepared reply, task update, file review, or handoff.", "normal", moduleHref(modules, "sogo")),
-                ActionItem("Draft with AI connector", "Use stack context for a safe first draft or task summary.", "normal", moduleHref(modules, "chatgpt-connector"))
+                ActionItem("Reply to Alice's client note", "Open the mail thread with the project file and suggested reply ready.", "high", moduleHref(modules, "sogo")),
+                ActionItem("Draft weekly update", "Use the AI connector with tasks, docs, and recent file context.", "normal", moduleHref(modules, "chatgpt-connector")),
+                ActionItem("Update onboarding task", "Move the checklist card after adding today’s evidence.", "normal", moduleHref(modules, "planka")),
+                ActionItem("Review handoff file", "Open the shared Seafile packet and mark the delivery note reviewed.", "normal", moduleHref(modules, "seafile")),
+                ActionItem("Find the runbook answer", "Open the BookStack page linked to the current task.", "normal", moduleHref(modules, "bookstack"))
             )
             "client" -> listOf(
-                ActionItem("Review client packet", "Open prepared deliverables, files, docs, approvals, and invoice context.", "normal", moduleHref(modules, "seafile")),
-                ActionItem("Send response", "Jump to the scoped message or meeting follow-up.", "normal", moduleHref(modules, "sogo"))
+                ActionItem("Review delivery packet", "Open the scoped files, change note, and approval checklist.", "high", moduleHref(modules, "seafile")),
+                ActionItem("Approve phase-two brief", "Read the concise scope page and confirm the next milestone.", "normal", moduleHref(modules, "bookstack")),
+                ActionItem("Answer Charlie's question", "Open the customer thread with the required decision highlighted.", "normal", moduleHref(modules, "sogo")),
+                ActionItem("Download invoice pack", "Open invoice, receipt, and account context in one place.", "normal", moduleHref(modules, "erpnext")),
+                ActionItem("Join project room", "Open the scoped room for follow-up questions and meeting notes.", "normal", moduleHref(modules, "matrix"))
+            )
+            "team-lead" -> listOf(
+                ActionItem("Unblock Damian", "Open the blocked task with the decision log and owner handoff attached.", "high", moduleHref(modules, "planka")),
+                ActionItem("Assign review to Alice", "Move the client packet into review and notify the owner.", "normal", moduleHref(modules, "planka")),
+                ActionItem("Send client status update", "Use the drafted update with files, tasks, and meeting notes attached.", "normal", moduleHref(modules, "sogo")),
+                ActionItem("Open handoff packet", "Review the delivery files before handing work to Bob.", "normal", moduleHref(modules, "seafile")),
+                ActionItem("Update decision log", "Record what changed and link the task board for the team.", "normal", moduleHref(modules, "bookstack"))
             )
             else -> listOf(
                 ActionItem("Open primary module", "Drill into the most relevant live service for this role.", "normal", modules.firstOrNull()?.href),
                 ActionItem("Review evidence", "Use dashboard proof and source health before acting.", "normal")
             )
         }
-        val missingReports = if (reports.isEmpty()) listOf(ActionItem("Generate contract reports", "No generated reports were mounted for dashboard enrichment.", "normal")) else emptyList()
-        return (partial + roleActions + missingReports).distinctBy { it.label }.take(5)
+        val missingReports = if (reports.isEmpty() && profile.id == "platform-operator-security") {
+            listOf(ActionItem("Generate contract reports", "No generated reports were mounted for dashboard enrichment.", "normal"))
+        } else {
+            emptyList()
+        }
+        val prefix = if (profile.id == "platform-operator-security") partial else emptyList()
+        return (prefix + roleActions + missingReports).distinctBy { it.label }.take(6)
     }
 
     private fun evidenceFor(modules: List<PortalModule>, reports: List<ReportDocument>): List<EvidenceItem> {
@@ -438,6 +476,7 @@ class PortalService(
     }
 
     private fun widgetItems(widgetId: String, modules: List<PortalModule>, reports: List<ReportDocument>): List<WidgetItem> {
+        roleWorkflowItems(widgetId, modules)?.let { return it }
         val reportItems = reports.take(3).map { WidgetItem(titleize(it.name), if (it.error == null) "loaded" else "partial", it.error ?: "Generated report available", if (it.error == null) "good" else "attention") }
         return when (widgetId) {
             "service_health", "route_health", "auth_health" -> modules.take(6).map {
@@ -479,21 +518,137 @@ class PortalService(
         }.ifEmpty { reportItems }
     }
 
+    private fun roleWorkflowItems(widgetId: String, modules: List<PortalModule>): List<WidgetItem>? {
+        fun item(label: String, value: String, detail: String, component: String, tone: String = "good") =
+            WidgetItem(label, value, detail, tone, moduleHref(modules, component) ?: preferredHref(widgetId, modules))
+
+        return when (widgetId) {
+            "mailbox" -> listOf(
+                item("Alice Morgan", "reply", "Client note needs a concise answer and project link.", "sogo", "attention"),
+                item("Bob Chen", "draft", "Weekly progress update has task context attached.", "chatgpt-connector"),
+                item("Charlie Reed", "schedule", "Confirm Thursday review window from the calendar.", "sogo")
+            )
+            "team_rooms" -> listOf(
+                item("Delivery room", "join", "Two unread handoff notes from Alice and Damian.", "matrix", "attention"),
+                item("Client room", "answer", "Charlie asked for the latest packet link.", "matrix"),
+                item("Ops room", "read", "Maintenance note is pinned for Friday.", "matrix")
+            )
+            "my_tasks" -> listOf(
+                item("Update onboarding checklist", "today", "Move the Planka card after adding evidence.", "planka", "attention"),
+                item("Review handoff file", "15 min", "Open Seafile packet and confirm the summary page.", "seafile"),
+                item("File meeting notes", "ready", "Attach notes to the project record.", "erpnext")
+            )
+            "recent_docs" -> listOf(
+                item("Client update runbook", "open", "Use the approved structure for outbound updates.", "bookstack"),
+                item("Delivery handoff template", "copy", "Start the next packet from the standard page.", "bookstack"),
+                item("Support escalation notes", "read", "Answer the current customer question safely.", "bookstack")
+            )
+            "shared_files", "approval_queue" -> listOf(
+                item("Northstar delivery packet", "review", "Three files ready for final check.", "seafile", "attention"),
+                item("Phase-two proposal", "approve", "Scope PDF and pricing sheet are attached.", "erpnext"),
+                item("Onboarding evidence", "file", "Archive the signed checklist in the shared folder.", "seafile")
+            )
+            "ai_next_actions" -> listOf(
+                item("Draft weekly update", "draft", "Use tasks, docs, and files as source context.", "chatgpt-connector"),
+                item("Summarize client thread", "summarize", "Turn the last five messages into next steps.", "chatgpt-connector"),
+                item("Prepare handoff note", "compose", "Create a first pass for Bob to review.", "chatgpt-connector")
+            )
+            "client_requests" -> listOf(
+                item("Approve phase-two scope", "approve", "Scope summary and open questions are ready.", "bookstack", "attention"),
+                item("Answer access question", "answer", "Charlie needs one owner decision.", "sogo"),
+                item("Choose review time", "pick", "Two meeting windows are available.", "sogo")
+            )
+            "deliverables", "client_files", "client_docs", "support_links" -> listOf(
+                item("Delivery packet", "open", "Files, summary, and approval checklist.", "seafile", "attention"),
+                item("Project summary", "read", "Plain-language status and decisions needed.", "bookstack"),
+                item("Support guide", "open", "How to request a change or report an issue.", "bookstack")
+            )
+            "meeting_history" -> listOf(
+                item("Thursday review", "notes", "Actions for Alice, Bob, and Charlie are captured.", "sogo"),
+                item("Kickoff call", "recap", "Decision log and file packet are linked.", "bookstack"),
+                item("Follow-up room", "join", "Open questions are collected in one room.", "matrix")
+            )
+            "invoices" -> listOf(
+                item("Invoice INV-1042", "view", "PDF, receipt status, and account note.", "erpnext"),
+                item("Retainer receipt", "download", "Current billing packet for records.", "erpnext"),
+                item("Payment question", "reply", "Finance thread is attached.", "sogo")
+            )
+            "active_work", "blocked_tasks", "overdue_work", "team_workload" -> listOf(
+                item("Damian blocked on API wording", "unblock", "Decision log and draft response are attached.", "planka", "attention"),
+                item("Alice review queue", "assign", "Client packet needs owner confirmation.", "planka"),
+                item("Bob handoff packet", "send", "Files are ready for delivery review.", "seafile"),
+                item("Charlie release note", "review", "Draft is waiting in the docs workspace.", "bookstack")
+            )
+            "recent_decisions" -> listOf(
+                item("Scope boundary", "record", "Capture final wording from the client call.", "bookstack"),
+                item("Release timing", "confirm", "Attach the decision to the project board.", "planka"),
+                item("Owner handoff", "publish", "Send summary to the delivery room.", "matrix")
+            )
+            "revenue", "cash_runway", "receivables", "pipeline", "delivery_health", "client_health", "executive_brief" -> listOf(
+                item("Approve Northstar proposal", "decide", "Price, margin, and delivery note are prepared.", "erpnext", "attention"),
+                item("Delegate overdue invoice", "delegate", "Alice has the account context and draft note.", "erpnext"),
+                item("Read executive brief", "review", "Three decisions and two follow-ups are summarized.", "bookstack"),
+                item("Send client confidence update", "send", "Draft message includes delivery evidence.", "sogo")
+            )
+            "datasets", "recent_notebooks", "workspace_launcher", "ingestion_jobs", "analysis_prompts", "search_coverage", "agent_runs" -> listOf(
+                item("Launch churn workspace", "launch", "Disposable workspace with data and docs mounted.", "workspace-provisioner", "attention"),
+                item("Run cohort notebook", "run", "Notebook is ready with the latest CSV.", "jupyterhub"),
+                item("Draft findings report", "draft", "AI connector has the evidence packet.", "chatgpt-connector"),
+                item("Publish analysis runbook", "publish", "Inputs and assumptions are ready to record.", "bookstack")
+            )
+            else -> null
+        }
+    }
+
     private fun widgetSpec(id: String): WidgetSpec {
-        val title = titleize(id)
+        val title = when (id) {
+            "mailbox" -> "Inbox actions"
+            "team_rooms" -> "Room actions"
+            "my_tasks" -> "My work queue"
+            "recent_docs" -> "Useful docs"
+            "shared_files" -> "Shared file actions"
+            "approval_queue" -> "Approvals"
+            "ai_next_actions" -> "AI draft assists"
+            "client_requests" -> "Client requests"
+            "deliverables" -> "Deliverables"
+            "client_files" -> "Client files"
+            "client_docs" -> "Client docs"
+            "meeting_history" -> "Meeting follow-ups"
+            "invoices" -> "Billing actions"
+            "active_work" -> "Active work"
+            "blocked_tasks" -> "Blockers"
+            "overdue_work" -> "Needs attention"
+            "team_workload" -> "Team prompts"
+            "recent_decisions" -> "Decision log"
+            "revenue" -> "Revenue decisions"
+            "cash_runway" -> "Cash decisions"
+            "receivables" -> "Receivables"
+            "pipeline" -> "Pipeline actions"
+            "delivery_health" -> "Delivery decisions"
+            "client_health" -> "Client decisions"
+            "executive_brief" -> "Executive brief"
+            "datasets" -> "Datasets"
+            "recent_notebooks" -> "Notebook runs"
+            "workspace_launcher" -> "Workspace launcher"
+            "ingestion_jobs" -> "Ingestion jobs"
+            "analysis_prompts" -> "Analysis prompts"
+            "search_coverage" -> "Knowledge coverage"
+            "agent_runs" -> "Agent runs"
+            else -> titleize(id)
+        }
         return when (id) {
             "service_health", "route_health", "auth_health", "backup_status", "alerts", "test_results" ->
                 WidgetSpec(title, "status_matrix", "Live operational signal and proof state.", "attention")
             "revenue", "cash_runway", "receivables", "pipeline", "delivery_health", "executive_brief", "client_health" ->
                 WidgetSpec(title, "decision_card", "Prepared business action with drill-through.", "neutral")
             "datasets", "recent_notebooks", "workspace_launcher", "ingestion_jobs", "analysis_prompts", "search_coverage", "agent_runs" ->
-                WidgetSpec(title, "workbench_action", "Launchable analysis step with context attached.", "good")
+                WidgetSpec(title, "workbench_action", "Launch analysis work with source context attached.", "good")
             "users", "groups", "failed_logins", "service_policies", "stale_accounts", "vault_entry_points" ->
                 WidgetSpec(title, "risk_queue", "Access, identity, and security review surface.", "attention")
             "open_tasks", "assigned_tasks", "my_tasks", "active_work", "blocked_tasks", "overdue_work", "client_tasks", "client_requests" ->
-                WidgetSpec(title, "action_queue", "Prepared work item with the source tool attached.", "good")
+                WidgetSpec(title, "action_queue", "Prepared work items linked to the source tool.", "good")
             "mailbox", "team_rooms", "meetings", "meeting_history" ->
-                WidgetSpec(title, "message_action", "Conversation context ready for reply or follow-up.", "neutral")
+                WidgetSpec(title, "message_action", "Conversation context ready for reply or follow-up.", "good")
             "recent_files", "client_files", "shared_files", "approval_docs", "approval_queue", "campaign_files", "deliverables", "client_docs", "support_links" ->
                 WidgetSpec(title, "packet_action", "Open, review, approve, or hand off shared work.", "neutral")
             else -> WidgetSpec(title, "workflow", "Connected tool action with safe drill-through.", "neutral")
@@ -504,7 +659,7 @@ class PortalService(
         "service_health", "alerts", "route_health" -> moduleHref(modules, "observability")
         "backup_status", "backup_proof", "restore_drills" -> moduleHref(modules, "kopia")
         "workspace_launcher", "workspace_launch" -> moduleHref(modules, "workspace-provisioner")
-        "datasets", "search_gaps", "search_coverage" -> moduleHref(modules, "search")
+        "datasets", "search_gaps", "search_coverage" -> moduleHref(modules, "jupyterhub") ?: moduleHref(modules, "seafile")
         "users", "groups", "auth_model" -> moduleHref(modules, "core")
         "vault_entry_points" -> moduleHref(modules, "vaultwarden")
         "invoices", "unpaid_invoices", "revenue", "receivables" -> moduleHref(modules, "erpnext")
@@ -512,6 +667,9 @@ class PortalService(
         "recent_files", "client_files", "shared_files", "deliverables" -> moduleHref(modules, "seafile")
         "mailbox", "meetings", "meeting_history" -> moduleHref(modules, "sogo")
         "team_rooms" -> moduleHref(modules, "matrix")
+        "my_tasks", "active_work", "blocked_tasks", "overdue_work", "team_workload" -> moduleHref(modules, "planka")
+        "ai_next_actions", "analysis_prompts", "agent_runs" -> moduleHref(modules, "chatgpt-connector")
+        "pipeline", "delivery_health", "client_health", "executive_brief" -> moduleHref(modules, "bookstack") ?: moduleHref(modules, "erpnext")
         else -> modules.firstOrNull()?.href
     }
 

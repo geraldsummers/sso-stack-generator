@@ -65,32 +65,47 @@ function renderDashboard() {
   }
 
   dashboardRoot.innerHTML = `
-    <section class="visual-stage" style="--accent:${esc(dashboard.visualLanguage.accent)}">
-      <div class="dashboard-rail">
+    <section class="cockpit-stage" style="--accent:${esc(dashboard.visualLanguage.accent)}">
+      <aside class="cockpit-rail">
         <article class="panel role-panel">
           <div class="meta-row">
             ${tag(dashboard.profile.defaultView, "attention")}
             ${tag(dashboard.visualLanguage.motif)}
           </div>
           <h2>${esc(dashboard.profile.name)}</h2>
+          <p>${esc(dashboard.profile.purpose)}</p>
           <div class="signal-strip">
             ${dashboard.kpis.slice(0, 4).map(renderSignal).join("")}
           </div>
         </article>
-        <article class="panel proof-panel">
+      </aside>
+
+      <section class="panel cockpit-work">
+        <div class="section-head">
+          <div>
+            <h2>Work From Here</h2>
+            <p>Each card opens the service behind the next useful action.</p>
+          </div>
+          ${tag(`${dashboard.actions.filter((action) => action.href).length}/${dashboard.actions.length} linked actions`, "good")}
+        </div>
+        <div class="cockpit-action-grid">
+          ${dashboard.actions.map(renderCockpitAction).join("")}
+        </div>
+      </section>
+
+      <aside class="cockpit-context">
+        ${dashboard.heroVisuals.map(renderHeroVisual).join("")}
+        <article class="panel proof-panel compact-proof">
           ${renderProofDial(dashboard)}
         </article>
-      </div>
-      <div class="hero-visual-grid">
-        ${dashboard.heroVisuals.map(renderHeroVisual).join("")}
-      </div>
+      </aside>
     </section>
 
     <section class="section visual-secondary">
       <div class="section-head">
         <div>
-          <h2>Integrated Workflows</h2>
-          <p>Open the connected tools behind each workflow.</p>
+          <h2>Integrated Workflow Panels</h2>
+          <p>Role-specific work queues with source-tool drill-through.</p>
         </div>
       </div>
       <div class="widget-grid">${dashboard.widgets.map(renderWidget).join("")}</div>
@@ -185,6 +200,21 @@ function renderHeroVisual(visual) {
       <small>${esc(visual.summary)}</small>
     </article>
   `;
+}
+
+function renderCockpitAction(action, index) {
+  const content = `
+    <div class="cockpit-action-index">${index === 0 ? "Start" : `Step ${index + 1}`}</div>
+    <div>
+      <strong>${esc(action.label)}</strong>
+      <p>${esc(action.detail)}</p>
+    </div>
+    <span class="launch-chip">${action.href ? "Open workflow" : "Needs setup"}</span>
+  `;
+  const className = `cockpit-action ${index === 0 ? "primary-action" : ""} ${toneClass(action.priority === "high" ? "attention" : "neutral")}`;
+  return action.href
+    ? `<a class="${className}" href="${esc(action.href)}">${content}</a>`
+    : `<article class="${className} disabled-action">${content}</article>`;
 }
 
 function visualLayoutClass(visual) {
@@ -313,7 +343,10 @@ function renderKpi(kpi) {
 function renderWidget(widget) {
   return `
     <article class="widget-card">
-      <div class="meta-row">${tag(widget.type)} ${tag(widget.tone, widget.tone)}</div>
+      <div class="widget-topline">
+        <div class="meta-row">${tag(widget.type)} ${tag(widget.tone, widget.tone)}</div>
+        ${widget.href ? `<a class="tool-link" href="${esc(widget.href)}">Open tool</a>` : ""}
+      </div>
       <h3>${esc(widget.title)}</h3>
       <p>${esc(widget.summary)}</p>
       <div class="item-list">${widget.items.slice(0, 5).map(renderItem).join("")}</div>
@@ -330,7 +363,7 @@ function renderItem(item) {
     <span class="${toneClass(item.tone)}">${esc(item.value)}</span>
   `;
   return item.href
-    ? `<a class="item" href="${esc(item.href)}">${content}</a>`
+    ? `<a class="item" href="${esc(item.href)}">${content}<em>Open</em></a>`
     : `<div class="item">${content}</div>`;
 }
 
