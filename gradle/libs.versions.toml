@@ -26,6 +26,7 @@ testcontainers = "1.19.7"
 jnats = "2.20.4"
 aws-sdk = "2.31.74"
 commons-compress = "1.28.0"
+flyway = "10.20.1"
 
 [plugins]
 kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
@@ -101,6 +102,8 @@ aws-sdk-s3 = { module = "software.amazon.awssdk:s3", version.ref = "aws-sdk" }
 aws-sdk-auth = { module = "software.amazon.awssdk:auth", version.ref = "aws-sdk" }
 aws-sdk-regions = { module = "software.amazon.awssdk:regions", version.ref = "aws-sdk" }
 commons-compress = { module = "org.apache.commons:commons-compress", version.ref = "commons-compress" }
+flyway-core = { module = "org.flywaydb:flyway-core", version.ref = "flyway" }
+flyway-postgresql = { module = "org.flywaydb:flyway-database-postgresql", version.ref = "flyway" }
 
 # Other
 jsoup = "org.jsoup:jsoup:1.17.2"
