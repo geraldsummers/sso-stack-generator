@@ -19,7 +19,7 @@ suspend fun TestRunner.utilityServicesTests() = suite("Utility Services Tests") 
         }
 
         val body = response.bodyAsText()
-        require(body.contains("Stack Portal") && body.contains("contract-backed modules")) {
+        require(body.contains("Stack Portal") && body.contains("Role dashboards")) {
             "Stack Portal content not detected"
         }
 
