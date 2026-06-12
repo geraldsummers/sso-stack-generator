@@ -602,6 +602,18 @@ ensure_bootstrap_scaffolds() {
   deploy_log "ensured bootstrap scaffold: $repos_root"
 }
 
+ensure_generated_report_link() {
+  local reports_source="$BUNDLE_ROOT/reports"
+  local reports_link="$DEPLOY_ROOT/reports"
+
+  [ -d "$reports_source" ] || die "missing generated reports directory: $reports_source"
+  if [ -L "$reports_link" ] || [ -e "$reports_link" ]; then
+    rm -rf "$reports_link"
+  fi
+  ln -s "$reports_source" "$reports_link"
+  deploy_log "ensured generated reports mount: $reports_link -> $reports_source"
+}
+
 runtime_env_value() {
   local key="$1"
   env_file_get_value "$DEPLOY_ROOT/runtime/stack.env" "$key"
@@ -1103,7 +1115,12 @@ ensure_runtime_links "$DEPLOY_ROOT" >/dev/null
 set_phase "deploy-plan"
 if [ "$PARTIAL_DEPLOY" = "1" ]; then
   if ! deploy_state_check_global_signature "$BUNDLE_ROOT" "$DEPLOY_ROOT"; then
-    die "scoped deploy refused by deploy-state guard"
+    if deploy_state_missing_global_signature "$DEPLOY_ROOT" && deploy_state_bootstrap_missing_global_signature "$BUNDLE_ROOT" "$DEPLOY_ROOT" "webservices.target"; then
+      deploy_log "recovered missing deploy-state signature for scoped deploy"
+      deploy_state_check_global_signature "$BUNDLE_ROOT" "$DEPLOY_ROOT" || die "scoped deploy refused by deploy-state guard after recovery"
+    else
+      die "scoped deploy refused by deploy-state guard"
+    fi
   fi
 fi
 emit_deploy_plan
@@ -1147,6 +1164,7 @@ fi
 
 set_phase "bootstrap-scaffolds"
 ensure_bootstrap_scaffolds
+ensure_generated_report_link
 
 set_phase "install-systemd-units"
 deploy_log "installing pre-rendered systemd user units"

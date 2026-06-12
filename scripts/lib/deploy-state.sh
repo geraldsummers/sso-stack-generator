@@ -81,3 +81,30 @@ deploy_state_check_global_signature() {
   printf '[webservices-build] ERROR: global deployment inputs changed; run a full deploy so component selection, systemd graph, and Docker infra reconcile together\n' >&2
   return 1
 }
+
+deploy_state_missing_global_signature() {
+  local deploy_root="$1"
+  local signature_file
+
+  signature_file="$(deploy_state_dir "$deploy_root")/global-signature.json"
+  [ ! -f "$signature_file" ]
+}
+
+deploy_state_bootstrap_missing_global_signature() {
+  local bundle_root="$1"
+  local deploy_root="$2"
+  local active_target="${3:-webservices.target}"
+  local systemctl_bin="${SYSTEMCTL_USER_BIN:-systemctl}"
+
+  if ! deploy_state_missing_global_signature "$deploy_root"; then
+    return 0
+  fi
+
+  if ! "$systemctl_bin" --user is-active --quiet "$active_target"; then
+    printf '[webservices-build] ERROR: scoped deploy has no previous global deploy signature and %s is not active; run a full deploy first\n' "$active_target" >&2
+    return 1
+  fi
+
+  printf '[webservices-build] warning: bootstrapping missing deploy-state signature from active %s\n' "$active_target" >&2
+  deploy_state_write_global_signature "$bundle_root" "$deploy_root"
+}

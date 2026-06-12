@@ -276,6 +276,7 @@ class TestArchitectureTest {
         assertTrue(buildText.contains("--manifest <path-to-manifest.json>"))
         assertTrue(buildText.contains("site_manifest_path"))
         assertTrue(buildText.contains("mkdir -p \"\$DIST_DIR/build\""))
+        assertTrue(buildText.contains("generate-contract-reports.sh"))
         assertTrue(buildText.contains("validate_generated_compose"))
         assertFalse(buildText.contains("TEST_RESULTS_HOST_DIR=\"\${TEST_RESULTS_HOST_DIR:-\$SCRIPT_DIR/test-results}\""))
         assertTrue(Files.exists(manifestLib))
@@ -283,6 +284,19 @@ class TestArchitectureTest {
         assertTrue(repoRoot.resolve("site-config").notExists())
         assertFalse(buildText.contains("--site <site>"))
         assertFalse(buildText.contains("--url <public-site-url>"))
+    }
+
+    @Test
+    fun `deploy recreates top-level reports mount for portal after rsync delete`() {
+        val deployText = Files.readString(repoRoot().resolve("scripts/deploy.sh"))
+        val portalComposeText = Files.readString(repoRoot().resolve("stack.compose/portal.yml"))
+
+        assertTrue(portalComposeText.contains("./reports:/contracts/reports:ro"))
+        assertTrue(deployText.contains("ensure_generated_report_link"))
+        assertTrue(deployText.contains("local reports_source=\"\$BUNDLE_ROOT/reports\""))
+        assertTrue(deployText.contains("local reports_link=\"\$DEPLOY_ROOT/reports\""))
+        assertTrue(deployText.contains("ln -s \"\$reports_source\" \"\$reports_link\""))
+        assertTrue(deployText.contains("ensure_generated_report_link\n\nset_phase \"install-systemd-units\""))
     }
 
     @Test
@@ -329,6 +343,7 @@ class TestArchitectureTest {
         assertTrue(composeLibText.contains("config --quiet --no-interpolate"))
         assertFalse(waitReadyText.contains("webservices-next"))
         assertTrue(deployText.contains("ensure_runtime_links"))
+        assertTrue(deployText.contains("deploy_state_bootstrap_missing_global_signature"))
         assertTrue(deployText.contains("runtime/stack.env"))
     }
 

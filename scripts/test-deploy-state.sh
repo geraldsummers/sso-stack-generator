@@ -10,7 +10,9 @@ trap 'rm -rf "$tmp_dir"' EXIT
 
 bundle_root="$tmp_dir/bundle"
 deploy_root="$tmp_dir/deploy"
+fake_bin="$tmp_dir/bin"
 mkdir -p \
+  "$fake_bin" \
   "$bundle_root/site" \
   "$bundle_root/stack.systemd" \
   "$bundle_root/systemd-user/infra" \
@@ -59,6 +61,36 @@ fi
 if ! grep -q 'run a full deploy' "$tmp_dir/error.log"; then
   printf '[deploy-state-test] missing full-deploy guidance on mismatch\n' >&2
   cat "$tmp_dir/error.log" >&2
+  exit 1
+fi
+
+rm -f "$signature_file"
+cat > "$fake_bin/systemctl" <<'EOF_SYSTEMCTL'
+#!/usr/bin/env bash
+set -euo pipefail
+if [ "$1" = "--user" ] && [ "$2" = "is-active" ] && [ "$3" = "--quiet" ] && [ "$4" = "webservices.target" ]; then
+  exit 0
+fi
+exit 1
+EOF_SYSTEMCTL
+chmod +x "$fake_bin/systemctl"
+PATH="$fake_bin:$PATH" deploy_state_bootstrap_missing_global_signature "$bundle_root" "$deploy_root" "webservices.target"
+deploy_state_check_global_signature "$bundle_root" "$deploy_root"
+
+rm -f "$signature_file"
+cat > "$fake_bin/systemctl" <<'EOF_SYSTEMCTL'
+#!/usr/bin/env bash
+exit 1
+EOF_SYSTEMCTL
+chmod +x "$fake_bin/systemctl"
+if PATH="$fake_bin:$PATH" deploy_state_bootstrap_missing_global_signature "$bundle_root" "$deploy_root" "webservices.target" >/dev/null 2>"$tmp_dir/inactive.log"; then
+  printf '[deploy-state-test] inactive target allowed missing signature bootstrap\n' >&2
+  exit 1
+fi
+
+if ! grep -q 'not active' "$tmp_dir/inactive.log"; then
+  printf '[deploy-state-test] missing inactive target guidance\n' >&2
+  cat "$tmp_dir/inactive.log" >&2
   exit 1
 fi
 
