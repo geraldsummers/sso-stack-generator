@@ -95,7 +95,7 @@ fun main() {
     }
 
     println("[INFO] Injecting BookStack API token...")
-    println("[INFO] Token ID: $tokenId")
+    println("[INFO] Token identifier loaded")
     val expiresAt = resolveTokenExpiry(env)
     println("[INFO] Token expires at: $expiresAt UTC")
 

@@ -50,10 +50,15 @@ class BookStackHardeningConfigTest {
         assertTrue(combinedTokenScripts.contains("webservices-automation@localhost"))
         assertTrue(combinedTokenScripts.contains("BOOKSTACK_API_TOKEN_TTL_DAYS"))
         assertTrue(combinedTokenScripts.contains("Hash::make"))
+        assertTrue(combinedTokenScripts.contains("Token identifier loaded"))
+        assertTrue(combinedTokenScripts.contains("Token identifier stored"))
 
         assertFalse(combinedTokenScripts.contains("admin@admin.com"))
         assertFalse(combinedTokenScripts.contains("2099-12-31"))
         assertFalse(combinedTokenScripts.contains("role_id = 1"))
+        assertFalse(combinedTokenScripts.contains("Token ID:"))
+        assertFalse(combinedTokenScripts.contains("Token ID: ${'$'}tokenId"))
+        assertFalse(combinedTokenScripts.contains("Token ID: ${'$'}BOOKSTACK_TOKEN_ID"))
     }
 
     private fun repoFileText(relativePath: String): String =

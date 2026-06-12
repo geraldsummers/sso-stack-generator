@@ -52,7 +52,7 @@ fun main() {
     val tokenId = "webservices-automation-${System.currentTimeMillis()}"
     val tokenSecret = generateToken()
 
-    println("[INFO] Token ID: $tokenId")
+    println("[INFO] Token identifier generated")
     println("[INFO] Generating secret...")
     val expiresAt = tokenExpiry()
     println("[INFO] Token expires at: $expiresAt UTC")

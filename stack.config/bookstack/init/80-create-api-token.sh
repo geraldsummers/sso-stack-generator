@@ -27,7 +27,7 @@ if ! printf '%s' "$BOOKSTACK_TOKEN_TTL_DAYS" | grep -Eq '^[0-9]+$'; then
 fi
 BOOKSTACK_TOKEN_EXPIRES_AT="${BOOKSTACK_API_TOKEN_EXPIRES_AT:-$(BOOKSTACK_TOKEN_TTL_DAYS="$BOOKSTACK_TOKEN_TTL_DAYS" php -r '$days = max(1, (int) getenv("BOOKSTACK_TOKEN_TTL_DAYS")); echo (new DateTimeImmutable("now", new DateTimeZone("UTC")))->modify("+{$days} days")->format("Y-m-d H:i:s");')}"
 echo "[BookStack API Token] Using build-time generated API token"
-echo "[BookStack API Token] Token ID: $BOOKSTACK_TOKEN_ID"
+echo "[BookStack API Token] Token identifier loaded"
 echo "[BookStack API Token] Token expires at: $BOOKSTACK_TOKEN_EXPIRES_AT UTC"
 cd /app/www
 echo "[BookStack API Token] Ensuring migrations are up to date..."
@@ -84,7 +84,7 @@ CREATE_CMD+="echo 'SUCCESS';"
 RESULT=$(php artisan tinker --execute="$CREATE_CMD" 2>&1 | tail -1)
 if echo "$RESULT" | grep -q "SUCCESS"; then
     echo "[BookStack API Token] ✓ API token created successfully"
-    echo "[BookStack API Token] Token ID: $BOOKSTACK_TOKEN_ID"
+    echo "[BookStack API Token] Token identifier stored"
     echo "[BookStack API Token] Pipeline will use this token from environment variables"
 else
     echo "[BookStack API Token] ERROR: Failed to create token"
