@@ -292,6 +292,44 @@ h3 {
   margin: 8px 0;
 }
 
+.surface-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 18px;
+}
+
+.surface-card {
+  min-height: 100%;
+  padding: 24px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--white);
+  box-shadow: 0 12px 35px rgba(20, 33, 61, 0.06);
+}
+
+.surface-card p {
+  color: var(--muted);
+}
+
+.surface-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 0;
+  margin: 18px 0 0;
+  list-style: none;
+}
+
+.surface-list li {
+  padding: 7px 10px;
+  border: 1px solid rgba(37, 87, 167, 0.2);
+  border-radius: 8px;
+  background: #f3f8ff;
+  color: var(--blue-dark);
+  font-size: 0.9rem;
+  font-weight: 800;
+}
+
 .card {
   min-height: 100%;
   padding: 24px;
@@ -475,6 +513,7 @@ h3 {
   .columns,
   .cards,
   .proof-points,
+  .surface-grid,
   .mode-grid,
   .repo-panel,
   .proof-grid {

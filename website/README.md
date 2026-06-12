@@ -1,7 +1,11 @@
 # Website
 
 This directory contains the buyer-facing Cloudflare Pages site for the public
-proof repo.
+proof repo and Upwork proof package.
+
+The current positioning is Platform Zero: a modular private stack for teams with
+role-aware client, employee, operator, and AI surfaces. The website should stay
+aligned with the Upwork product page, video, and screenshot set.
 
 It is a dependency-free CSR site:
 
@@ -37,6 +41,7 @@ not when only `website/` is published.
 
 - proof links point to the public repo
 - package claims match `docs/packages.md`
+- client/employee/operator service boundaries match the generated portal
 - no compliance overclaims
 - CTA points to `docs/client-intake.md`
 - local preview renders with JavaScript enabled
