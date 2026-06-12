@@ -14,6 +14,9 @@ uses_video_copy=0
 uses_hevc_hls_copy=0
 uses_hls_output=0
 hls_time="6"
+force_browser_safe="${JELLYFIN_FORCE_BROWSER_SAFE_H264:-false}"
+force_browser_safe="$(printf '%s' "$force_browser_safe" | tr '[:upper:]' '[:lower:]')"
+hls_time_override="${JELLYFIN_HLS_TIME:-}"
 for ((i = 0; i < ${#args[@]}; i++)); do
     arg="${args[$i]}"
     if [ "$arg" = "libx264" ]; then
@@ -50,7 +53,9 @@ if [ "$uses_hls_output" -eq 1 ] && [ "$uses_explicit_video_codec" -ne 1 ]; then
 fi
 
 if [ "$needs_default_hls_transcode" -ne 1 ] && [ "$uses_libx264" -ne 1 ] && { [ "$uses_video_copy" -ne 1 ] || [ "$uses_hevc_hls_copy" -ne 1 ]; }; then
-    exec "$real_ffmpeg" "$@"
+    if [ "$force_browser_safe" != "true" ] || [ "$uses_hls_output" -ne 1 ]; then
+        exec "$real_ffmpeg" "$@"
+    fi
 fi
 
 profile="${JELLYFIN_TRANSCODE_H264_PROFILE:-baseline}"
@@ -70,11 +75,26 @@ for ((i = 0; i < ${#args[@]}; i++)); do
     fi
 
     case "$arg" in
+        -hls_time)
+            out+=("$arg")
+            if [ -n "$next" ]; then
+                if [ -n "$hls_time_override" ]; then
+                    out+=("$hls_time_override")
+                    hls_time="$hls_time_override"
+                else
+                    out+=("$next")
+                fi
+                i=$((i + 1))
+            fi
+            continue
+            ;;
         -codec:v|-codec:v:*)
             out+=("$arg")
             if [ -n "$next" ]; then
                 if [ "$uses_hevc_hls_copy" -eq 1 ] && [ "$next" = "copy" ]; then
                     out+=("libx264")
+                elif [ "$force_browser_safe" = "true" ] && [[ "$next" == hevc* || "$next" == av1* ]]; then
+                    out+=("h264_nvenc")
                 else
                     out+=("$next")
                 fi
@@ -159,7 +179,10 @@ if [ "${#out[@]}" -gt 0 ]; then
     last_index=$((${#out[@]} - 1))
     last_arg="${out[$last_index]}"
     if [[ "$last_arg" == /cache/transcodes/* || "$last_arg" == *.m3u8 || "$last_arg" == *.mp4 ]]; then
-        video_options=("-profile:v:0" "$profile" "-level:v:0" "$level" "-bf:v:0" "0" "-refs:v:0" "1")
+        video_options=()
+        if [ "$force_browser_safe" = "true" ] || [ "$needs_default_hls_transcode" -eq 1 ] || [ "$uses_hevc_hls_copy" -eq 1 ]; then
+            video_options=("-profile:v:0" "$profile" "-level:v:0" "$level" "-bf:v:0" "0" "-refs:v:0" "1")
+        fi
         if [ "$needs_default_hls_transcode" -eq 1 ]; then
             video_options=(
                 "-map" "0:v:0"

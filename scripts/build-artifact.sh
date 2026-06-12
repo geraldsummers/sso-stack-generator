@@ -64,6 +64,9 @@ log "running contract report checks"
 log "running mount diagnostics checks"
 "$SCRIPT_DIR/test-mount-diagnostics.sh" >&2
 
+log "running Jellyfin ffmpeg wrapper checks"
+"$SCRIPT_DIR/test-jellyfin-ffmpeg-websafe.sh" >&2
+
 log "running deploy-state guard checks"
 "$SCRIPT_DIR/test-deploy-state.sh" >&2
 

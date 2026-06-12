@@ -257,6 +257,7 @@ if [ -f /config-templates/SSO-Auth.xml ]; then
     chmod 0644 /config/plugins/configurations/SSO-Auth.xml
     echo "SSO-Auth configuration rendered"
 fi
+unset JELLYFIN_OIDC_SECRET secret_escaped
 echo "Starting Jellyfin..."
 exec /jellyfin/jellyfin \
     --datadir /config \
