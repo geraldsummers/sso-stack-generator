@@ -598,13 +598,13 @@ def render_infra_unit(description: str, exec_start: str, part_of_targets: List[s
     return "\n".join(lines) + "\n"
 
 
-def render_path_contract_condition(contract: PathContract) -> str:
+def render_path_contract_condition(contract: PathContract, runtime_env_file: str) -> str:
     test_flag = {
         "file": "-f",
         "dir": "-d",
     }.get(contract.kind, "-e")
     if "$" in contract.path:
-        return f"ExecCondition=/bin/sh -c {shlex.quote(f'test {test_flag} {contract.path}')}"
+        return f"ExecCondition=/bin/sh -c {shlex.quote(f'. {runtime_env_file}; test {test_flag} {contract.path}')}"
     return f"ExecCondition=/usr/bin/test {test_flag} {contract.path}"
 
 
@@ -617,7 +617,7 @@ def render_preflight_lines(runtime_env_file: str, compose_file: str, project_dir
     ]
     service_lines: List[str] = []
     for contract in path_contracts:
-        service_lines.append(render_path_contract_condition(contract))
+        service_lines.append(render_path_contract_condition(contract, runtime_env_file))
     return unit_lines, service_lines
 
 
