@@ -128,7 +128,7 @@
   ];
 
   const audience = [
-    "Small teams reviewing whether scattered SaaS accounts should be consolidated",
+    "Small teams deciding which tools belong under their control",
     "Agencies evaluating client-facing delivery portals",
     "Open-source-friendly businesses",
     "Technical founders evaluating agent-ready infrastructure",
@@ -136,15 +136,15 @@
     "Clients willing to define ownership, access, and support expectations",
   ];
 
-  const painPoints = [
-    "scattered SaaS accounts",
-    "clients seeing internal tools",
-    "employees hunting across apps",
-    "unclear access boundaries",
-    "unproven backups",
-    "weak client handoff",
-    "vendor lock-in",
-    "no AI automation surface",
+  const boundaryQuestions = [
+    "ownership boundary",
+    "client surface",
+    "employee work",
+    "operator controls",
+    "data location",
+    "backup proof",
+    "handoff path",
+    "automation scope",
   ];
 
   const buyerProof = [
@@ -256,15 +256,15 @@
     return el("section", { className: "band" }, [
       el("div", { className: "section-grid" }, [
         el("div", {}, [
-          el("p", { className: "eyebrow", text: "The problem" }),
-          el("h2", { text: "Many teams accumulate tools one subscription at a time." }),
+          el("p", { className: "eyebrow", text: "The boundary problem" }),
+          el("h2", { text: "The hard part is not hosting apps. It is drawing the operating boundary." }),
         ]),
         el("p", {
           text:
-            "The migration work separates what belongs in the private stack from what should stay SaaS, then gives selected client-facing tools, employee work, operations, and AI automation clearer boundaries.",
+            "A useful private stack starts by deciding which services belong under your control, which remain external, who sees each surface, where data lives, and how recovery and handoff are proven.",
         }),
       ]),
-      list(painPoints, "pill-list"),
+      list(boundaryQuestions, "pill-list"),
     ]);
   }
 
