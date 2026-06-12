@@ -11,8 +11,9 @@ import io.ktor.client.request.header
 import io.ktor.serialization.kotlinx.json.json
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.cancel
+import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
@@ -72,7 +73,7 @@ class TestManagerService(
     }
 
     suspend fun stop() {
-        scope.cancel()
+        scope.coroutineContext[Job]?.cancelAndJoin()
         httpClient.close()
     }
 
