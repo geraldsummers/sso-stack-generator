@@ -96,7 +96,7 @@ external_modules_validate_tree() {
 external_modules_path_allowed() {
   local rel_path="$1"
   case "$rel_path" in
-    stack.compose/*|stack.config/*|stack.containers/*|stack.kotlin/*|stack.js/*|scripts/modules/*|docs/modules/*)
+    global.settings/*|stack.compose/*|stack.config/*|stack.containers/*|stack.kotlin/*|stack.js/*|stack.systemd/*|scripts/lib/*|scripts/modules/*|docs/modules/*)
       return 0
       ;;
   esac

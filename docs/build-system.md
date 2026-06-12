@@ -84,11 +84,12 @@ repos:
 }
 ```
 
-Module repos may contribute `stack.compose/`, `stack.config/`,
-`stack.containers/`, `stack.kotlin/`, `stack.js/`, `scripts/modules/`, and
-`docs/modules/`. A module `stack.config/components.json` is merged into the base
-catalog. Any module file that replaces a base generator file must be listed in
-that module's `overrides` array.
+Module repos may contribute `global.settings/`, `stack.compose/`,
+`stack.config/`, `stack.containers/`, `stack.kotlin/`, `stack.js/`,
+`stack.systemd/`, `scripts/lib/`, `scripts/modules/`, and `docs/modules/`. A
+module `stack.config/components.json` is merged into the base catalog. Any module
+file that replaces a base generator file must be listed in that module's
+`overrides` array.
 
 ## Runtime Layout
 
