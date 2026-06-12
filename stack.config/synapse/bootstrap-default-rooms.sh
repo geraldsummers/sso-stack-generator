@@ -151,6 +151,18 @@ finally:
 PY
 )"
 
+matrix_curl() {
+  for attempt in $(seq 1 30); do
+    if curl -fsS "$@"; then
+      return 0
+    fi
+    if [ "$attempt" -eq 30 ]; then
+      return 1
+    fi
+    sleep 2
+  done
+}
+
 ensure_room() {
   alias_localpart="$1"
   room_name="$2"
@@ -158,7 +170,7 @@ ensure_room() {
   alias_encoded="%23${alias_localpart}%3A${matrix_server_name}"
   alias_display="#${alias_localpart}:${matrix_server_name}"
 
-  if curl -fsS \
+  if matrix_curl \
     -H "Authorization: Bearer ${roombot_token}" \
     "${internal_url}/_matrix/client/v3/directory/room/${alias_encoded}" >/dev/null 2>&1; then
     echo "[matrix-bootstrap] Room ${alias_display} already exists"
@@ -170,7 +182,7 @@ ensure_room() {
 EOF
 )"
 
-  curl -fsS \
+  matrix_curl \
     -X POST \
     -H "Authorization: Bearer ${roombot_token}" \
     -H "Content-Type: application/json" \
@@ -185,12 +197,12 @@ ensure_call_permissions() {
   alias_encoded="%23${alias_localpart}%3A${matrix_server_name}"
   alias_display="#${alias_localpart}:${matrix_server_name}"
 
-  room_id="$(curl -fsS \
+  room_id="$(matrix_curl \
     -H "Authorization: Bearer ${roombot_token}" \
     "${internal_url}/_matrix/client/v3/directory/room/${alias_encoded}" \
     | python3 -c 'import json, sys; print(json.load(sys.stdin)["room_id"])')"
 
-  current_power_levels="$(curl -fsS \
+  current_power_levels="$(matrix_curl \
     -H "Authorization: Bearer ${roombot_token}" \
     "${internal_url}/_matrix/client/v3/rooms/${room_id}/state/m.room.power_levels")"
 
@@ -221,7 +233,7 @@ print(json.dumps(power_levels, separators=(",", ":")))
 PY
 )"
 
-  curl -fsS \
+  matrix_curl \
     -X PUT \
     -H "Authorization: Bearer ${roombot_token}" \
     -H "Content-Type: application/json" \
@@ -236,12 +248,12 @@ remove_legacy_jitsi_widgets() {
   alias_encoded="%23${alias_localpart}%3A${matrix_server_name}"
   alias_display="#${alias_localpart}:${matrix_server_name}"
 
-  room_id="$(curl -fsS \
+  room_id="$(matrix_curl \
     -H "Authorization: Bearer ${roombot_token}" \
     "${internal_url}/_matrix/client/v3/directory/room/${alias_encoded}" \
     | python3 -c 'import json, sys; print(json.load(sys.stdin)["room_id"])')"
 
-  room_state="$(curl -fsS \
+  room_state="$(matrix_curl \
     -H "Authorization: Bearer ${roombot_token}" \
     "${internal_url}/_matrix/client/v3/rooms/${room_id}/state")"
 
@@ -271,7 +283,7 @@ PY
   fi
 
   printf '%s\n' "$legacy_widgets" | while IFS="$(printf '\t')" read -r event_type_encoded state_key_encoded; do
-    curl -fsS \
+    matrix_curl \
       -X PUT \
       -H "Authorization: Bearer ${roombot_token}" \
       -H "Content-Type: application/json" \
@@ -287,19 +299,19 @@ ensure_room_encryption() {
   alias_encoded="%23${alias_localpart}%3A${matrix_server_name}"
   alias_display="#${alias_localpart}:${matrix_server_name}"
 
-  room_id="$(curl -fsS \
+  room_id="$(matrix_curl \
     -H "Authorization: Bearer ${roombot_token}" \
     "${internal_url}/_matrix/client/v3/directory/room/${alias_encoded}" \
     | python3 -c 'import json, sys; print(json.load(sys.stdin)["room_id"])')"
 
-  if curl -fsS \
+  if matrix_curl \
     -H "Authorization: Bearer ${roombot_token}" \
     "${internal_url}/_matrix/client/v3/rooms/${room_id}/state/m.room.encryption" >/dev/null 2>&1; then
     echo "[matrix-bootstrap] Room encryption already enabled for ${alias_display}"
     return
   fi
 
-  curl -fsS \
+  matrix_curl \
     -X PUT \
     -H "Authorization: Bearer ${roombot_token}" \
     -H "Content-Type: application/json" \
