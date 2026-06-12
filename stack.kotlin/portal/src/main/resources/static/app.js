@@ -89,8 +89,8 @@ function renderDashboard() {
     <section class="section visual-secondary">
       <div class="section-head">
         <div>
-          <h2>Role Detail</h2>
-          <p>Service drill-through and proof-backed details.</p>
+          <h2>Integrated Workflows</h2>
+          <p>Open the connected tools behind each workflow.</p>
         </div>
       </div>
       <div class="widget-grid">${dashboard.widgets.map(renderWidget).join("")}</div>

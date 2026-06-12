@@ -252,10 +252,10 @@ class PortalService(
         )
         return when (profile.id) {
             "business-owner" -> listOf(
-                KpiTile("pipeline", "Pipeline signal", reportMetric(reports, "contracts", "components", modules.size), "Active stack-backed capabilities", "good"),
-                KpiTile("receivables", "Receivables view", modulePresent(modules, "erpnext"), "ERPNext finance source", moduleTone(modules, "erpnext")),
-                KpiTile("delivery", "Delivery health", "${modules.count { it.category == "Apps" || it.category == "Knowledge" }} areas", "Work, docs, communication, and proof", "good"),
-                KpiTile("risk", "Open risk signal", sources.count { it.status != "ok" }.toString(), "Partial/unavailable sources", if (sources.any { it.status != "ok" }) "attention" else "good")
+                KpiTile("decisions", "Decisions ready", "4", "Briefs, approvals, and follow-ups prepared", "good"),
+                KpiTile("drafts", "Drafts prepared", modulePresent(modules, "chatgpt-connector"), "AI connector can prepare first-pass updates", moduleTone(modules, "chatgpt-connector")),
+                KpiTile("handoffs", "Handoffs", "${modules.count { it.component in setOf("erpnext", "planka", "bookstack", "seafile") }} tools", "Delivery, files, docs, and account context", "good"),
+                KpiTile("focus", "Focus queue", sources.count { it.status != "ok" }.coerceAtLeast(1).toString(), "Items worth an executive decision", "attention")
             )
             "platform-operator-security" -> listOf(
                 KpiTile("health", "Health sources", "$liveOk/$liveTotal", "Live operational endpoints", if (liveOk == liveTotal) "good" else "attention"),
@@ -264,16 +264,16 @@ class PortalService(
                 KpiTile("access", "Access checks", modules.flatMap { it.evidence }.count { "auth" in it || "access" in it || "route" in it }.toString(), "Access-related evidence", "good")
             )
             "employee" -> listOf(
-                KpiTile("mail", "Inbox signal", modulePresent(modules, "sogo"), "Mail and calendar source", moduleTone(modules, "sogo")),
-                KpiTile("rooms", "Team rooms", modulePresent(modules, "matrix"), "Element / Matrix collaboration", moduleTone(modules, "matrix")),
-                KpiTile("tasks", "Assigned work", modules.count { it.component in setOf("planka", "donetick", "erpnext") }.toString(), "Task and project surfaces", "good"),
-                KpiTile("docs", "Knowledge access", modules.count { it.component in setOf("bookstack", "seafile") }.toString(), "Docs and shared files", "good")
+                KpiTile("start", "Start here", "4 actions", "Reply, review, update, and file are ready", "good"),
+                KpiTile("draft", "Draft help", modulePresent(modules, "chatgpt-connector"), "AI connector available for first drafts", moduleTone(modules, "chatgpt-connector")),
+                KpiTile("work", "Work surfaces", modules.count { it.component in setOf("planka", "donetick", "erpnext") }.toString(), "Tasks and project tools connected", "good"),
+                KpiTile("knowledge", "Find answers", modules.count { it.component in setOf("bookstack", "seafile") }.toString(), "Docs and shared files connected", "good")
             )
             "client" -> listOf(
-                KpiTile("files", "Shared files", modulePresent(modules, "seafile"), "Scoped file delivery", moduleTone(modules, "seafile")),
-                KpiTile("deliverables", "Deliverables", modules.count { it.component in setOf("planka", "erpnext", "bookstack") }.toString(), "Project, docs, and approvals", "good"),
-                KpiTile("meetings", "Meeting trail", modulePresent(modules, "sogo"), "Calendar and email context", moduleTone(modules, "sogo")),
-                KpiTile("invoices", "Billing view", modulePresent(modules, "erpnext"), "Invoice and account status", moduleTone(modules, "erpnext"))
+                KpiTile("review", "Ready to review", "3 items", "Deliverables waiting on client action", "attention"),
+                KpiTile("files", "Shared packet", modulePresent(modules, "seafile"), "Scoped files and approvals", moduleTone(modules, "seafile")),
+                KpiTile("meeting", "Meeting prep", modulePresent(modules, "sogo"), "Agenda and follow-ups in context", moduleTone(modules, "sogo")),
+                KpiTile("billing", "Billing context", modulePresent(modules, "erpnext"), "Invoices and account notes available", moduleTone(modules, "erpnext"))
             )
             else -> base.take(if (densityFor(profile.id) == DashboardDensity.EXECUTIVE) 3 else 4)
         }
@@ -321,11 +321,11 @@ class PortalService(
     }
 
     private fun visualLanguageFor(profileId: String): VisualLanguage = when (profileId) {
-        "employee" -> VisualLanguage("#37d3b7", "employee work home", "mail-task-docs-rooms", "calm")
-        "client" -> VisualLanguage("#76a9fa", "customer portal", "deliverables-files-approvals", "focused")
-        "team-lead" -> VisualLanguage("#76a9fa", "delivery control board", "kanban-heatmap-grid", "operational")
-        "business-owner" -> VisualLanguage("#81d67a", "executive pulse", "sparkline-funnel-quadrant", "sparse")
-        "ai-data-analyst" -> VisualLanguage("#b48cff", "analysis lab", "pipeline-run-queue", "dense")
+        "employee" -> VisualLanguage("#37d3b7", "employee action home", "start-draft-file-handoff", "calm")
+        "client" -> VisualLanguage("#76a9fa", "customer action portal", "review-approve-download", "focused")
+        "team-lead" -> VisualLanguage("#76a9fa", "delivery accelerator", "unblock-handoff-coordinate", "operational")
+        "business-owner" -> VisualLanguage("#81d67a", "executive decision desk", "decide-delegate-follow-up", "sparse")
+        "ai-data-analyst" -> VisualLanguage("#b48cff", "analysis workbench", "launch-query-draft-automate", "dense")
         "platform-operator-security" -> VisualLanguage("#37d3b7", "ops and access cockpit", "health-policy-alerts", "cockpit")
         else -> VisualLanguage("#37d3b7", "stack dashboard", "coverage-grid", "operational")
     }
@@ -339,29 +339,29 @@ class PortalService(
         val proofTotal = sources.size.coerceAtLeast(1)
         return when (profile.id) {
             "employee" -> listOf(
-                timeline("workday_flow", "Workday flow", "Mail, meetings, work, docs", "Inbox" to 34.0, "Meetings" to 22.0, "Tasks" to 48.0, "Docs" to 28.0),
-                bars("work_queue", "My work queue", "Assigned work by state", "Due today" to 6.0, "Waiting" to 3.0, "Review" to 4.0, "Done" to 12.0),
-                lanes("workspace_surfaces", "Workspace surfaces", "Integrated staff tools", "Mail" to "ready", "Rooms" to "3", "Files" to "18", "AI" to "on")
+                timeline("start_plan", "Start plan", "One-click workday path", "Reply" to 34.0, "Review" to 22.0, "Update" to 48.0, "File" to 28.0),
+                bars("next_actions", "Next actions", "Prepared work, not just status", "Draft reply" to 6.0, "Update task" to 3.0, "Review doc" to 4.0, "Send handoff" to 2.0),
+                lanes("workspace_surfaces", "Ready tools", "Launch the tool for the job", "Mail" to "open", "Rooms" to "join", "Files" to "review", "AI" to "draft")
             )
             "client" -> listOf(
-                timeline("deliverables", "Deliverables", "Scoped client work", "Draft" to 85.0, "Review" to 62.0, "Approval" to 35.0, "Done" to 18.0),
-                bars("client_progress", "Request progress", "Open customer work", "Open" to 8.0, "Doing" to 4.0, "Waiting" to 2.0, "Done" to 15.0),
-                lanes("client_pack", "Client pack", "Shared surfaces", "Files" to "12", "Docs" to "6", "Meetings" to "3", "Invoices" to "2")
+                timeline("review_path", "Review path", "What the client can do now", "Open" to 85.0, "Comment" to 62.0, "Approve" to 35.0, "Archive" to 18.0),
+                bars("client_actions", "Client actions", "Prepared customer tasks", "Approve" to 3.0, "Answer" to 4.0, "Download" to 6.0, "Pay" to 2.0),
+                lanes("client_pack", "Client packet", "Scoped tools in one place", "Files" to "open", "Docs" to "read", "Meeting" to "join", "Invoice" to "view")
             )
             "team-lead" -> listOf(
-                bars("delivery_flow", "Delivery flow", "Backlog to done", "Backlog" to 18.0, "Doing" to 9.0, "Review" to 6.0, "Done" to 24.0),
-                heatmap("blocked_heat", "Blocked work", "Pressure by lane", "API" to 2.0, "Docs" to 1.0, "Client" to 4.0, "Ops" to 1.0),
-                lanes("workload", "Team load", "Synthetic capacity", "Alice" to "82%", "Bob" to "64%", "Charlie" to "91%", "Damian" to "58%")
+                bars("handoff_queue", "Handoff queue", "Prepared team actions", "Assign" to 7.0, "Unblock" to 4.0, "Review" to 6.0, "Send update" to 3.0),
+                heatmap("unblock_map", "Unblock map", "Where action helps today", "API" to 2.0, "Docs" to 1.0, "Client" to 4.0, "Ops" to 1.0),
+                lanes("team_prompts", "Team prompts", "Useful nudges by person", "Alice" to "review", "Bob" to "handoff", "Charlie" to "ship", "Damian" to "unblock")
             )
             "business-owner" -> listOf(
-                spark("revenue", "Revenue pulse", "Seeded month trend", 48.0, 52.0, 58.0, 55.0, 64.0, 71.0),
-                funnel("pipeline", "Pipeline", "Lead to signed", "Leads" to 44.0, "Qualified" to 24.0, "Proposal" to 12.0, "Won" to 5.0),
-                heatmap("risk_quad", "Delivery risk", "Where attention goes", "Finance" to 2.0, "Delivery" to 1.0, "Sales" to 3.0, "Ops" to 1.0)
+                spark("decision_value", "Decision value", "Prepared choices over time", 48.0, 52.0, 58.0, 55.0, 64.0, 71.0),
+                funnel("opportunity_builder", "Opportunity builder", "Turn signal into action", "Leads" to 44.0, "Drafts" to 24.0, "Proposals" to 12.0, "Follow-ups" to 5.0),
+                heatmap("delegate_map", "Delegate map", "Where one decision moves work", "Finance" to 2.0, "Delivery" to 1.0, "Sales" to 3.0, "Ops" to 1.0)
             )
             "ai-data-analyst" -> listOf(
-                bars("data_pipeline", "Data pipeline", "Ingest to report", "Sources" to 18.0, "Indexed" to 15.0, "Notebooks" to 7.0, "Reports" to 4.0),
-                spark("notebook_runs", "Notebook runs", "Executed outputs", 3.0, 4.0, 6.0, 5.0, 9.0, 8.0),
-                lanes("agent_queue", "Agent queue", "Automation-ready work", "Prompts" to "14", "MCP" to "ok", "Workspaces" to "6")
+                bars("workbench_steps", "Workbench steps", "From question to draft", "Collect" to 18.0, "Search" to 15.0, "Analyze" to 7.0, "Draft" to 4.0),
+                spark("draft_outputs", "Draft outputs", "Reports prepared for review", 3.0, 4.0, 6.0, 5.0, 9.0, 8.0),
+                lanes("agent_workbench", "Agent workbench", "Launchable automation", "Prompts" to "open", "MCP" to "ready", "Workspace" to "launch", "Notebook" to "run")
             )
             "platform-operator-security" -> listOf(
                 heatmap("service_policy_matrix", "Service + policy matrix", "Health and access surfaces", "Routes" to 1.0, "Auth" to 2.0, "Backups" to 2.0, "Security" to 3.0),
@@ -390,20 +390,20 @@ class PortalService(
                 ActionItem("Review backup proof", "Confirm snapshots and restore evidence are current.", "normal", moduleHref(modules, "kopia"))
             )
             "ai-data-analyst" -> listOf(
-                ActionItem("Launch workspace", "Start a disposable analysis workspace for current datasets.", "high", moduleHref(modules, "workspace-provisioner")),
-                ActionItem("Check search coverage", "Open indexed knowledge and query status.", "normal", moduleHref(modules, "search"))
+                ActionItem("Launch workspace", "Start a disposable analysis workspace with current docs and files.", "high", moduleHref(modules, "workspace-provisioner")),
+                ActionItem("Draft report", "Use search and the AI connector to prepare a first-pass report.", "normal", moduleHref(modules, "chatgpt-connector"))
             )
             "business-owner" -> listOf(
-                ActionItem("Read executive brief", "Review high-level delivery, finance, and risk signals.", "normal", moduleHref(modules, "bookstack")),
-                ActionItem("Inspect delivery health", "Open projects and active delivery surface.", "normal", moduleHref(modules, "erpnext"))
+                ActionItem("Open decision brief", "Review prepared choices, owners, and next follow-ups.", "normal", moduleHref(modules, "bookstack")),
+                ActionItem("Delegate follow-up", "Open the business system behind a prepared action.", "normal", moduleHref(modules, "erpnext"))
             )
             "employee" -> listOf(
-                ActionItem("Open work home", "Review mail, rooms, assigned tasks, docs, and shared files.", "normal", moduleHref(modules, "sogo")),
+                ActionItem("Start next action", "Open the prepared reply, task update, file review, or handoff.", "normal", moduleHref(modules, "sogo")),
                 ActionItem("Draft with AI connector", "Use stack context for a safe first draft or task summary.", "normal", moduleHref(modules, "chatgpt-connector"))
             )
             "client" -> listOf(
-                ActionItem("Review deliverables", "Open scoped files, docs, requests, approvals, and invoice state.", "normal", moduleHref(modules, "seafile")),
-                ActionItem("Check meeting trail", "Review recent meetings and follow-up context.", "normal", moduleHref(modules, "sogo"))
+                ActionItem("Review client packet", "Open prepared deliverables, files, docs, approvals, and invoice context.", "normal", moduleHref(modules, "seafile")),
+                ActionItem("Send response", "Jump to the scoped message or meeting follow-up.", "normal", moduleHref(modules, "sogo"))
             )
             else -> listOf(
                 ActionItem("Open primary module", "Drill into the most relevant live service for this role.", "normal", modules.firstOrNull()?.href),
@@ -484,19 +484,19 @@ class PortalService(
         return when (id) {
             "service_health", "route_health", "auth_health", "backup_status", "alerts", "test_results" ->
                 WidgetSpec(title, "status_matrix", "Live operational signal and proof state.", "attention")
-            "revenue", "cash_runway", "receivables", "pipeline", "delivery_health", "executive_brief" ->
-                WidgetSpec(title, "kpi", "High-level business signal with drill-through.", "neutral")
+            "revenue", "cash_runway", "receivables", "pipeline", "delivery_health", "executive_brief", "client_health" ->
+                WidgetSpec(title, "decision_card", "Prepared business action with drill-through.", "neutral")
             "datasets", "recent_notebooks", "workspace_launcher", "ingestion_jobs", "analysis_prompts", "search_coverage", "agent_runs" ->
-                WidgetSpec(title, "activity_feed", "Analysis workspace and knowledge pipeline context.", "good")
+                WidgetSpec(title, "workbench_action", "Launchable analysis step with context attached.", "good")
             "users", "groups", "failed_logins", "service_policies", "stale_accounts", "vault_entry_points" ->
                 WidgetSpec(title, "risk_queue", "Access, identity, and security review surface.", "attention")
             "open_tasks", "assigned_tasks", "my_tasks", "active_work", "blocked_tasks", "overdue_work", "client_tasks", "client_requests" ->
-                WidgetSpec(title, "kanban_summary", "Work queue summarized from project/task services.", "good")
+                WidgetSpec(title, "action_queue", "Prepared work item with the source tool attached.", "good")
             "mailbox", "team_rooms", "meetings", "meeting_history" ->
-                WidgetSpec(title, "message_feed", "Mail, calendar, and team room context.", "neutral")
+                WidgetSpec(title, "message_action", "Conversation context ready for reply or follow-up.", "neutral")
             "recent_files", "client_files", "shared_files", "approval_docs", "approval_queue", "campaign_files", "deliverables", "client_docs", "support_links" ->
-                WidgetSpec(title, "table", "Files, docs, and deliverables from shared work surfaces.", "neutral")
-            else -> WidgetSpec(title, "table", "Stack-backed signals with safe drill-through metadata.", "neutral")
+                WidgetSpec(title, "packet_action", "Open, review, approve, or hand off shared work.", "neutral")
+            else -> WidgetSpec(title, "workflow", "Connected tool action with safe drill-through.", "neutral")
         }
     }
 
