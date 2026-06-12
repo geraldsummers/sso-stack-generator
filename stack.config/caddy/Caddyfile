@@ -355,6 +355,12 @@ jellyfin.{$DOMAIN} {
 		}
 		respond @jellyfin_password_login "Jellyfin password login is disabled; use Keycloak SSO" 403
 		reverse_proxy jellyfin:8096 {
+			flush_interval -1
+			transport http {
+				response_header_timeout 5m
+				read_timeout 0
+				write_timeout 0
+			}
 			header_up Host {host}
 			header_up X-Forwarded-Host {host}
 			header_up X-Forwarded-Server {host}
