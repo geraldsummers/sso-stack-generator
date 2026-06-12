@@ -98,6 +98,58 @@ jq -e '
   exit 1
 }
 
+jq -e '
+  .components
+  | to_entries
+  | all(.[]; .value as $component |
+      if any($component.routes[]?; .ui == true) or $component.portal.visible == true then
+        ($component.portal.audience | type == "string") and
+        (["client", "employee", "either"] | index($component.portal.audience))
+      else
+        true
+      end
+    )
+' "$contracts" >/dev/null || {
+  printf '[service-contract-test] every web UI or portal-visible service must declare portal.audience as client, employee, or either\n' >&2
+  exit 1
+}
+
+jq -e '
+  .components
+  | to_entries
+  | all(.[]; .value as $component | all($component.routes[]?; . as $route | if $route.ui == true then
+      ($route.audience | type == "string") and
+      (["client", "employee", "either"] | index($route.audience))
+    else
+      true
+    end))
+' "$contracts" >/dev/null || {
+  printf '[service-contract-test] every web UI route must declare route audience as client, employee, or either\n' >&2
+  exit 1
+}
+
+jq -e '
+  .components
+  | to_entries
+  | all(.[]; .value as $component | ($component.portal.audience // "") != "both" and all($component.routes[]?; . as $route | ($route.audience // "") != "both"))
+' "$contracts" >/dev/null || {
+  printf '[service-contract-test] portal.audience must not use both; employees inherit access through Keycloak groups\n' >&2
+  exit 1
+}
+
+jq -e '
+  .components.donetick.portal.audience == "client" and
+  .components.planka.portal.audience == "client" and
+  .components.bookstack.portal.audience == "client" and
+  (.components.observability.routes[] | select(.host == "grafana").audience) == "either" and
+  (.components.observability.routes[] | select(.host == "alerts").audience) == "employee" and
+  .components.erpnext.portal.audience == "employee" and
+  .components.huly.portal.audience == "employee"
+' "$contracts" >/dev/null || {
+  printf '[service-contract-test] service audience defaults must preserve the Portal/Huly/client split\n' >&2
+  exit 1
+}
+
 jq -r '.components[].rbac.groups[]?' "$contracts" | sort -u > "$contract_groups"
 {
   jq -r '.groups[].name' "$keycloak_realm"

@@ -134,6 +134,7 @@ class PortalService(
                     name = displayName,
                     description = displayDescription,
                     category = contract.portal.category,
+                    audience = contract.portal.audience,
                     href = contract.portal.path.takeIf { it.isNotBlank() }?.let { href.trimEnd('/') + it } ?: href,
                     auth = contract.auth.mode,
                     profiles = contract.portal.profiles,
@@ -266,7 +267,7 @@ class PortalService(
             "employee" -> listOf(
                 KpiTile("start", "Start here", "5 actions", "Reply, review, update, file, hand off", "good"),
                 KpiTile("draft", "Draft assist", modulePresent(modules, "chatgpt-connector"), "AI connector available for first drafts", moduleTone(modules, "chatgpt-connector")),
-                KpiTile("work", "Work tools", modules.count { it.component in setOf("planka", "donetick", "erpnext") }.toString(), "Tasks and project tools connected", "good"),
+                KpiTile("work", "Work cockpit", modulePresent(modules, "huly"), "Huly is the internal work surface", moduleTone(modules, "huly")),
                 KpiTile("knowledge", "Reference", modules.count { it.component in setOf("bookstack", "seafile") }.toString(), "Docs and shared files connected", "good")
             )
             "client" -> listOf(
@@ -418,9 +419,10 @@ class PortalService(
                 ActionItem("Ask for a board summary", "Generate a one-page summary from projects, docs, and finance context.", "normal", moduleHref(modules, "chatgpt-connector"))
             )
             "employee" -> listOf(
-                ActionItem("Reply to Alice's client note", "Open the mail thread with the project file and suggested reply ready.", "high", moduleHref(modules, "sogo")),
+                ActionItem("Open internal work cockpit", "Start in Huly with assigned work, project context, and task-linked discussion.", "high", moduleHref(modules, "huly")),
+                ActionItem("Reply to Alice's client note", "Open the mail thread with the project file and suggested reply ready.", "normal", moduleHref(modules, "sogo")),
                 ActionItem("Draft weekly update", "Use the AI connector with tasks, docs, and recent file context.", "normal", moduleHref(modules, "chatgpt-connector")),
-                ActionItem("Update onboarding task", "Move the checklist card after adding today’s evidence.", "normal", moduleHref(modules, "planka")),
+                ActionItem("Update assigned task", "Move the internal work item after adding today’s evidence.", "normal", moduleHref(modules, "huly")),
                 ActionItem("Review handoff file", "Open the shared Seafile packet and mark the delivery note reviewed.", "normal", moduleHref(modules, "seafile")),
                 ActionItem("Find the runbook answer", "Open the BookStack page linked to the current task.", "normal", moduleHref(modules, "bookstack"))
             )
@@ -432,8 +434,9 @@ class PortalService(
                 ActionItem("Join project room", "Open the scoped room for follow-up questions and meeting notes.", "normal", moduleHref(modules, "matrix"))
             )
             "team-lead" -> listOf(
-                ActionItem("Unblock Damian", "Open the blocked task with the decision log and owner handoff attached.", "high", moduleHref(modules, "planka")),
-                ActionItem("Assign review to Alice", "Move the client packet into review and notify the owner.", "normal", moduleHref(modules, "planka")),
+                ActionItem("Open Huly team plan", "Review internal assignments, blockers, and task-linked discussion.", "high", moduleHref(modules, "huly")),
+                ActionItem("Unblock Damian", "Open the blocked task with the decision log and owner handoff attached.", "high", moduleHref(modules, "huly")),
+                ActionItem("Review client board", "Open the client-facing Planka board before sending the status update.", "normal", moduleHref(modules, "planka")),
                 ActionItem("Send client status update", "Use the drafted update with files, tasks, and meeting notes attached.", "normal", moduleHref(modules, "sogo")),
                 ActionItem("Open handoff packet", "Review the delivery files before handing work to Bob.", "normal", moduleHref(modules, "seafile")),
                 ActionItem("Update decision log", "Record what changed and link the task board for the team.", "normal", moduleHref(modules, "bookstack"))
@@ -500,7 +503,7 @@ class PortalService(
             "recent_files", "client_files", "approval_docs", "approval_queue", "campaign_files", "shared_files", "client_docs", "support_links" -> modules.filter { it.component == "seafile" || it.component == "onlyoffice" || it.component == "bookstack" || it.component == "erpnext" }.take(6).map {
                 WidgetItem(it.name, it.category, it.description, "neutral", it.href)
             }
-            "open_tasks", "assigned_tasks", "my_tasks", "active_work", "blocked_tasks", "overdue_work", "client_tasks", "client_requests" -> modules.filter { it.component == "planka" || it.component == "donetick" || it.component == "erpnext" }.take(6).map {
+            "open_tasks", "assigned_tasks", "my_tasks", "active_work", "blocked_tasks", "overdue_work", "client_tasks", "client_requests", "huly_my_work", "huly_team_plan", "huly_exec_brief", "huly_analysis_queue", "client_boards", "client_todos" -> modules.filter { it.component == "huly" || it.component == "planka" || it.component == "donetick" || it.component == "erpnext" }.take(6).map {
                 WidgetItem(it.name, it.category, it.description, "good", it.href)
             }
             "mailbox" -> modules.filter { it.component == "sogo" }.take(6).map {
@@ -534,9 +537,14 @@ class PortalService(
                 item("Ops room", "read", "Maintenance note is pinned for Friday.", "matrix")
             )
             "my_tasks" -> listOf(
-                item("Update onboarding checklist", "today", "Move the Planka card after adding evidence.", "planka", "attention"),
+                item("Update onboarding checklist", "today", "Move the Huly task after adding evidence.", "huly", "attention"),
                 item("Review handoff file", "15 min", "Open Seafile packet and confirm the summary page.", "seafile"),
                 item("File meeting notes", "ready", "Attach notes to the project record.", "erpnext")
+            )
+            "huly_my_work" -> listOf(
+                item("Northstar implementation plan", "today", "Huly has the owner, spec, comments, and next action.", "huly", "attention"),
+                item("Review Bob's handoff", "queued", "Task-linked discussion keeps the work context together.", "huly"),
+                item("Ops note follow-up", "ready", "Internal notes stay in Huly, not the client knowledge base.", "huly")
             )
             "recent_docs" -> listOf(
                 item("Client update runbook", "open", "Use the approved structure for outbound updates.", "bookstack"),
@@ -574,10 +582,20 @@ class PortalService(
                 item("Payment question", "reply", "Finance thread is attached.", "sogo")
             )
             "active_work", "blocked_tasks", "overdue_work", "team_workload" -> listOf(
-                item("Damian blocked on API wording", "unblock", "Decision log and draft response are attached.", "planka", "attention"),
-                item("Alice review queue", "assign", "Client packet needs owner confirmation.", "planka"),
+                item("Damian blocked on API wording", "unblock", "Decision log and draft response are attached.", "huly", "attention"),
+                item("Alice review queue", "assign", "Client packet needs owner confirmation.", "huly"),
                 item("Bob handoff packet", "send", "Files are ready for delivery review.", "seafile"),
                 item("Charlie release note", "review", "Draft is waiting in the docs workspace.", "bookstack")
+            )
+            "huly_team_plan" -> listOf(
+                item("Alice review queue", "assign", "Internal ownership and due date live in Huly.", "huly", "attention"),
+                item("Bob handoff packet", "review", "Huly links the client packet and decision thread.", "huly"),
+                item("Damian blocker", "unblock", "One lead decision clears the next implementation step.", "huly")
+            )
+            "client_boards" -> listOf(
+                item("Northstar client board", "review", "Planka shows the scoped delivery lane for the customer.", "planka", "attention"),
+                item("Approval swimlane", "ready", "External approvals stay separate from internal Huly work.", "planka"),
+                item("Change requests", "triage", "Client-visible requests are ready for owner assignment.", "planka")
             )
             "recent_decisions" -> listOf(
                 item("Scope boundary", "record", "Capture final wording from the client call.", "bookstack"),
@@ -590,11 +608,26 @@ class PortalService(
                 item("Read executive brief", "review", "Three decisions and two follow-ups are summarized.", "bookstack"),
                 item("Send client confidence update", "send", "Draft message includes delivery evidence.", "sogo")
             )
+            "huly_exec_brief" -> listOf(
+                item("Delivery decision queue", "decide", "Huly groups the internal decisions that need executive input.", "huly", "attention"),
+                item("Delegated work status", "review", "See what you delegated and what came back for approval.", "huly"),
+                item("Client board summary", "compare", "Planka remains the external-facing view.", "planka")
+            )
             "datasets", "recent_notebooks", "workspace_launcher", "ingestion_jobs", "analysis_prompts", "search_coverage", "agent_runs" -> listOf(
                 item("Launch churn workspace", "launch", "Disposable workspace with data and docs mounted.", "workspace-provisioner", "attention"),
                 item("Run cohort notebook", "run", "Notebook is ready with the latest CSV.", "jupyterhub"),
                 item("Draft findings report", "draft", "AI connector has the evidence packet.", "chatgpt-connector"),
                 item("Publish analysis runbook", "publish", "Inputs and assumptions are ready to record.", "bookstack")
+            )
+            "huly_analysis_queue" -> listOf(
+                item("Churn analysis request", "start", "Huly captures the question, owner, files, and review path.", "huly", "attention"),
+                item("Notebook review task", "review", "Analysis work links back to the Huly task.", "huly"),
+                item("Report handoff", "draft", "AI connector output returns to the work item for review.", "chatgpt-connector")
+            )
+            "client_todos" -> listOf(
+                item("Launch checklist", "3 due", "Donetick keeps simple customer routines out of Huly.", "donetick", "attention"),
+                item("Monthly evidence upload", "next", "Client recurring checklist with a clear due date.", "donetick"),
+                item("Access review", "scheduled", "Simple routine tracking for the customer side.", "donetick")
             )
             else -> null
         }
@@ -605,6 +638,12 @@ class PortalService(
             "mailbox" -> "Inbox actions"
             "team_rooms" -> "Room actions"
             "my_tasks" -> "My work queue"
+            "huly_my_work" -> "Huly work queue"
+            "huly_team_plan" -> "Huly team plan"
+            "huly_exec_brief" -> "Huly decision queue"
+            "huly_analysis_queue" -> "Huly analysis queue"
+            "client_boards" -> "Client boards"
+            "client_todos" -> "Client todo routines"
             "recent_docs" -> "Useful docs"
             "shared_files" -> "Shared file actions"
             "approval_queue" -> "Approvals"
@@ -645,7 +684,7 @@ class PortalService(
                 WidgetSpec(title, "workbench_action", "Launch analysis work with source context attached.", "good")
             "users", "groups", "failed_logins", "service_policies", "stale_accounts", "vault_entry_points" ->
                 WidgetSpec(title, "risk_queue", "Access, identity, and security review surface.", "attention")
-            "open_tasks", "assigned_tasks", "my_tasks", "active_work", "blocked_tasks", "overdue_work", "client_tasks", "client_requests" ->
+            "open_tasks", "assigned_tasks", "my_tasks", "active_work", "blocked_tasks", "overdue_work", "client_tasks", "client_requests", "huly_my_work", "huly_team_plan", "huly_exec_brief", "huly_analysis_queue", "client_boards", "client_todos" ->
                 WidgetSpec(title, "action_queue", "Prepared work items linked to the source tool.", "good")
             "mailbox", "team_rooms", "meetings", "meeting_history" ->
                 WidgetSpec(title, "message_action", "Conversation context ready for reply or follow-up.", "good")
@@ -667,7 +706,9 @@ class PortalService(
         "recent_files", "client_files", "shared_files", "deliverables" -> moduleHref(modules, "seafile")
         "mailbox", "meetings", "meeting_history" -> moduleHref(modules, "sogo")
         "team_rooms" -> moduleHref(modules, "matrix")
-        "my_tasks", "active_work", "blocked_tasks", "overdue_work", "team_workload" -> moduleHref(modules, "planka")
+        "my_tasks", "active_work", "blocked_tasks", "overdue_work", "team_workload", "huly_my_work", "huly_team_plan", "huly_exec_brief", "huly_analysis_queue" -> moduleHref(modules, "huly")
+        "client_boards" -> moduleHref(modules, "planka")
+        "client_todos" -> moduleHref(modules, "donetick")
         "ai_next_actions", "analysis_prompts", "agent_runs" -> moduleHref(modules, "chatgpt-connector")
         "pipeline", "delivery_health", "client_health", "executive_brief" -> moduleHref(modules, "bookstack") ?: moduleHref(modules, "erpnext")
         else -> modules.firstOrNull()?.href

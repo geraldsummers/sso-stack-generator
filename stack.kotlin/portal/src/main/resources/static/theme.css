@@ -68,7 +68,8 @@ h1 {
 
 .status-pill,
 .tag,
-.source-pill {
+.source-pill,
+.audience-chip {
   border: 1px solid var(--line);
   background: var(--panel);
   border-radius: 999px;
@@ -331,6 +332,23 @@ main {
   display: block;
   margin-top: .24rem;
   font-size: 1.65rem;
+}
+
+.audience-filter-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .45rem;
+  margin: -.2rem 0 .75rem;
+}
+
+.audience-chip {
+  display: inline-flex;
+  align-items: center;
+  min-height: 1.85rem;
+  padding: .36rem .65rem;
+  font-size: .78rem;
+  font-weight: 800;
+  text-transform: uppercase;
 }
 
 .proof-panel {

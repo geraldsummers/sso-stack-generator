@@ -307,6 +307,18 @@ planka.{$DOMAIN} {
 }
 # webservices-component-end planka
 
+# Huly internal work cockpit.
+# webservices-component-start huly
+huly.{$DOMAIN} {
+	import access_observability
+	route {
+		import keycloak_auth huly
+		import keycloak_group_allow huly admins|operators|developers
+		reverse_proxy huly-front:8080
+	}
+}
+# webservices-component-end huly
+
 # BookStack (uses OIDC)
 # webservices-component-start bookstack
 bookstack.{$DOMAIN} {

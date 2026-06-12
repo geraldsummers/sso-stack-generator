@@ -63,6 +63,7 @@ data class PortalContract(
     val hrefHost: String = "",
     val path: String = "",
     val category: String = "Platform",
+    val audience: String = "employee",
     val profiles: List<String> = emptyList(),
     val description: String = ""
 )
@@ -108,6 +109,7 @@ data class PortalModule(
     val name: String,
     val description: String,
     val category: String,
+    val audience: String,
     val href: String,
     val auth: String,
     val profiles: List<String>,

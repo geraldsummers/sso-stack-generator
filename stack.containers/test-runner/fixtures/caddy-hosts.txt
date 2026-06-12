@@ -11,6 +11,7 @@ grafana
 vaultwarden
 api.vaultwarden
 planka
+huly
 bookstack
 api.bookstack
 chatgpt-connector

@@ -10,6 +10,7 @@ const statusPill = document.getElementById("status-pill");
 
 const toneClass = (tone) => `tone-${tone || "neutral"}`;
 const cssVar = (name, fallback) => getComputedStyle(document.documentElement).getPropertyValue(name).trim() || fallback;
+const audienceTone = (audience) => audience === "employee" ? "attention" : audience === "client" ? "good" : "neutral";
 
 function esc(value) {
   return String(value ?? "")
@@ -137,11 +138,31 @@ function renderDashboard() {
       <div class="section-head">
         <div>
           <h2>Stack Modules For This Role</h2>
-          <p>Each card drills through to the owning service.</p>
+          <p>Audience labels describe product positioning; Keycloak remains the access boundary.</p>
         </div>
       </div>
+      ${renderAudienceFilters(dashboard.modules)}
       <div class="module-grid">${dashboard.modules.map(renderModule).join("")}</div>
     </section>
+  `;
+}
+
+function renderAudienceFilters(modules) {
+  const counts = modules.reduce((acc, module) => {
+    const audience = module.audience || "employee";
+    acc[audience] = (acc[audience] || 0) + 1;
+    return acc;
+  }, {});
+  const lanes = ["client", "employee", "either"].filter((lane) => counts[lane]);
+  if (!lanes.length) return "";
+  return `
+    <div class="audience-filter-row" aria-label="Audience lanes">
+      ${lanes.map((lane) => `
+        <span class="audience-chip ${toneClass(audienceTone(lane))}">
+          ${esc(lane)} · ${counts[lane]}
+        </span>
+      `).join("")}
+    </div>
   `;
 }
 
@@ -426,6 +447,7 @@ function renderModule(module) {
     <a class="module-card" href="${esc(module.href)}">
       <div class="module-meta">
         ${tag(module.category)}
+        ${tag(module.audience || "employee", audienceTone(module.audience))}
         ${tag(module.auth, "good")}
         ${module.slo.availability ? tag(module.slo.availability, "attention") : ""}
       </div>

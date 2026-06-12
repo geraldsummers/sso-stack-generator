@@ -224,6 +224,13 @@ export const browserRouteCatalog: BrowserRoute[] = [
     ownership: { route: true, smoke: false, visual: true, deep: true },
   },
   {
+    host: 'huly',
+    label: 'Huly',
+    kind: 'forward_auth',
+    anonymous: { kind: 'forward_auth' },
+    ownership: { route: false, smoke: false, visual: false, deep: false },
+  },
+  {
     host: 'erpnext',
     label: 'ERPNext',
     kind: 'oidc_login',
