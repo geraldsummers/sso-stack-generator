@@ -33,9 +33,13 @@ assert_file() {
 tmp_root="$(mktemp -d)"
 cleanup() {
   rm -rf "$tmp_root"
-  rm -rf "$ROOT_DIR/out/external-git" "$ROOT_DIR/out/external-modules"
 }
 trap cleanup EXIT
+
+EXTERNAL_MODULES_CACHE_DIR="$tmp_root/external-git"
+EXTERNAL_MODULES_ROOT="$tmp_root/external-modules"
+EXTERNAL_MODULES_MATERIALIZED_DIR="$EXTERNAL_MODULES_ROOT/materialized"
+EXTERNAL_MODULES_METADATA_FILE="$EXTERNAL_MODULES_ROOT/metadata.json"
 
 module_repo="$tmp_root/demo-module"
 manifest_repo="$tmp_root/module-manifest"
@@ -108,10 +112,10 @@ cat > "$site_root/.webservices-generator.json" <<EOF_PIN
 EOF_PIN
 
 external_modules_resolve "$site_root/manifest.json"
-assert_file "$ROOT_DIR/out/external-modules/materialized/stack.compose/demo.yml"
-assert_file "$ROOT_DIR/out/external-modules/materialized/stack.config/components.external/demo-module.json"
+assert_file "$EXTERNAL_MODULES_MATERIALIZED_DIR/stack.compose/demo.yml"
+assert_file "$EXTERNAL_MODULES_MATERIALIZED_DIR/stack.config/components.external/demo-module.json"
 jq -e '.enabled == true and (.modules | length) == 1 and .modules[0].name == "demo-module"' \
-  "$ROOT_DIR/out/external-modules/metadata.json" >/dev/null
+  "$EXTERNAL_MODULES_METADATA_FILE" >/dev/null
 
 cp "$ROOT_DIR/stack.config/components.json" "$bundle_root/stack.config/components.json"
 external_modules_overlay_into "$bundle_root"
