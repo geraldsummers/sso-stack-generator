@@ -186,9 +186,15 @@ configure_hardware_acceleration() {
     fi
 
     set_xml_element_value "$encoding_config" "HardwareAccelerationType" "$acceleration"
-    set_xml_element_value "$encoding_config" "EnableHardwareEncoding" "true"
-    set_xml_element_value "$encoding_config" "EnableEnhancedNvdecDecoder" "true"
-    set_xml_element_value "$encoding_config" "PreferSystemNativeHwDecoder" "true"
+    if [ "$acceleration" = "none" ]; then
+        set_xml_element_value "$encoding_config" "EnableHardwareEncoding" "false"
+        set_xml_element_value "$encoding_config" "EnableEnhancedNvdecDecoder" "false"
+        set_xml_element_value "$encoding_config" "PreferSystemNativeHwDecoder" "false"
+    else
+        set_xml_element_value "$encoding_config" "EnableHardwareEncoding" "true"
+        set_xml_element_value "$encoding_config" "EnableEnhancedNvdecDecoder" "true"
+        set_xml_element_value "$encoding_config" "PreferSystemNativeHwDecoder" "true"
+    fi
     set_xml_element_value "$encoding_config" "EnableTonemapping" "$tonemapping"
 
     sed -i "/<HardwareDecodingCodecs>/,/<\\/HardwareDecodingCodecs>/c\\  <HardwareDecodingCodecs>\\n${codec_xml}  </HardwareDecodingCodecs>" "$encoding_config"
