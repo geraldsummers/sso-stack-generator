@@ -14,8 +14,8 @@
 
   const proofCards = [
     {
-      title: "Generated Stack",
-      copy: "The stack is generated from explicit inputs, so selected modules stay reviewable and changeable.",
+      title: "Generated Deployment",
+      copy: "Selected modules are generated from explicit inputs, so launch choices stay reviewable and changeable.",
       image: "assets/build-deploy-verify.svg",
       href: `${docsBase}/build-system.md`,
     },
@@ -55,7 +55,7 @@
   const packages = [
     {
       name: "Private Core",
-      fit: "For deployments that need owned login, docs, files, backups, and a clear portal.",
+      fit: "Owned login, docs, files, backups, and a clear portal.",
       items: [
         "Portal, Caddy, Keycloak, and selected service routing",
         "BookStack knowledge base and Seafile files as selected modules",
@@ -66,18 +66,18 @@
     },
     {
       name: "Team Platform",
-      fit: "For deployments that benefit from scoped client and employee surfaces.",
+      fit: "Client and employee work surfaces under one access model.",
       items: [
         "Private Core plus selected collaboration modules",
         "Huly as an employee work cockpit option",
-        "Planka or Donetick for scoped client-visible work",
+        "Client-facing kanban/checklist modules where useful",
         "SOGo, Element, Forgejo, and ERPNext where they fit",
         "Documented client/employee/operator service lanes",
       ],
     },
     {
       name: "AI And Automation Lab",
-      fit: "For deployments that need agent-friendly automation or private technical workspaces.",
+      fit: "Agent-friendly automation and private technical workspaces.",
       items: [
         "Team Platform plus selected technical modules",
         "JupyterHub and disposable workspaces for technical workflows",
@@ -91,18 +91,18 @@
   const operationModes = [
     {
       name: "Handoff / Self-Service",
-      fit: "For clients who want a deployed, documented stack under their own operation.",
+      fit: "For teams that want deployed, documented infrastructure under their own operation.",
       items: [
-        "You own the server, domain, accounts, and admin decisions",
-        "You get verification results, docs, and next maintenance steps",
+        "The client owns the server, domain, accounts, and admin decisions",
+        "Delivery includes verification results, docs, and next maintenance steps",
         "Planned support or updates are scoped separately",
       ],
     },
     {
       name: "Managed Operations",
-      fit: "For clients who want a private stack but prefer scoped ongoing operational help.",
+      fit: "For teams that want scoped ongoing operational help.",
       items: [
-        "I stay involved for planned updates, monitoring review, and troubleshooting",
+        "Planned updates, monitoring review, and troubleshooting stay in scope by agreement",
         "Coverage, response times, access, and billing are agreed up front",
         "Emergency or 24/7 support is only included when explicitly contracted",
       ],
@@ -113,27 +113,27 @@
     {
       lane: "Client surface",
       copy: "Tools customers, members, or external collaborators use when enabled for a deployment.",
-      services: ["Portal", "BookStack", "Planka", "Seafile", "SOGo", "Element", "Donetick"],
+      services: ["Portal", "BookStack", "Seafile", "SOGo", "Element", "Donetick", "OnlyOffice"],
     },
     {
       lane: "Employee surface",
-      copy: "Internal work and operating context for the people running delivery, where the deployment needs it.",
+      copy: "Internal work and operating context for the people running delivery.",
       services: ["Huly", "ERPNext", "Forgejo", "JupyterHub", "Workspaces", "Progression"],
     },
     {
       lane: "Operator surface",
-      copy: "Control surfaces for keeping selected services visible, recoverable, and auditable.",
+      copy: "Control surfaces for visibility, recovery, access review, and audit evidence.",
       services: ["Grafana", "Prometheus", "Alertmanager", "Kopia", "Keycloak", "Caddy"],
     },
   ];
 
   const audience = [
-    "Small teams deciding which tools belong under their control",
+    "Small teams that need private business software without enterprise-suite weight",
     "Agencies evaluating client-facing delivery portals",
     "Open-source-friendly businesses",
     "Technical founders evaluating agent-ready infrastructure",
     "Communities, co-ops, and private organizations",
-    "Clients willing to define ownership, access, and support expectations",
+    "Clients ready to define access, data, migration, and support expectations",
   ];
 
   const boundaryQuestions = [
@@ -231,11 +231,11 @@
           el("p", {
             className: "lede",
             text:
-              "A modular self-hosted stack for bringing client, employee, operator, and AI surfaces under one owned system.",
+              "A modular self-hosted business platform for client portals, employee work, operations, and AI-ready technical workflows.",
           }),
           el("p", {
             className: "mission",
-            text: "Start with discovery. Add only the modules that fit the deployment.",
+            text: "Launch fresh, or replace existing tools in stages.",
           }),
           el("div", { className: "actions", "aria-label": "Calls to action" }, [
             externalLink(links.intake, "Review the checklist", "button primary"),
@@ -256,12 +256,12 @@
     return el("section", { className: "band" }, [
       el("div", { className: "section-grid" }, [
         el("div", {}, [
-          el("p", { className: "eyebrow", text: "The boundary problem" }),
-          el("h2", { text: "The hard part is not hosting apps. It is drawing the operating boundary." }),
+          el("p", { className: "eyebrow", text: "The operating boundary" }),
+          el("h2", { text: "Business software becomes useful when access, work, data, and recovery are clear." }),
         ]),
         el("p", {
           text:
-            "A useful private stack starts by deciding which services belong under your control, which remain external, who sees each surface, where data lives, and how recovery and handoff are proven.",
+            "Platform Zero starts by defining the services, roles, data locations, migration path, recovery expectations, and launch responsibility. Cleanup and scattered SaaS replacement are handled as part of that boundary work.",
         }),
       ]),
       list(boundaryQuestions, "pill-list"),
@@ -273,7 +273,7 @@
       sectionHeading(
         "Role-aware surfaces",
         "Client and employee surfaces are separated by deployment policy.",
-        "Keycloak enforces who enters each surface. The Portal presents different tools by audience. Employees manage client surfaces while clients remain outside internal tools.",
+        "Keycloak enforces access. The Portal presents the right surface for each audience. Employees manage client work without exposing internal tools.",
       ),
       el(
         "div",
@@ -294,7 +294,7 @@
       sectionHeading(
         "Buyer proof",
         "Product pages make claims. Repos show the delivery model.",
-        "Use this page as the public proof layer next to the Upwork product listing: inspect the source, review the module boundaries, and decide whether this approach fits your migration.",
+        "This public proof layer links the Upwork listing to source, module boundaries, docs, and verification evidence.",
       ),
       el(
         "div",
@@ -314,16 +314,16 @@
       el("div", { className: "section-grid" }, [
         el("div", {}, [
           el("p", { className: "eyebrow", text: "The offer" }),
-          el("h2", { text: "A modular private stack for cases where ownership matters." }),
+          el("h2", { text: "A portable businessware base with selected open-source services wired together." }),
         ]),
         el("div", { className: "stacked-copy" }, [
           el("p", {
             text:
-              "The delivery starts with your current tools, users, data, client access, employee workflows, and automation goals. From there, we identify what belongs in the private stack, what should stay SaaS, and which modules are the smallest useful fit.",
+              "Delivery starts with tools, users, data, client access, employee workflows, and automation goals. From there, the selected services become a coherent launch plan instead of unrelated applications.",
           }),
           el("p", {
             text:
-              "When a private stack is the right move, there are two engagement modes: a repo-backed handoff for your team to operate, or managed operations where I stay responsible for agreed ongoing work.",
+              "Two engagement modes are available: repo-backed handoff for the client team to operate, or managed operations with agreed ongoing responsibility.",
           }),
         ]),
       ]),
@@ -334,8 +334,8 @@
     return el("section", { className: "band", id: "operation-modes" }, [
       sectionHeading(
         "Operation modes",
-        "Decide who runs the stack after launch.",
-        "The same underlying stack supports self-service handoff or managed operations. The difference is ongoing responsibility, response expectations, and support scope.",
+        "Decide who runs the system after launch.",
+        "The same delivery model supports self-service handoff or managed operations. The difference is responsibility, response expectations, and support scope.",
       ),
       el(
         "div",
@@ -368,7 +368,7 @@
       sectionHeading(
         "Repo proof",
         "The proof site points back to inspectable source.",
-        "This Cloudflare Pages site is intentionally simple. It publishes the buyer proof layer while linking technical claims back to public repository documents.",
+        "Technical claims link back to public repository documents, module contracts, and generated evidence.",
       ),
       el("div", { className: "repo-panel" }, [
         el("div", {}, [
@@ -398,8 +398,8 @@
     return el("section", { className: "band", id: "packages" }, [
       sectionHeading(
         "Packages",
-        "Choose the smallest useful stack.",
-        "Packages are starting points, not fixed promises. Final scope depends on the actual deployment.",
+        "Choose the smallest useful launch shape.",
+        "Packages are starting points. Final scope follows the selected services, migration path, and operating mode.",
       ),
       el(
         "div",
@@ -420,13 +420,13 @@
       el("div", { className: "section-grid" }, [
         el("div", {}, [
           el("p", { className: "eyebrow", text: "Works best for" }),
-          el("h2", { text: "Teams that want private tools with clear ownership expectations." }),
+          el("h2", { text: "Teams that need integrated business tools without heavy enterprise platforms." }),
         ]),
         el("div", {}, [
           el("p", {
             className: "section-note",
             text:
-              "The strongest projects have a clear owner, a specific reason to reduce or reorganize SaaS dependency, and an explicit choice about client access, employee workflows, and ongoing operations.",
+              "The strongest projects have a clear owner, defined user groups, a specific migration or launch goal, and an explicit choice about ongoing operations.",
           }),
           list(audience, "check-list"),
         ]),
@@ -440,7 +440,7 @@
       el("h2", { text: "Bring the current tool list." }),
       el("p", {
         text:
-          "Send the current SaaS list, user groups, client-facing needs, employee workflows, domain situation, migration goals, and support expectations. I will map what to replace, what should stay SaaS, and what a private stack actually needs.",
+          "Send the current tool list, user groups, client-facing needs, employee workflows, domain situation, migration goals, and support expectations. The response maps what to launch first, what to replace later, and what should stay outside the deployment.",
       }),
       el("div", { className: "actions centered" }, [
         externalLink(links.intake, "Open migration checklist", "button primary"),

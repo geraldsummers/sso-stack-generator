@@ -3,8 +3,8 @@
 This directory contains the buyer-facing Cloudflare Pages site for the public
 proof repo and Upwork proof package.
 
-The current positioning is Platform Zero: a modular private stack approach for
-teams evaluating role-aware client, employee, operator, and AI surfaces. The
+The current positioning is Platform Zero: a modular private business platform
+for teams evaluating role-aware client, employee, operator, and AI surfaces. The
 website should stay aligned with the Upwork product page, video, and screenshot
 set while keeping claims tied to deployment scope.
 

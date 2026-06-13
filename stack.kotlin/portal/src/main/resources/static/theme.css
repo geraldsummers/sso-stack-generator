@@ -147,6 +147,42 @@ main {
   align-items: start;
 }
 
+.cockpit-stage.profile-employee {
+  grid-template-columns: minmax(16rem, .72fr) minmax(34rem, 1.7fr) minmax(18rem, .82fr);
+}
+
+.cockpit-stage.profile-client {
+  --panel: #fbfaf6;
+  --panel-strong: #fffdf8;
+  --panel-soft: #f4efe5;
+  --text: #17212b;
+  --muted: #607180;
+  --faint: #7a8790;
+  --line: #d8d0c3;
+  --line-strong: #b9ab99;
+  grid-template-columns: minmax(20rem, 1.05fr) minmax(25rem, 1fr) minmax(20rem, .95fr);
+}
+
+.cockpit-stage.profile-platform-operator-security {
+  grid-template-columns: minmax(19rem, 1.08fr) minmax(25rem, .96fr) minmax(20rem, .96fr);
+}
+
+.profile-client .cockpit-action-grid {
+  grid-template-columns: 1fr;
+}
+
+.profile-client .primary-action {
+  grid-column: span 1;
+}
+
+.profile-platform-operator-security .cockpit-action-grid {
+  grid-template-columns: 1fr;
+}
+
+.profile-platform-operator-security .primary-action {
+  grid-column: span 1;
+}
+
 .cockpit-rail,
 .cockpit-context {
   display: grid;

@@ -66,7 +66,7 @@ function renderDashboard() {
   }
 
   dashboardRoot.innerHTML = `
-    <section class="cockpit-stage" style="--accent:${esc(dashboard.visualLanguage.accent)}">
+    <section class="cockpit-stage ${profileClass(dashboard.profile.id)}" style="--accent:${esc(dashboard.visualLanguage.accent)}">
       <aside class="cockpit-rail">
         <article class="panel role-panel">
           <div class="meta-row">
@@ -84,8 +84,8 @@ function renderDashboard() {
       <section class="panel cockpit-work">
         <div class="section-head">
           <div>
-            <h2>Work From Here</h2>
-            <p>Each card opens the service behind the next useful action.</p>
+            <h2>${esc(workTitle(dashboard.profile.id))}</h2>
+            <p>${esc(workSubtitle(dashboard.profile.id))}</p>
           </div>
           ${tag(`${dashboard.actions.filter((action) => action.href).length}/${dashboard.actions.length} linked actions`, "good")}
         </div>
@@ -137,7 +137,7 @@ function renderDashboard() {
     <section class="section">
       <div class="section-head">
         <div>
-          <h2>Stack Modules For This Role</h2>
+          <h2>Selected Modules For This Role</h2>
           <p>Audience labels describe product positioning; Keycloak remains the access boundary.</p>
         </div>
       </div>
@@ -145,6 +145,28 @@ function renderDashboard() {
       <div class="module-grid">${dashboard.modules.map(renderModule).join("")}</div>
     </section>
   `;
+}
+
+function profileClass(profileId) {
+  return `profile-${String(profileId || "default").replace(/[^a-z0-9-]/gi, "-")}`;
+}
+
+function workTitle(profileId) {
+  const titles = {
+    employee: "Employee Work Cockpit",
+    client: "Client Action Portal",
+    "platform-operator-security": "Operator Control Plane",
+  };
+  return titles[profileId] || "Work From Here";
+}
+
+function workSubtitle(profileId) {
+  const subtitles = {
+    employee: "Messages, tasks, docs, files, and AI drafts link to the right source tool.",
+    client: "Files, approvals, meetings, invoices, and support stay scoped to client-safe surfaces.",
+    "platform-operator-security": "Access, health, backups, restore proof, and deploy checks stay visible without exposing secrets.",
+  };
+  return subtitles[profileId] || "Each card opens the service behind the next useful action.";
 }
 
 function renderAudienceFilters(modules) {
