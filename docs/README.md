@@ -1,26 +1,12 @@
 # Knowledgebase
 
-This knowledgebase is organized by audience. The core idea is simple: private,
-client-owned, open-source infrastructure for small teams that need capability
-without vendor dependency.
+This knowledgebase is organized around the generator, deploy contract, service
+standard, and runtime operations.
 
-## Buyer Path
+## Engineering Path
 
-Start here when evaluating the offer rather than the implementation details:
+Use this path to inspect the platform engineering model:
 
-- [Buyer Overview](buyer-overview.md)
-- [Packages](packages.md)
-- [Host Sizing](host-sizing.md)
-- [Service Maturity](service-maturity.md)
-- [Support Boundaries](support-boundaries.md)
-- [Client Intake](client-intake.md)
-
-## Engineering Evaluation Path
-
-Use this path to inspect whether the project is serious platform engineering:
-
-- [Project Overview](project-overview.md)
-- [Engineering Evaluation Guide](evaluation-guide.md)
 - [Architecture](architecture.md)
 - [Build System](build-system.md)
 - [Systemd Graph](systemd-graph.md)
@@ -69,16 +55,6 @@ Use this path when adding or changing platform services:
 - [Testing](testing.md)
 - [Contributing](../CONTRIBUTING.md)
 
-## Mission Path
-
-Use this path to understand the larger pattern without turning the docs into a
-manifesto:
-
-- [Mission](mission.md)
-- [Sovereign Compute Progression Layer](product/sovereign-compute-progression-layer.md)
-- [Buyer Overview](buyer-overview.md)
-- [Packages](packages.md)
-
 ## Core Concepts
 
 `site manifest`
@@ -109,11 +85,6 @@ gate.
 
 ## Documentation Map
 
-- [Buyer Overview](buyer-overview.md): plain-language offer and next step.
-- [Mission](mission.md): grounded sovereignty-infrastructure thesis.
-- [Sovereign Compute Progression Layer](product/sovereign-compute-progression-layer.md): serious-game apprenticeship layer and implementation model.
-- [Packages](packages.md): buyer package tiers and scope boundaries.
-- [Client Intake](client-intake.md): repeatable pre-engagement questions.
 - [Host Sizing](host-sizing.md): starting host profiles and caveats.
 - [Support Boundaries](support-boundaries.md): response expectations and client responsibilities.
 - [Service Maturity](service-maturity.md): conservative maturity matrix.
@@ -121,10 +92,6 @@ gate.
 - [Compliance Posture](compliance-posture.md): compliance support without overclaims.
 - [Restore Drill](restore-drill.md): restore procedure and acceptance checklist.
 - [Update And Rollback](update-and-rollback.md): pins, updates, verification, and rollback caveats.
-- [Demo Script](demo-script.md): buyer-safe walkthrough outline.
-- [Proof Checklist](proof-checklist.md): proof completeness checklist.
-- [Project Overview](project-overview.md): public summary and evaluation frame.
-- [Engineering Evaluation Guide](evaluation-guide.md): adoption-oriented proof points.
 - [Architecture](architecture.md): layers and source/generated boundaries.
 - [Quickstart](quickstart.md): first successful build, deploy, and verify.
 - [Build System](build-system.md): build/deploy artifact contract.

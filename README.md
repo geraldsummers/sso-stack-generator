@@ -7,29 +7,11 @@ Caddy at the edge, Keycloak for identity and RBAC, Docker Compose for service
 runtime, `systemd --user` for supervision, SOPS-backed site secrets, and a
 verification suite that proves the deployed stack works.
 
-## For Buyers
+## Engineering Overview
 
-If you are evaluating this as a private open-source infrastructure engagement:
-
-- [Buyer Overview](docs/buyer-overview.md)
-- [Packages](docs/packages.md)
-- [Host Sizing](docs/host-sizing.md)
-- [Service Maturity](docs/service-maturity.md)
-- [Threat Model](docs/threat-model.md)
-- [Restore Drill](docs/restore-drill.md)
-- [Update And Rollback](docs/update-and-rollback.md)
-- [Support Boundaries](docs/support-boundaries.md)
-- [Client Intake](docs/client-intake.md)
-
-Buyer-facing website: [website/](website/README.md). Open
-`website/index.html` locally until a public site URL is published.
-
-## Mission
-
-This project is part of a broader pattern: making small groups powerful without
-making them dependent.
-
-See [Mission](docs/mission.md).
+Use this repository to inspect, build, test, and deploy the generator. Marketing
+materials, product pages, videos, and buyer-facing copy live outside this source
+repo.
 
 ![Sanitized platform homepage screenshot](docs/assets/platform-home.svg)
 
@@ -45,9 +27,6 @@ Compose pile, inspect these first:
 | Generated lifecycle graph | [Systemd Graph](docs/systemd-graph.md) |
 | Deployed verification suite | [Testing](docs/testing.md) |
 | Service integration standard | [Service Standard](docs/service-standard.md) |
-
-For a focused review path, use the
-[Engineering Evaluation Guide](docs/evaluation-guide.md).
 
 ## Why Engineers Care
 
@@ -168,8 +147,6 @@ map.
 
 | Question | Best entry point |
 | --- | --- |
-| What is this project demonstrating? | [Project Overview](docs/project-overview.md) |
-| Is this worth adopting or extending? | [Engineering Evaluation Guide](docs/evaluation-guide.md) |
 | How is it put together? | [Architecture](docs/architecture.md) |
 | How do I deploy it? | [Quickstart](docs/quickstart.md) |
 | How do I operate it after deploy? | [Operations](docs/operations.md) |
