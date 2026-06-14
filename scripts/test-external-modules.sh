@@ -174,4 +174,164 @@ if [ "$bad_status" -eq 0 ]; then
   exit 1
 fi
 
+foundation_repo="$tmp_root/foundation-stack-module"
+app_repo="$tmp_root/app-stack-module"
+cycle_repo="$tmp_root/cycle-stack-module"
+mkdir -p "$foundation_repo/stack.config" "$app_repo/stack.compose" "$cycle_repo/stack.compose"
+git -C "$foundation_repo" init -b main >/dev/null
+git -C "$app_repo" init -b main >/dev/null
+git -C "$cycle_repo" init -b main >/dev/null
+cat > "$foundation_repo/stack.config/components.json" <<'EOF_V2_FOUNDATION_COMPONENTS'
+{
+  "schemaVersion": 1,
+  "defaultComponents": [],
+  "components": {}
+}
+EOF_V2_FOUNDATION_COMPONENTS
+cat > "$foundation_repo/stack.module.json" <<'EOF_V2_FOUNDATION'
+{
+  "schemaVersion": 1,
+  "id": "foundation-test",
+  "repo": "foundation-test-stack-module",
+  "lifecycle": "active",
+  "dependencies": [],
+  "overlays": ["stack.config/components.json"]
+}
+EOF_V2_FOUNDATION
+cat > "$app_repo/stack.compose/app-test.yml" <<'EOF_V2_APP_COMPOSE'
+services:
+  app-test:
+    image: caddy:2.11.3
+EOF_V2_APP_COMPOSE
+cat > "$app_repo/stack.module.json" <<'EOF_V2_APP'
+{
+  "schemaVersion": 1,
+  "id": "app-test",
+  "repo": "app-test-stack-module",
+  "lifecycle": "active",
+  "dependencies": ["foundation-test"],
+  "overlays": ["stack.compose/app-test.yml"]
+}
+EOF_V2_APP
+cat > "$cycle_repo/stack.compose/cycle-test.yml" <<'EOF_V2_CYCLE_COMPOSE'
+services:
+  cycle-test:
+    image: caddy:2.11.3
+EOF_V2_CYCLE_COMPOSE
+cat > "$cycle_repo/stack.module.json" <<'EOF_V2_CYCLE'
+{
+  "schemaVersion": 1,
+  "id": "cycle-test",
+  "repo": "cycle-test-stack-module",
+  "lifecycle": "active",
+  "dependencies": ["cycle-test"],
+  "overlays": ["stack.compose/cycle-test.yml"]
+}
+EOF_V2_CYCLE
+foundation_commit="$(git_commit_all "$foundation_repo" "Add foundation v2 module")"
+app_commit="$(git_commit_all "$app_repo" "Add app v2 module")"
+cycle_commit="$(git_commit_all "$cycle_repo" "Add cycle v2 module")"
+
+cat > "$manifest_repo/modules.json" <<EOF_V2_MODULES
+{
+  "schemaVersion": 2,
+  "roots": ["app-test"],
+  "modules": [
+    {
+      "id": "foundation-test",
+      "repo": "foundation-test-stack-module",
+      "git": "$foundation_repo",
+      "ref": "main",
+      "commit": "$foundation_commit",
+      "overrides": ["stack.config/components.json"]
+    },
+    {
+      "id": "app-test",
+      "repo": "app-test-stack-module",
+      "git": "$app_repo",
+      "ref": "main",
+      "commit": "$app_commit"
+    }
+  ]
+}
+EOF_V2_MODULES
+v2_manifest_commit="$(git_commit_all "$manifest_repo" "Add v2 module lock")"
+jq --arg commit "$v2_manifest_commit" '.moduleManifestCommit = $commit' "$site_root/.webservices-generator.json" > "$site_root/pin.tmp"
+mv "$site_root/pin.tmp" "$site_root/.webservices-generator.json"
+external_modules_resolve "$site_root/manifest.json"
+assert_file "$EXTERNAL_MODULES_MATERIALIZED_DIR/stack.config/components.external/foundation-test.json"
+assert_file "$EXTERNAL_MODULES_MATERIALIZED_DIR/stack.compose/app-test.yml"
+jq -e '.schemaVersion == 2 and (.modules | map(.id)) == ["foundation-test", "app-test"]' \
+  "$EXTERNAL_MODULES_METADATA_FILE" >/dev/null
+
+cat > "$manifest_repo/modules.json" <<EOF_V2_BAD_NAME
+{
+  "schemaVersion": 2,
+  "modules": [
+    {
+      "id": "app-test",
+      "repo": "wrong-repo",
+      "git": "$app_repo",
+      "ref": "main",
+      "commit": "$app_commit"
+    }
+  ]
+}
+EOF_V2_BAD_NAME
+bad_name_commit="$(git_commit_all "$manifest_repo" "Add bad v2 name lock")"
+trap - ERR
+set +e
+( "$ROOT_DIR/scripts/modules/resolve-module-lock.py" \
+  --manifest-file "$manifest_repo/modules.json" \
+  --cache-dir "$tmp_root/v2-negative-cache" \
+  --materialized-dir "$tmp_root/v2-negative-materialized" \
+  --metadata-file "$tmp_root/v2-negative-metadata.json" \
+  --source-root "$ROOT_DIR" \
+  --manifest-remote "$manifest_repo" \
+  --manifest-ref main \
+  --manifest-commit "$bad_name_commit" \
+  --manifest-path modules.json ) >/dev/null 2>&1
+bad_name_status=$?
+set -e
+trap 'status=$?; printf "[external-modules-test] failed at line %s: %s (exit %s)\n" "$LINENO" "$BASH_COMMAND" "$status" >&2' ERR
+if [ "$bad_name_status" -eq 0 ]; then
+  printf '[external-modules-test] v2 repo mismatch was accepted\n' >&2
+  exit 1
+fi
+
+cat > "$manifest_repo/modules.json" <<EOF_V2_CYCLE
+{
+  "schemaVersion": 2,
+  "modules": [
+    {
+      "id": "cycle-test",
+      "repo": "cycle-test-stack-module",
+      "git": "$cycle_repo",
+      "ref": "main",
+      "commit": "$cycle_commit"
+    }
+  ]
+}
+EOF_V2_CYCLE
+cycle_manifest_commit="$(git_commit_all "$manifest_repo" "Add v2 cycle lock")"
+trap - ERR
+set +e
+( "$ROOT_DIR/scripts/modules/resolve-module-lock.py" \
+  --manifest-file "$manifest_repo/modules.json" \
+  --cache-dir "$tmp_root/v2-cycle-cache" \
+  --materialized-dir "$tmp_root/v2-cycle-materialized" \
+  --metadata-file "$tmp_root/v2-cycle-metadata.json" \
+  --source-root "$ROOT_DIR" \
+  --manifest-remote "$manifest_repo" \
+  --manifest-ref main \
+  --manifest-commit "$cycle_manifest_commit" \
+  --manifest-path modules.json ) >/dev/null 2>&1
+cycle_status=$?
+set -e
+trap 'status=$?; printf "[external-modules-test] failed at line %s: %s (exit %s)\n" "$LINENO" "$BASH_COMMAND" "$status" >&2' ERR
+if [ "$cycle_status" -eq 0 ]; then
+  printf '[external-modules-test] v2 dependency cycle was accepted\n' >&2
+  exit 1
+fi
+
 printf '[external-modules-test] ok\n' >&2

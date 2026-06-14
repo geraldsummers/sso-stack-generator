@@ -249,7 +249,7 @@ PY
 external_modules_resolve() {
   local site_manifest_path="$1"
   local pin_file manifest_remote manifest_ref manifest_commit manifest_path manifest_repo manifest_file
-  local module_count metadata_lines resolved_indices index
+  local module_count metadata_lines resolved_indices index schema_version
 
   rm -rf "$EXTERNAL_MODULES_ROOT"
   mkdir -p "$EXTERNAL_MODULES_MATERIALIZED_DIR"
@@ -274,6 +274,22 @@ external_modules_resolve() {
   esac
 
   jq -e 'type == "object" and (.modules | type == "array")' "$manifest_file" >/dev/null || die "invalid external module manifest: expected object with modules array"
+  schema_version="$(jq -r '.schemaVersion // 1' "$manifest_file")"
+  if [ "$schema_version" = "2" ]; then
+    "$SOURCE_ROOT/scripts/modules/resolve-module-lock.py" \
+      --manifest-file "$manifest_file" \
+      --cache-dir "$EXTERNAL_MODULES_CACHE_DIR" \
+      --materialized-dir "$EXTERNAL_MODULES_MATERIALIZED_DIR" \
+      --metadata-file "$EXTERNAL_MODULES_METADATA_FILE" \
+      --source-root "$SOURCE_ROOT" \
+      --manifest-remote "$manifest_remote" \
+      --manifest-ref "$manifest_ref" \
+      --manifest-commit "$manifest_commit" \
+      --manifest-path "$manifest_path"
+    return 0
+  fi
+  [ "$schema_version" = "1" ] || die "unsupported external module manifest schemaVersion: $schema_version"
+
   module_count="$(jq '.modules | length' "$manifest_file")"
   metadata_lines="$(mktemp)"
   if [ "$module_count" -gt 0 ]; then
