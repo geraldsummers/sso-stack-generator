@@ -116,10 +116,12 @@ allowed_prefixes = (
     "stack.kotlin/",
     "stack.js/",
     "stack.systemd/",
+    "scripts/lib/",
     "scripts/modules/",
     "docs/modules/",
     "tests/fixtures/",
 )
+allowed_roots = {prefix.rstrip("/") for prefix in allowed_prefixes}
 
 def validate_relative_path(path_value: str, key: str) -> None:
     if not isinstance(path_value, str) or not path_value:
@@ -127,7 +129,7 @@ def validate_relative_path(path_value: str, key: str) -> None:
     path = Path(path_value)
     if path.is_absolute() or ".." in path.parts or "." in path.parts:
         raise SystemExit(f"{key} path is not safe: {path_value}")
-    if not path_value.startswith(allowed_prefixes):
+    if path_value not in allowed_roots and not path_value.startswith(allowed_prefixes):
         raise SystemExit(f"{key} path is not an allowed overlay/test path: {path_value}")
     if not (module_dir / path).exists():
         raise SystemExit(f"{key} path does not exist: {path_value}")
