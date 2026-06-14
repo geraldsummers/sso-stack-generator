@@ -107,13 +107,15 @@ external_modules_materialize_one() {
   local manifest_file="$1"
   local index="$2"
   local metadata_file="$3"
-  local name remote ref commit module_path repo_dir source_dir rel_path dest_path allowed_override
+  local name remote ref commit module_path repo_dir source_dir rel_path dest_path allowed_override provides requires
 
   name="$(jq -r --argjson i "$index" '.modules[$i].name // empty' "$manifest_file")"
   remote="$(jq -r --argjson i "$index" '.modules[$i].git // empty' "$manifest_file")"
   ref="$(jq -r --argjson i "$index" '.modules[$i].ref // empty' "$manifest_file")"
   commit="$(jq -r --argjson i "$index" '.modules[$i].commit // empty' "$manifest_file")"
   module_path="$(jq -r --argjson i "$index" '.modules[$i].path // "."' "$manifest_file")"
+  provides="$(jq -c --argjson i "$index" '.modules[$i].provides // []' "$manifest_file")"
+  requires="$(jq -c --argjson i "$index" '.modules[$i].requires // []' "$manifest_file")"
   [ -n "$name" ] || die "external module at index $index is missing name"
   external_modules_validate_relative_path "$module_path"
 
@@ -153,13 +155,95 @@ external_modules_materialize_one() {
     --arg ref "$ref" \
     --arg commit "$commit" \
     --arg path "$module_path" \
-    '{name: $name, git: $git, ref: $ref, commit: $commit, path: $path}' >> "$metadata_file"
+    --argjson provides "$provides" \
+    --argjson requires "$requires" \
+    '{name: $name, git: $git, ref: $ref, commit: $commit, path: $path, provides: $provides, requires: $requires}' >> "$metadata_file"
+}
+
+external_modules_resolved_indices() {
+  local manifest_file="$1"
+  python3 - "$manifest_file" <<'PY'
+import json
+import sys
+
+manifest_path = sys.argv[1]
+with open(manifest_path, encoding="utf-8") as handle:
+    manifest = json.load(handle)
+
+modules = manifest.get("modules") or []
+roots = manifest.get("roots") or manifest.get("selectedModules") or []
+if not isinstance(modules, list):
+    raise SystemExit("modules must be an array")
+if not isinstance(roots, list):
+    raise SystemExit("roots must be an array when present")
+
+providers = {}
+for index, module in enumerate(modules):
+    name = module.get("name")
+    if not name:
+        raise SystemExit(f"external module at index {index} is missing name")
+    provided = [name] + list(module.get("provides") or [])
+    for capability in provided:
+        if not isinstance(capability, str) or not capability:
+            raise SystemExit(f"external module '{name}' has invalid provider: {capability!r}")
+        previous = providers.get(capability)
+        if previous is not None:
+            previous_name = modules[previous].get("name")
+            raise SystemExit(f"external module provider conflict for '{capability}': {previous_name}, {name}")
+        providers[capability] = index
+
+def module_deps(index):
+    name = modules[index].get("name")
+    requires = modules[index].get("requires") or []
+    if not isinstance(requires, list):
+        raise SystemExit(f"external module '{name}' requires must be an array")
+    deps = []
+    for capability in requires:
+        if not isinstance(capability, str) or not capability:
+            raise SystemExit(f"external module '{name}' has invalid requirement: {capability!r}")
+        target = providers.get(capability)
+        if target is None:
+            raise SystemExit(f"external module '{name}' requires missing provider: {capability}")
+        deps.append(target)
+    return deps
+
+selected = []
+state = {}
+
+def visit(index, stack):
+    mark = state.get(index)
+    if mark == "done":
+        return
+    if mark == "visiting":
+        cycle = " -> ".join(modules[i].get("name", str(i)) for i in stack + [index])
+        raise SystemExit(f"external module dependency cycle: {cycle}")
+    state[index] = "visiting"
+    for dep in module_deps(index):
+        visit(dep, stack + [index])
+    state[index] = "done"
+    selected.append(index)
+
+if roots:
+    for root in roots:
+        if not isinstance(root, str) or not root:
+            raise SystemExit(f"external module root must be a non-empty string: {root!r}")
+        index = providers.get(root)
+        if index is None:
+            raise SystemExit(f"external module root has no provider: {root}")
+        visit(index, [])
+else:
+    for index in range(len(modules)):
+        visit(index, [])
+
+for index in selected:
+    print(index)
+PY
 }
 
 external_modules_resolve() {
   local site_manifest_path="$1"
   local pin_file manifest_remote manifest_ref manifest_commit manifest_path manifest_repo manifest_file
-  local module_count metadata_lines
+  local module_count metadata_lines resolved_indices index
 
   rm -rf "$EXTERNAL_MODULES_ROOT"
   mkdir -p "$EXTERNAL_MODULES_MATERIALIZED_DIR"
@@ -187,7 +271,8 @@ external_modules_resolve() {
   module_count="$(jq '.modules | length' "$manifest_file")"
   metadata_lines="$(mktemp)"
   if [ "$module_count" -gt 0 ]; then
-    for index in $(seq 0 $((module_count - 1))); do
+    resolved_indices="$(external_modules_resolved_indices "$manifest_file")"
+    for index in $resolved_indices; do
       external_modules_materialize_one "$manifest_file" "$index" "$metadata_lines"
     done
   fi
