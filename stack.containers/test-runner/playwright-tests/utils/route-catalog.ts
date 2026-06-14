@@ -228,7 +228,15 @@ export const browserRouteCatalog: BrowserRoute[] = [
     label: 'Huly',
     kind: 'forward_auth',
     anonymous: { kind: 'forward_auth' },
-    ownership: { route: false, smoke: false, visual: false, deep: false },
+    visual: {
+      fileStem: 'huly-authenticated',
+      matcher: /\bHuly\b|\bWorkspace\b|\bTracker\b|\bLogin\b|\bSign in\b/i,
+      selector: 'text=/Huly|Workspace|Tracker|Login|Sign in/i',
+      disallowMatcher: /\bSign in to your account\b|\b503 Service Unavailable\b/i,
+      quality: 85,
+      fullPage: true,
+    },
+    ownership: { route: false, smoke: false, visual: true, deep: false },
   },
   {
     host: 'erpnext',
