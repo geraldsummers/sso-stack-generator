@@ -1,0 +1,57 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/geraldsummers/sso-stack-generator/modules/stack.module.schema.json",
+  "title": "SSO stack module metadata",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "id", "repo", "lifecycle", "overlays"],
+  "properties": {
+    "schemaVersion": {"const": 1},
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9-]*$"
+    },
+    "repo": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9._-]+$"
+    },
+    "runtimeId": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9-]*$"
+    },
+    "lifecycle": {
+      "type": "string",
+      "enum": ["active", "experimental", "retired"]
+    },
+    "dependencies": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^[a-z0-9][a-z0-9-]*$"
+      },
+      "uniqueItems": true,
+      "default": []
+    },
+    "overlays": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "uniqueItems": true
+    },
+    "sourceRepo": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9._-]+$"
+    },
+    "testAssets": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "uniqueItems": true,
+      "default": []
+    }
+  }
+}
