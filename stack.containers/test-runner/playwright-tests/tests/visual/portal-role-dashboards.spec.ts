@@ -44,7 +44,7 @@ test.describe('portal role dashboards', () => {
       await expect(page.getByText(`${profile.moduleCount} modules`).first()).toBeVisible();
       await expect(page.locator('[data-visual-kind]')).toHaveCount(3);
       await expect(page.locator('.cockpit-stage')).toBeVisible();
-      await expect(page.getByRole('heading', { name: 'Work From Here' })).toBeVisible();
+      await expect(page.getByRole('heading', { name: 'Integrated Workflow Panels' })).toBeVisible();
       await expect(page.getByText('Open workflow').first()).toBeVisible();
       await expect(page.getByText('Role-specific live summary with safe metadata only')).toHaveCount(0);
 
