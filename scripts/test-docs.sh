@@ -5,21 +5,10 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd -P)"
 
 required_files=(
   "README.md"
+  "CONTRIBUTING.md"
+  "SECURITY.md"
   "docs/README.md"
-  "docs/quickstart.md"
-  "docs/testing.md"
-  "docs/host-sizing.md"
-  "docs/support-boundaries.md"
-  "docs/service-maturity.md"
-  "docs/threat-model.md"
-  "docs/compliance-posture.md"
-  "docs/restore-drill.md"
-  "docs/update-and-rollback.md"
-  "docs/assets/platform-home.svg"
-  "docs/assets/build-deploy-verify.svg"
-  "docs/assets/trust-boundary.svg"
-  "docs/assets/systemd-orchestration.svg"
-  "docs/assets/verification-suite.svg"
+  "modules/README.md"
 )
 
 for path in "${required_files[@]}"; do
@@ -40,6 +29,7 @@ markdown_files = [
     root / "README.md",
     root / "CONTRIBUTING.md",
     root / "SECURITY.md",
+    root / "modules" / "README.md",
     *sorted((root / "docs").glob("*.md")),
 ]
 

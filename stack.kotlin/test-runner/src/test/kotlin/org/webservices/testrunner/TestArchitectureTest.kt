@@ -90,7 +90,7 @@ class TestArchitectureTest {
     fun `testdev is pinned to labware and nested docker`() {
         val repoRoot = repoRoot()
         val commonText = Files.readString(repoRoot.resolve("scripts/testdev/common.sh"))
-        val readmeText = Files.readString(repoRoot.resolve("scripts/testdev/README.md"))
+        val generatorDoc = Files.readString(repoRoot.resolve("docs/README.md"))
         val remoteText = Files.readString(repoRoot.resolve("scripts/testdev/remote.sh"))
         val upText = Files.readString(repoRoot.resolve("scripts/testdev/up.sh"))
         val verifyText = Files.readString(repoRoot.resolve("scripts/testdev/verify.sh"))
@@ -122,8 +122,9 @@ class TestArchitectureTest {
         assertTrue(downText.contains("testdev_require_virtualized_host"))
         assertTrue(remoteText.contains("gerald@labware.local"))
         assertTrue(remoteText.contains("/tmp/sso-testdev-e2e"))
-        assertTrue(readmeText.contains("labware: runs disposable testdev DinD"))
-        assertTrue(readmeText.contains("latium: runs the real stack deployment"))
+        assertTrue(generatorDoc.contains("labware"))
+        assertTrue(generatorDoc.contains("Latium"))
+        assertTrue(generatorDoc.contains("testdev"))
         assertTrue(buildText.contains("exec \"\$SCRIPT_DIR/testdev-verify.sh\" \"\$@\""))
         assertTrue(buildText.contains("export DIST_DIR=\"\$SCRIPT_DIR/build\""))
         assertTrue(buildText.contains("exec \"\$SCRIPT_DIR/build/stack.containers/test-runner/run-tests.sh\" \"\$@\""))
@@ -238,6 +239,7 @@ class TestArchitectureTest {
                 "generate-contract-reports.sh",
                 "init-site.sh",
                 "mount-diagnostics.sh",
+                "pull-modules.sh",
                 "security-audit.sh",
                 "stackctl.sh",
                 "test-component-selection.sh",
@@ -248,8 +250,13 @@ class TestArchitectureTest {
                 "test-env-file-security.sh",
                 "test-external-modules.sh",
                 "test-jellyfin-ffmpeg-websafe.sh",
+                "test-module-group.sh",
+                "test-module-runners.sh",
+                "test-module.sh",
                 "test-mount-diagnostics.sh",
+                "test-pull-modules.sh",
                 "test-service-contracts.sh",
+                "test-site.sh",
                 "verify.sh",
             ),
             topLevelFiles,

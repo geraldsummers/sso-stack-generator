@@ -1,107 +1,126 @@
-# Knowledgebase
+# Generator Notes
 
-This knowledgebase is organized around the generator, deploy contract, service
-standard, and runtime operations.
+This directory intentionally contains one concise public reference. Detailed
+service runbooks, site procedures, and deployable service docs belong in module
+or site-config repositories.
 
-## Engineering Path
+## Ownership Boundaries
 
-Use this path to inspect the platform engineering model:
+The generator owns:
 
-- [Architecture](architecture.md)
-- [Build System](build-system.md)
-- [Systemd Graph](systemd-graph.md)
-- [Testing](testing.md)
+- manifest and module resolution
+- schemas and component catalog merging
+- secret-free bundle construction under `dist/`
+- deploy-time rendering helpers
+- generated systemd user unit and Docker Compose contracts
+- shared Caddy, Keycloak, runtime, and test-runner plumbing
 
-## Operator Path
+Modules own deployable overlays:
 
-Use this path to deploy and operate the stack:
+- module `stack.config/components.json` entries
+- Compose shards, config templates, custom containers, and tests for the module
+- module-specific service documentation
+- explicit override declarations when replacing generator files
 
-- [Quickstart](quickstart.md)
-- [Minimal Build + Deploy System](minimal-build-deploy-system.md)
-- [Operations](operations.md)
-- [Troubleshooting](troubleshooting.md)
-- [Host Sizing](host-sizing.md)
+Site config owns:
 
-Normal operation is systemd-first: use `systemctl --user`, `./deploy.sh`, and
-`./verify.sh` before dropping to raw Docker commands.
+- site manifest and encrypted SOPS inputs
+- generator and module pins
+- selected components for a site
+- deployment target choices and site-specific operating notes
 
-## Security Path
+## Build And Runtime Contract
 
-Use this path to inspect identity, secrets, caveats, and compliance posture:
+`./build.sh --manifest <manifest.json>` runs locally. It resolves the site's
+pinned module manifest, merges component catalogs, runs source checks, and
+writes a secret-free deploy bundle to `dist/`.
 
-- [Security And Auth](security-and-auth.md)
-- [Threat Model](threat-model.md)
-- [Compliance Posture](compliance-posture.md)
-- [Service Maturity](service-maturity.md)
-- [Security Policy](../SECURITY.md)
+`./deploy.sh` runs on the target host from the synced bundle. It decrypts the
+bundled site inputs with SOPS, renders runtime material under
+`~/webservices/runtime`, validates the generated Compose file with the rendered
+env, installs generated `systemd --user` units, and reconciles the requested
+target.
 
-## Recovery Path
+The normal operator path is:
 
-Use this path when planning restore, update, rollback, or incident response:
+```bash
+./build.sh --manifest /path/to/site/manifest.json
+rsync -av --no-group --delete ./dist/ user@host:~/webservices/
+ssh user@host 'cd ~/webservices && ./deploy.sh'
+ssh user@host 'cd ~/webservices && ./verify.sh'
+```
 
-- [Recovery](recovery.md)
-- [Restore Drill](restore-drill.md)
-- [Update And Rollback](update-and-rollback.md)
-- [Troubleshooting](troubleshooting.md)
-- [Testing](testing.md)
+Host reset tools stay under `ops/host-admin/`. Destructive helpers such as
+`purge-webservices-stack.sh` are not part of the normal deploy UX. Use
+`--print-only` before a purge and use `--skip-labware-runtime` only when keeping
+workspace runtime data is intentional.
 
-## Service Development Path
+`scripts/testdev/` is for disposable local validation, normally on labware with
+nested Docker. Latium remains the real deployment target and should be exercised
+through the generated deploy and verify scripts, not the testdev harness.
 
-Use this path when adding or changing platform services:
+## Resolver And Modules
 
-- [Service Standard](service-standard.md)
-- [Services](services.md)
-- [Architecture](architecture.md)
-- [Testing](testing.md)
-- [Contributing](../CONTRIBUTING.md)
+Sites may pin a private module-manifest repo from `.webservices-generator.json`.
+The generator resolves that manifest, checks each module's metadata against
+`modules/stack.module.schema.json`, copies allowed source paths, and merges
+module component catalogs with the base catalog.
 
-## Core Concepts
+Allowed module contribution paths are intentionally narrow: `global.settings/`,
+`stack.compose/`, `stack.config/`, `stack.containers/`, `stack.kotlin/`,
+`stack.js/`, `stack.systemd/`, `scripts/lib/`, `scripts/modules/`, and
+`docs/modules/`. A module that replaces a generator file must declare that file
+in its `overrides` list.
 
-`site manifest`
+See [../modules/README.md](../modules/README.md) for the catalog and pull/test
+helpers.
 
-: Selects the site and points at encrypted site inputs.
+## Auth And Runtime Standards
 
-`dist/`
+Caddy is the public edge and Keycloak is the shared identity provider. Services
+should use native OIDC when practical or the shared edge auth pattern when the
+app needs protection outside its own login flow.
 
-: The local deploy bundle. It is generated output and should remain
-secret-free.
+Current Keycloak-backed service expectations include:
 
-`runtime/`
+| Service | Identity status |
+| --- | --- |
+| SOGo | Restored as Keycloak-backed groupware |
+| Jellyfin | App SSO with Keycloak group authorization |
+| Donetick | Keycloak edge-auth and app OAuth2 client wiring |
+| Vaultwarden | Keycloak SSO entry path derives email |
+| ERPNext | Keycloak edge-auth and app OAuth2 client wiring |
+| Disposable Workspaces | Keycloak edge-auth to the dispatcher |
 
-: Host-rendered env and config material. It is runtime state, not source.
+Secrets stay encrypted until host deploy. Rendered files under
+`~/webservices/runtime` are runtime state, not source.
 
-`component`
+## Test Runner
 
-: A selectable feature area from `stack.config/components.json`.
+The source and bundled runners expose the same broad surface:
 
-`lifecycle domain`
+```bash
+./run-tests.sh list
+./run-tests.sh plan all
+./run-tests.sh changed
+./run-tests.sh source-unit
+./run-tests.sh kt-tests stack-contract
+./run-tests.sh kt-plan stack-contract
+./run-tests.sh kt-one <id> stack-contract
+./run-tests.sh all
+```
 
-: A generated systemd unit that starts one Docker Compose shard and its health
-gate.
+The help forms are `plan [target]`, `kt-tests [suite]`, `kt-plan [suite]`, and
+`kt-one <id> [suite]`. `all` runs every registered check and is intentionally
+broad. Browser and deep auth tests require a deployed runtime because they
+depend on real domains, Caddy, Keycloak, cookies, and running containers.
 
-`stack contract`
+## Adding Or Moving Services
 
-: The blocking verification suite that proves the deployed platform is usable.
+Prefer adding deployable service overlays in module repositories. Keep generic
+resolver, schema, catalog, build, runtime helper, and shared test-runner changes
+in this generator.
 
-## Documentation Map
-
-- [Host Sizing](host-sizing.md): starting host profiles and caveats.
-- [Support Boundaries](support-boundaries.md): response expectations and client responsibilities.
-- [Service Maturity](service-maturity.md): conservative maturity matrix.
-- [Threat Model](threat-model.md): risks, mitigations, residual risks, and checks.
-- [Compliance Posture](compliance-posture.md): compliance support without overclaims.
-- [Restore Drill](restore-drill.md): restore procedure and acceptance checklist.
-- [Update And Rollback](update-and-rollback.md): pins, updates, verification, and rollback caveats.
-- [Architecture](architecture.md): layers and source/generated boundaries.
-- [Quickstart](quickstart.md): first successful build, deploy, and verify.
-- [Build System](build-system.md): build/deploy artifact contract.
-- [Minimal Build + Deploy System](minimal-build-deploy-system.md): compact operator contract.
-- [Operations](operations.md): routine checks, deploy patterns, diagnostics, and purge boundaries.
-- [Recovery](recovery.md): incident runbooks, restore drills, rollback, and post-recovery checks.
-- [Systemd Graph](systemd-graph.md): generated unit graph and partial deploys.
-- [Services](services.md): service catalog.
-- [Security And Auth](security-and-auth.md): Keycloak, RBAC, edge auth, and secrets.
-- [Service Standard](service-standard.md): checklist for platform-quality services.
-- [Testing](testing.md): local, deployed, browser, and full test layers.
-- [Troubleshooting](troubleshooting.md): failure-oriented operator guide.
-- [Glossary](glossary.md): terms used across the project.
+When moving old generator-owned service material into a module, remove duplicate
+public docs from this repo and keep only the generator contract that makes the
+module resolvable and testable.

@@ -1,191 +1,117 @@
-# Web Services
+# SSO Stack Generator
 
-A self-hosted platform stack generator for authenticated internal web services.
+This is the public root generator for a modular, SSO-backed self-hosted service
+stack. It owns the generic build system, schema, resolver, catalog, generated
+runtime contract, and test runners.
 
-This repository does not ship one app. It builds a complete, tested platform:
-Caddy at the edge, Keycloak for identity and RBAC, Docker Compose for service
-runtime, `systemd --user` for supervision, SOPS-backed site secrets, and a
-verification suite that proves the deployed stack works.
+It does not own site secrets, production-specific values, downstream-only
+customizations, or deployable service overlays that have been extracted into
+module repositories.
 
-## Engineering Overview
+## Current Architecture
 
-Use this repository to inspect, build, test, and deploy the generator. Marketing
-materials, product pages, videos, and buyer-facing copy live outside this source
-repo.
+The stack is split across three ownership layers:
 
-![Sanitized platform homepage screenshot](docs/assets/platform-home.svg)
+| Layer | Owns | Does not own |
+| --- | --- | --- |
+| Generator | Resolver, schemas, base catalog, build/deploy bundle layout, shared runtime helpers, systemd/Compose rendering, and test runners. | Site pins, plaintext secrets, downstream choices, or module-specific service source. |
+| Modules | Deployable overlays for services or service groups: Compose shards, config templates, containers, tests, and component catalog entries. | Site-specific activation or secret values. |
+| Site config | Site manifest, encrypted inputs, generator/module pins, and deployment target choices. | Generic generator behavior or reusable module implementation. |
 
-## Fast Evaluation
+The generated runtime namespace is still `webservices` for Compose projects,
+systemd units, paths, labels, and tests. That runtime name is separate from the
+repository identity.
 
-If you are deciding whether this is serious platform engineering or just a
-Compose pile, inspect these first:
-
-| Signal | Where to look |
-| --- | --- |
-| Secret-free local build | [Build System](docs/build-system.md) |
-| Centralized identity and RBAC | [Security And Auth](docs/security-and-auth.md) |
-| Generated lifecycle graph | [Systemd Graph](docs/systemd-graph.md) |
-| Deployed verification suite | [Testing](docs/testing.md) |
-| Service integration standard | [Service Standard](docs/service-standard.md) |
-
-## Why Engineers Care
-
-Running a dozen useful self-hosted apps is easy. Keeping them coherent is the
-hard part: one login model, one routing layer, one observability story, one
-deployment contract, and tests that catch auth or routing drift before users do.
-
-This repo turns that operating model into source:
-
-- a site manifest selects components and site inputs
-- local build produces a secret-free deploy bundle
-- host deploy renders secrets only on the target machine
-- generated systemd units supervise Compose shards
-- Caddy and Keycloak provide shared access control
-- `./verify.sh` proves the deployed runtime before it is trusted
-
-## The Shape Of The Platform
-
-![Build deploy verify flow](docs/assets/build-deploy-verify.svg)
+## Build Flow
 
 ```text
-source templates + site manifest
+generator source + site manifest + pinned modules
         |
         v
-local build and tests
+local build resolves catalogs and runs source checks
         |
         v
 secret-free dist/ bundle
         |
         v
-host deploy renders runtime secrets
+host deploy renders secrets and runtime config
         |
         v
-systemd user units start Compose shards
+systemd --user supervises Docker Compose shards
         |
         v
-verification proves the deployed stack
+verify.sh and run-tests.sh prove the deployed contract
 ```
 
-The split matters. The local build is inspectable and secret-free. The target
-host is the only place where encrypted site inputs are decrypted into runtime
-files.
+Local build is intentionally secret-free. SOPS-backed site inputs are bundled in
+encrypted form and decrypted only by `deploy.sh` on the target host.
 
-## Trust Boundary
+## Command Surface
 
-![Trust boundary screenshot](docs/assets/trust-boundary.svg)
-
-Client-provided identity headers are not trusted. Caddy and Keycloak establish
-identity, the auth gateway verifies access, and services receive only the
-claims that pass through that edge.
-
-## Runtime Orchestration
-
-![Systemd orchestration screenshot](docs/assets/systemd-orchestration.svg)
-
-The generated systemd graph gives operators a real service surface. Docker
-Compose still runs containers, but systemd owns grouping, readiness, restarts,
-and partial upgrades.
-
-## What You Get
-
-| Area | Included capabilities |
-| --- | --- |
-| Edge and identity | Caddy, Keycloak, OIDC clients, forward auth, group-based RBAC |
-| App platform | Contract-driven portal, service routing, health checks, generated config |
-| Collaboration | BookStack, Seafile, SOGo, Element, Planka, Vaultwarden |
-| Productivity and media | ERPNext, Donetick, Home Assistant, Jellyfin, Mastodon |
-| AI and development | JupyterHub, disposable workspaces, Forgejo, OpenSearch, Qdrant, knowledge ingestion, ChatGPT Connector |
-| Operations | Grafana, Prometheus, Loki, cAdvisor, exporters, Kopia backups |
-| Validation | Kotlin contract tests, TypeScript unit tests, Playwright browser checks, SSO/auth boundary tests, visual artifacts |
-
-The concrete catalog is in [docs/services.md](docs/services.md).
-
-## Quick Start
-
-Most operators only need this flow:
+Build from a source checkout:
 
 ```bash
-cd sso-stack-generator
-
-SITE_MANIFEST="/path/to/site/manifest.json"
-TARGET_HOST="user@example-host"
-
-./build.sh --manifest "$SITE_MANIFEST"
-
-ssh "$TARGET_HOST" 'mkdir -p ~/webservices && test -w ~/webservices'
-rsync -av --no-group --delete ./dist/ "$TARGET_HOST":~/webservices/
-
-ssh "$TARGET_HOST" 'cd ~/webservices && ./deploy.sh'
-ssh "$TARGET_HOST" 'cd ~/webservices && ./verify.sh'
+./build.sh --manifest /path/to/site/manifest.json
 ```
 
-Read [docs/quickstart.md](docs/quickstart.md) when you want the same flow with
-operator notes and first-run troubleshooting.
+Deploy from the generated bundle after syncing `dist/` to the target host:
 
-## Verification
+```bash
+cd ~/webservices
+./deploy.sh
+./verify.sh
+./run-tests.sh list
+./run-tests.sh plan all
+```
 
-![Verification suite screenshot](docs/assets/verification-suite.svg)
+Targeted test iteration from a source checkout uses the platform test runner:
 
-The test model is intentionally layered:
+```bash
+./stack.containers/test-runner/run-tests.sh source-unit
+./stack.containers/test-runner/run-tests.sh changed
+./stack.containers/test-runner/run-tests.sh kt-tests stack-contract
+./stack.containers/test-runner/run-tests.sh kt-plan stack-contract
+./stack.containers/test-runner/run-tests.sh kt-one <id> stack-contract
+```
 
-- `./build.sh --manifest <manifest.json>` runs source-local checks.
-- `./verify.sh` runs readiness and the blocking deployed stack contract.
-- `./run-tests.sh all` runs the broader deployed suite when release confidence matters.
-- `./run-tests.sh` supports `list`, `plan [target]`, `changed`, `source-unit`,
-  `kt-tests [suite]`, `kt-plan [suite]`, and `kt-one <id> [suite]` for
-  targeted iteration; `all` runs the exhaustive suite.
-- `./scripts/security-audit.sh` runs the lightweight local security drift checks.
-
-See [docs/testing.md](docs/testing.md) for target names, browser requirements,
-and artifact locations.
-
-## Knowledgebase
-
-Start with [docs/service-standard.md](docs/service-standard.md) for the service
-contract, then [docs/README.md](docs/README.md) for the broader documentation
-map.
-
-| Question | Best entry point |
-| --- | --- |
-| How is it put together? | [Architecture](docs/architecture.md) |
-| How do I deploy it? | [Quickstart](docs/quickstart.md) |
-| How do I operate it after deploy? | [Operations](docs/operations.md) |
-| How do I recover from bad states? | [Recovery](docs/recovery.md) |
-| How are auth and secrets handled? | [Security And Auth](docs/security-and-auth.md) |
-| How do I add a service properly? | [Service Standard](docs/service-standard.md) |
-| How do I debug failures? | [Troubleshooting](docs/troubleshooting.md) |
+The bundled `./run-tests.sh` supports `list`, `plan [target]`, `changed`,
+`source-unit`, `kt-tests [suite]`, `kt-plan [suite]`, `kt-one <id> [suite]`,
+and `all`. Use focused targets while iterating and `./verify.sh` before trusting
+a deployment.
 
 ## Repository Map
 
 | Path | Purpose |
 | --- | --- |
-| `stack.compose/` | Source Docker Compose shards for platform services. |
-| `stack.config/` | Config templates, entrypoints, Caddy config, Keycloak config, and app configs. |
-| `stack.containers/` | Custom container build contexts. |
-| `stack.kotlin/` | Kotlin services and Kotlin test runner code. |
+| `build.sh` | Public local build entry point. |
+| `scripts/` | Build, resolver, deploy rendering, module, and validation helpers. |
+| `stack.kotlin/` | Kotlin services and test-runner code. |
+| `stack.compose/` | Base Compose source still owned by the generator. New deployable service overlays should usually live in modules. |
+| `stack.config/` | Base config, schemas, Caddy/Keycloak templates, and runtime helper inputs. |
+| `stack.containers/` | Base custom container contexts still owned by the generator. |
 | `stack.systemd/` | Source graph for generated systemd user units. |
-| `scripts/` | Build, deploy, render, and validation helpers. |
-| `global.settings/` | Shared non-secret defaults and generated-bundle settings. |
-| `ops/host-admin/` | Destructive host-admin tooling such as purge scripts. |
-| `docs/` | Human documentation and GitHub-safe screenshots. |
-| `dist/`, `out/`, `build/` | Generated outputs. Do not edit as source. |
+| `global.settings/` | Shared non-secret defaults for generated bundles. |
+| `modules/` | Generator-owned module catalog, schemas, and pull/test helpers. |
+| `docs/README.md` | Compact architecture, build, test, and migration notes. |
+| `dist/`, `out/`, `build/` | Generated output. Do not edit as source. |
 
-## What This Repo Does Not Own
+## Module Catalog
 
-- plaintext site secrets
-- production-specific private values
-- downstream-only customizations
-- generated output treated as source
-- one-off host mutations outside the deploy contract
+The public module inventory lives under [modules/README.md](modules/README.md).
+The generator resolves the base component catalog plus module-provided catalogs,
+then emits only the manifest-selected components.
 
-Site-specific inputs live outside this repo and are selected explicitly with a
-manifest path.
+Site-specific module selection and exact commit pins belong in the site
+configuration repository, not in this public repo.
 
 ## Safety Rules
 
 - Edit source, not generated output.
 - Keep secrets encrypted until host deploy.
 - Do not add repo-root `.env` files.
-- Do not commit `dist/`, `out/`, Gradle outputs, Bazel outputs, or rendered runtime material.
-- Keep destructive host operations under `ops/host-admin/`.
-- Prefer targeted tests during development and `verify.sh` before trusting a deployment.
+- Do not commit `dist/`, `out/`, Gradle outputs, Bazel outputs, or rendered
+  runtime material.
+- Keep destructive host-admin operations under `ops/host-admin/`.
+- Keep site deployment values in the site-config repository.
+
+For the compact engineering reference, see [docs/README.md](docs/README.md).

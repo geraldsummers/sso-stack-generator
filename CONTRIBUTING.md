@@ -7,9 +7,8 @@ This repo is a platform stack generator. A good change updates the source, the g
 Read:
 
 - [README.md](README.md)
-- [docs/architecture.md](docs/architecture.md)
-- [docs/service-standard.md](docs/service-standard.md)
-- [docs/testing.md](docs/testing.md)
+- [docs/README.md](docs/README.md)
+- [modules/README.md](modules/README.md)
 
 Check the worktree:
 
@@ -55,7 +54,8 @@ Edit source:
 - `stack.systemd/`
 - `stack.kotlin/`
 - `scripts/`
-- `docs/`
+- `modules/`
+- `docs/README.md`
 
 Do not edit generated output as source:
 
@@ -65,9 +65,11 @@ Do not edit generated output as source:
 - Bazel outputs
 - rendered `runtime/` material
 
-## Adding A Service
+## Adding A Service Or Module
 
-Use [docs/service-standard.md](docs/service-standard.md) as the checklist.
+Prefer putting deployable service overlays in module repositories. Keep generic
+resolver, schema, catalog, build, runtime helper, and test-runner work in this
+generator.
 
 At minimum, a user-facing service needs:
 
