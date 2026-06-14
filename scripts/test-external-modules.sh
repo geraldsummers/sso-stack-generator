@@ -49,7 +49,23 @@ mkdir -p "$module_repo" "$manifest_repo" "$site_root" "$bundle_root/stack.config
 git -C "$module_repo" init -b main >/dev/null
 git -C "$manifest_repo" init -b main >/dev/null
 
-mkdir -p "$module_repo/stack.compose" "$module_repo/stack.config"
+mkdir -p "$module_repo/stack.compose" "$module_repo/stack.config" "$module_repo/tests"
+cat > "$module_repo/README.md" <<'EOF_README'
+# Demo module
+EOF_README
+cat > "$module_repo/stack.module.json" <<'EOF_STACK_MODULE'
+{
+  "schemaVersion": 1,
+  "id": "demo-module",
+  "repo": "demo-module-stack-module",
+  "lifecycle": "active",
+  "overlays": ["stack.compose/demo.yml", "stack.config/components.json"]
+}
+EOF_STACK_MODULE
+cat > "$module_repo/tests/validate.sh" <<'EOF_VALIDATE'
+#!/usr/bin/env bash
+true
+EOF_VALIDATE
 cat > "$module_repo/stack.compose/demo.yml" <<'EOF_COMPOSE'
 services:
   demo-module:
@@ -114,6 +130,8 @@ EOF_PIN
 external_modules_resolve "$site_root/manifest.json"
 assert_file "$EXTERNAL_MODULES_MATERIALIZED_DIR/stack.compose/demo.yml"
 assert_file "$EXTERNAL_MODULES_MATERIALIZED_DIR/stack.config/components.external/demo-module.json"
+[ ! -e "$EXTERNAL_MODULES_MATERIALIZED_DIR/stack.module.json" ] || die "stack.module.json should not be materialized"
+[ ! -e "$EXTERNAL_MODULES_MATERIALIZED_DIR/README.md" ] || die "README.md should not be materialized"
 jq -e '.enabled == true and (.modules | length) == 1 and .modules[0].name == "demo-module"' \
   "$EXTERNAL_MODULES_METADATA_FILE" >/dev/null
 
