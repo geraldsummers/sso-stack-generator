@@ -395,11 +395,11 @@ if [ -n "$upstream_remote" ] && [ "$upstream_remote" != "null" ]; then
 fi
 
 if [ "$latest" = "$current" ]; then
-  log "already current on downstream generator fork at $current"
+  log "already current on generator at $current"
   exit 0
 fi
 
-log "downstream generator fork update available:"
+log "generator update available:"
 log "  current: $current"
 log "  latest:  $latest"
 git -C "$CACHE_DIR" log --oneline --decorate --max-count=30 "$current..$latest" || true
