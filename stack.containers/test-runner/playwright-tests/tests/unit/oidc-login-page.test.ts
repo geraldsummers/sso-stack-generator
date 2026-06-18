@@ -216,6 +216,30 @@ describe('OIDCLoginPage.clickOIDCButton', () => {
     expect(page.goto).not.toHaveBeenCalled();
   });
 
+  it('clicks visible OIDC controls when href attribute inspection throws', async () => {
+    const oidcLocator = createLocator({ visible: true });
+    oidcLocator.getAttribute = jest.fn(async (name: string) => {
+      if (name === 'href') {
+        throw new Error('href unavailable');
+      }
+      return null;
+    });
+    const page = createClickPage({
+      oidcLocator,
+      currentUrl: 'https://bookstack.datamancy.net/login',
+      waitForUrlTargetUrl: 'https://keycloak.datamancy.net/realms/webservices/protocol/openid-connect/auth?client_id=demo',
+    });
+
+    const oidcPage = new OIDCLoginPage(page as never);
+
+    await expect(oidcPage.clickOIDCButton('Keycloak')).resolves.toBeUndefined();
+    expect(oidcLocator.click).toHaveBeenCalledWith({
+      force: true,
+      noWaitAfter: true,
+    });
+    expect(page.goto).not.toHaveBeenCalled();
+  });
+
   it('uses turbo method fallback when data-method inspection fails', async () => {
     const hrefLocator = createLocator({ visible: true });
     hrefLocator.getAttribute = jest.fn(async (name: string) => {
@@ -246,6 +270,55 @@ describe('OIDCLoginPage.clickOIDCButton', () => {
     );
     expect(hrefLocator.getAttribute).toHaveBeenCalledWith('data-method');
     expect(hrefLocator.getAttribute).toHaveBeenCalledWith('data-turbo-method');
+  });
+
+  it('navigates direct OIDC links when turbo method inspection throws', async () => {
+    const hrefLocator = createLocator({ visible: true });
+    hrefLocator.getAttribute = jest.fn(async (name: string) => {
+      if (name === 'href') {
+        return '/oauth/login';
+      }
+      if (name === 'data-turbo-method') {
+        throw new Error('turbo method unavailable');
+      }
+      return null;
+    });
+    const page = createClickPage({
+      oidcLocator: createLocator({ visible: false }),
+      hrefLocator,
+      currentUrl: 'https://bookstack.datamancy.net/login',
+      waitForUrlTargetUrl: 'https://keycloak.datamancy.net/realms/webservices/protocol/openid-connect/auth?client_id=demo',
+    });
+
+    const oidcPage = new OIDCLoginPage(page as never);
+
+    await expect(oidcPage.clickOIDCButton('Keycloak')).resolves.toBeUndefined();
+    expect(page.goto).toHaveBeenCalledWith(
+      'https://bookstack.datamancy.net/oauth/login',
+      { waitUntil: 'domcontentloaded', timeout: 30000 },
+    );
+    expect(hrefLocator.getAttribute).toHaveBeenCalledWith('data-turbo-method');
+  });
+
+  it('clicks visible OIDC controls after locator visibility waits time out', async () => {
+    const oidcLocator = createLocator({
+      visible: true,
+      waitForError: new Error('visibility wait timed out'),
+    });
+    const page = createClickPage({
+      oidcLocator,
+      currentUrl: 'https://bookstack.datamancy.net/login',
+      waitForUrlTargetUrl: 'https://keycloak.datamancy.net/realms/webservices/protocol/openid-connect/auth?client_id=demo',
+    });
+
+    const oidcPage = new OIDCLoginPage(page as never);
+
+    await expect(oidcPage.clickOIDCButton('Keycloak')).resolves.toBeUndefined();
+    expect(oidcLocator.waitFor).toHaveBeenCalledWith({ state: 'visible', timeout: 250 });
+    expect(oidcLocator.click).toHaveBeenCalledWith({
+      force: true,
+      noWaitAfter: true,
+    });
   });
 
   it('uses Keycloak as the default OIDC button label', async () => {
@@ -399,6 +472,26 @@ describe('OIDCLoginPage.clickOIDCButton', () => {
     expect(hrefLocator.click).toHaveBeenCalledWith({ force: true, noWaitAfter: true });
   });
 
+  it('falls back when the sign-in entry point visibility probe throws', async () => {
+    const signInLocator = createLocator();
+    signInLocator.isVisible.mockRejectedValue(new Error('sign-in visibility probe failed'));
+    const hrefLocator = createLocator({ visible: true });
+    const page = createClickPage({
+      oidcLocator: createLocator({ visible: false }),
+      signInLocator,
+      authHrefLocator: createLocator({ visible: false }),
+      hrefLocator,
+      currentUrl: 'https://forgejo.datamancy.net/user/login',
+      waitForUrlTargetUrl: 'https://keycloak.datamancy.net/realms/webservices/protocol/openid-connect/auth?client_id=forgejo',
+    });
+
+    const oidcPage = new OIDCLoginPage(page as never);
+
+    await expect(oidcPage.clickOIDCButton('Keycloak')).resolves.toBeUndefined();
+    expect(signInLocator.click).not.toHaveBeenCalled();
+    expect(hrefLocator.click).toHaveBeenCalledWith({ noWaitAfter: true });
+  });
+
   it('throws when no OIDC entry point can be found', async () => {
     const page = createClickPage({
       oidcLocator: createLocator({ visible: false }),
@@ -409,6 +502,33 @@ describe('OIDCLoginPage.clickOIDCButton', () => {
     const oidcPage = new OIDCLoginPage(page as never);
 
     await expect(oidcPage.clickOIDCButton('Keycloak')).rejects.toThrow('OIDC button/link not found for: Keycloak');
+  });
+
+  it('uses the generic href fallback after its visibility wait times out', async () => {
+    const hrefLocator = createLocator({
+      visible: true,
+      waitForError: new Error('href visibility wait timed out'),
+      attributes: {
+        href: '/sso/start',
+      },
+    });
+    const page = createClickPage({
+      oidcLocator: createLocator({ visible: false }),
+      signInLocator: createLocator({ visible: false }),
+      authHrefLocator: createLocator({ visible: false }),
+      hrefLocator,
+      currentUrl: 'https://forgejo.datamancy.net/user/login',
+      waitForUrlTargetUrl: 'https://keycloak.datamancy.net/realms/webservices/protocol/openid-connect/auth?client_id=forgejo',
+    });
+
+    const oidcPage = new OIDCLoginPage(page as never);
+
+    await expect(oidcPage.clickOIDCButton('Keycloak')).resolves.toBeUndefined();
+    expect(hrefLocator.waitFor).toHaveBeenCalledWith({ state: 'visible', timeout: 250 });
+    expect(page.goto).toHaveBeenCalledWith(
+      'https://forgejo.datamancy.net/sso/start',
+      { waitUntil: 'domcontentloaded', timeout: 30000 },
+    );
   });
 
   it('treats href fallback visibility errors as a missing OIDC entry point', async () => {
