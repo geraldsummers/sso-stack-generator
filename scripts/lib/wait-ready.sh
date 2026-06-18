@@ -212,6 +212,12 @@ service_exit_code() {
   container_exit_code "$container_name"
 }
 
+service_successful_terminal_state() {
+  local state="$1"
+  local exit_code="$2"
+  { [ "$state" = "exited" ] || [ "$state" = "skipped" ]; } && [ "$exit_code" = "0" ]
+}
+
 service_is_completion_dependency_job() {
   local compose_config="$1"
   local service_name="$2"
@@ -303,17 +309,19 @@ created_service_blockers() {
     dep_exit="$(service_exit_code "$compose_config" "$dep_name")"
     case "$dep_condition" in
       service_healthy)
-        if [ "$dep_state" != "running" ] || [ "$dep_health" != "healthy" ]; then
+        if [ "$dep_state" = "skipped" ] && [ "$dep_exit" = "0" ]; then
+          :
+        elif [ "$dep_state" != "running" ] || [ "$dep_health" != "healthy" ]; then
           blockers+=("$dep_name:$dep_state${dep_health:+/$dep_health}")
         fi
         ;;
       service_completed_successfully)
-        if [ "$dep_state" != "exited" ] || [ "$dep_exit" != "0" ]; then
+        if ! service_successful_terminal_state "$dep_state" "$dep_exit"; then
           blockers+=("$dep_name:$dep_state${dep_exit:+/$dep_exit}")
         fi
         ;;
       *)
-        if [ "$dep_state" != "running" ] && ! { [ "$dep_state" = "exited" ] && [ "$dep_exit" = "0" ]; }; then
+        if [ "$dep_state" != "running" ] && ! service_successful_terminal_state "$dep_state" "$dep_exit"; then
           blockers+=("$dep_name:$dep_state${dep_exit:+/$dep_exit}")
         fi
         ;;
