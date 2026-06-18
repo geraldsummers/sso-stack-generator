@@ -4,7 +4,7 @@ trap 'status=$?; printf "[pull-modules] failed at line %s: %s (exit %s)\n" "$LIN
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
 ROOT_DIR="$(cd "$SCRIPT_DIR/.." && pwd -P)"
-DEFAULT_WORKSPACE="/home/gerald/sso-stack-repos/modules-workspace"
+DEFAULT_WORKSPACE="${SSO_STACK_MODULES_WORKSPACE:-$ROOT_DIR/modules-workspace}"
 
 workspace="$DEFAULT_WORKSPACE"
 catalog_dir="$ROOT_DIR/modules"

@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="540" viewBox="0 0 960 540" role="img" aria-labelledby="title desc">
+  <title id="title">Systemd orchestration</title>
+  <desc id="desc">Diagram of generated systemd targets coordinating compose shards and readiness checks.</desc>
+  <rect width="960" height="540" fill="#f8fafc"/>
+  <rect x="80" y="64" width="800" height="84" rx="8" fill="#263447"/>
+  <text x="480" y="116" fill="#ffffff" font-family="Arial, sans-serif" font-size="28" text-anchor="middle">webservices.target</text>
+  <g fill="#ffffff" stroke="#334155" stroke-width="3">
+    <rect x="110" y="230" width="180" height="95" rx="8"/>
+    <rect x="390" y="230" width="180" height="95" rx="8"/>
+    <rect x="670" y="230" width="180" height="95" rx="8"/>
+    <rect x="250" y="390" width="180" height="75" rx="8"/>
+    <rect x="530" y="390" width="180" height="75" rx="8"/>
+  </g>
+  <g fill="#263447" font-family="Arial, sans-serif" text-anchor="middle">
+    <text x="200" y="270" font-size="21">core compose</text>
+    <text x="200" y="298" font-size="16">network and identity</text>
+    <text x="480" y="270" font-size="21">service shards</text>
+    <text x="480" y="298" font-size="16">apps and workers</text>
+    <text x="760" y="270" font-size="21">readiness gates</text>
+    <text x="760" y="298" font-size="16">health contracts</text>
+    <text x="340" y="435" font-size="20">deploy.sh</text>
+    <text x="620" y="435" font-size="20">verify.sh</text>
+  </g>
+  <g stroke="#334155" stroke-width="4" fill="none" marker-end="url(#arrow)">
+    <path d="M360 148 L220 226"/>
+    <path d="M480 148 V226"/>
+    <path d="M600 148 L740 226"/>
+    <path d="M430 325 L360 386"/>
+    <path d="M530 325 L600 386"/>
+  </g>
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto">
+      <path d="M0,0 L0,6 L9,3 z" fill="#334155"/>
+    </marker>
+  </defs>
+</svg>

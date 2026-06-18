@@ -223,6 +223,7 @@ class WorkspaceProvisionerServiceTest {
             searchServicePassword = "opensearch-password",
             searchServiceToken = "search-token",
             trustedProxySecret = "test-secret",
+            allowedBearerGroups = setOf("admins", "operators", "agents"),
             agentTokenSecret = "test-agent-secret",
             agentTokenTtlSeconds = 86_400L,
             workspaceClientId = "workspace-cli",
