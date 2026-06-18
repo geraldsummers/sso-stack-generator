@@ -1,0 +1,16 @@
+# Explicit generator-owned service assets allowed outside module ownership.
+# Keep this minimal and reviewed as part of modularization.
+global.settings/volume-init.yml
+global.settings/volumes.yml
+global.settings/networks.yml
+stack.systemd/graph.json
+scripts/lib
+scripts/modules
+stack.kotlin/pipeline-common/src/main/kotlin/org/webservices/pipeline/config/Config.kt
+stack.kotlin/pipeline-common/src/test/kotlin/org/webservices/pipeline/config/ConfigTest.kt
+stack.kotlin/pipeline-common/build.gradle.kts
+stack.kotlin/pipeline-common/src/main/kotlin/org/webservices/pipeline/model/
+stack.kotlin/pipeline-common/src/main/kotlin/org/webservices/pipeline/mock/
+stack.kotlin/pipeline-common/src/test/kotlin/org/webservices/pipeline/core/
+stack.kotlin/pipeline-common/src/test/kotlin/org/webservices/pipeline/mock/
+stack.kotlin/pipeline-common/src/test/kotlin/org/webservices/pipeline/sources/

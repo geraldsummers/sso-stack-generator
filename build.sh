@@ -58,6 +58,7 @@ esac
 site_manifest_path="$(resolve_site_manifest_file "$SITE_MANIFEST_PATH")"
 
 external_modules_resolve "$site_manifest_path"
+"$SCRIPT_DIR/scripts/verify-service-ownership.sh" "$site_manifest_path"
 artifact_path="$("$SCRIPT_DIR/scripts/build-artifact.sh")"
 mkdir -p "$OUT_DIR"
 printf '%s\n' "$artifact_path" > "$OUT_DIR/latest-artifact-path.txt"

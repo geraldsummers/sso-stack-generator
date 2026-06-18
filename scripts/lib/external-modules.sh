@@ -9,6 +9,7 @@ EXTERNAL_MODULES_CACHE_DIR="$SOURCE_ROOT/out/external-git"
 EXTERNAL_MODULES_ROOT="$SOURCE_ROOT/out/external-modules"
 EXTERNAL_MODULES_MATERIALIZED_DIR="$EXTERNAL_MODULES_ROOT/materialized"
 EXTERNAL_MODULES_METADATA_FILE="$EXTERNAL_MODULES_ROOT/metadata.json"
+EXTERNAL_MODULES_RESOLVED_MANIFEST_FILE=""
 
 external_modules_manifest_pin_file() {
   local site_manifest_path="$1"
@@ -268,6 +269,7 @@ external_modules_resolve() {
 
   manifest_repo="$(external_modules_clone_at_commit "module-manifest" "$manifest_remote" "$manifest_ref" "$manifest_commit")"
   manifest_file="$(realpath -e "$manifest_repo/$manifest_path")" || die "module manifest path not found: $manifest_path"
+  EXTERNAL_MODULES_RESOLVED_MANIFEST_FILE="$manifest_file"
   case "$manifest_file" in
     "$manifest_repo"/*) ;;
     *) die "module manifest path escapes manifest repo: $manifest_path" ;;
