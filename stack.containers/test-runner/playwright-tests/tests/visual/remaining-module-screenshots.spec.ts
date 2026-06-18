@@ -770,13 +770,21 @@ async function hydrateDonetickSession(page: Page, username: string, password: st
 }
 
 async function unlockVaultwardenLoginForm(page: Page, email: string, password: string): Promise<void> {
+  if (!/#\/login\b/i.test(page.url())) {
+    await page.goto(serviceUrl('vaultwarden', '/#/login'), { waitUntil: 'domcontentloaded', timeout: 45000 }).catch(() => {});
+  }
+  if (/#\/sso\b/i.test(page.url())) {
+    await page.goto(serviceUrl('vaultwarden', '/#/login'), { waitUntil: 'domcontentloaded', timeout: 45000 }).catch(() => {});
+  }
+  await page.waitForLoadState('networkidle', { timeout: 15000 }).catch(() => {});
   const bodyText = (await page.locator('body').textContent().catch(() => '')) || '';
   if (!/Log in|Master password|Email address/i.test(bodyText)) {
     return;
   }
-  const firstTextbox = page.locator('input:not([type="hidden"]), textarea').first();
-  if (await firstTextbox.isVisible({ timeout: 5000 }).catch(() => false)) {
-    await firstTextbox.fill(email).catch(() => {});
+  const localEmailTextbox = page.locator('input.vw-email-continue, input[type="email"]:not(.vw-email-sso), input[name="Email"], input[name="email"]').first();
+  if (await localEmailTextbox.isVisible({ timeout: 5000 }).catch(() => false)) {
+    await localEmailTextbox.click({ force: true }).catch(() => {});
+    await localEmailTextbox.fill(email, { force: true }).catch(() => {});
   }
   await page.evaluate((email) => {
     const setValue = (field: HTMLInputElement, value: string) => {
@@ -791,17 +799,60 @@ async function unlockVaultwardenLoginForm(page: Page, email: string, password: s
       field.dispatchEvent(new Event('change', { bubbles: true }));
       field.dispatchEvent(new Event('blur', { bubbles: true }));
     };
-    for (const field of Array.from(document.querySelectorAll('input[type="email"], input[name="Email"], input[name="email"]')) as HTMLInputElement[]) {
-      setValue(field, email);
+    const localEmailFields = Array.from(document.querySelectorAll('input.vw-email-continue, input[type="email"]:not(.vw-email-sso), input[name="Email"], input[name="email"]')) as HTMLInputElement[];
+    for (const field of localEmailFields) {
+      if (field.type !== 'hidden' && (field.offsetParent !== null || field.getClientRects().length > 0)) {
+        setValue(field, email);
+      }
+    }
+    if (localEmailFields.length === 0) {
+      const fallbackField = (Array.from(document.querySelectorAll('input[type="email"]')) as HTMLInputElement[])
+        .find((field) => !/\bvw-email-sso\b/.test(field.className) && field.type !== 'hidden');
+      if (fallbackField) {
+        setValue(fallbackField, email);
+      }
     }
   }, email).catch(() => {});
+  await expect(localEmailTextbox, 'Vaultwarden local login email field should contain the synthetic user email').toHaveValue(email, { timeout: 5000 }).catch(() => {});
   const continueButton = page.getByRole('button', { name: /^Continue$/i }).first();
   if (await continueButton.isVisible({ timeout: 3000 }).catch(() => false)) {
-    await continueButton.click().catch(() => {});
+    await continueButton.click({ force: true }).catch(() => {});
     await page.waitForLoadState('networkidle', { timeout: 15000 }).catch(() => {});
   } else {
-    await page.keyboard.press('Enter').catch(() => {});
+    await localEmailTextbox.press('Enter').catch(() => {});
     await page.waitForLoadState('networkidle', { timeout: 15000 }).catch(() => {});
+  }
+  if (/#\/sso\b/i.test(page.url())) {
+    await page.goto(serviceUrl('vaultwarden', '/#/login'), { waitUntil: 'domcontentloaded', timeout: 45000 }).catch(() => {});
+    await page.waitForLoadState('networkidle', { timeout: 15000 }).catch(() => {});
+    const retryEmailTextbox = page.locator('input.vw-email-continue, input[type="email"]:not(.vw-email-sso), input[name="Email"], input[name="email"]').first();
+    if (await retryEmailTextbox.isVisible({ timeout: 5000 }).catch(() => false)) {
+      await retryEmailTextbox.fill(email, { force: true }).catch(() => {});
+      await page.evaluate((email) => {
+        const field = (Array.from(document.querySelectorAll('input.vw-email-continue, input[type="email"]:not(.vw-email-sso), input[name="Email"], input[name="email"]')) as HTMLInputElement[])
+          .find((candidate) => candidate.type !== 'hidden' && (candidate.offsetParent !== null || candidate.getClientRects().length > 0));
+        if (!field) {
+          return;
+        }
+        const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set;
+        field.focus();
+        if (setter) {
+          setter.call(field, email);
+        } else {
+          field.value = email;
+        }
+        field.dispatchEvent(new InputEvent('input', { bubbles: true, composed: true, inputType: 'insertText', data: email }));
+        field.dispatchEvent(new Event('change', { bubbles: true }));
+        field.dispatchEvent(new Event('blur', { bubbles: true }));
+      }, email).catch(() => {});
+      const retryContinue = page.getByRole('button', { name: /^Continue$/i }).first();
+      if (await retryContinue.isVisible({ timeout: 3000 }).catch(() => false)) {
+        await retryContinue.click({ force: true }).catch(() => {});
+      } else {
+        await retryEmailTextbox.press('Enter').catch(() => {});
+      }
+      await page.waitForLoadState('networkidle', { timeout: 15000 }).catch(() => {});
+    }
   }
   const passwordTextbox = page.locator('input[type="password"]').first();
   if (await passwordTextbox.isVisible({ timeout: 10000 }).catch(() => false)) {
