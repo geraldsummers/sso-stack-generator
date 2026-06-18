@@ -1682,54 +1682,86 @@ test.describe('Remaining real screenshot coverage', () => {
 
     test('Vaultwarden authenticated vault screenshot', async ({ page }) => {
       test.setTimeout(180000);
-      const vaultUser = {
-        username: `visual-${testUser.username}`,
-        email: `vault.${testUser.username}@datamancy.net`,
-        password: `Northwind-Field-Ops-Vault!2026-${testUser.username}`,
-      };
-      try {
-        cleanupVaultwardenSyntheticUser(vaultUser.email);
-        await page.addInitScript(() => {
-          const flags = [
-            'browserExtensionPromptDismissed',
-            'browserExtensionOnboardingDismissed',
-            'browserExtensionOnboardingComplete',
-            'browserExtensionBannerDismissed',
-            'autofillOnboardingDismissed',
-            'autofillOnboardingComplete',
-            'installBrowserExtensionDismissed',
-          ];
-          for (const flag of flags) {
-            localStorage.setItem(flag, 'true');
-            sessionStorage.setItem(flag, 'true');
-          }
-          localStorage.setItem('showBrowserExtensionPrompt', 'false');
-          localStorage.setItem('showBrowserExtensionOnboarding', 'false');
-          localStorage.setItem('showAutofillOnboarding', 'false');
-          localStorage.setItem('bwInstalled', 'true');
-        });
-        await page.context().clearCookies().catch(() => {});
-        await registerVaultwardenScreenshotAccount(page, vaultUser);
-        await dismissVaultwardenExtensionPrompt(page);
-        await page.goto(serviceUrl('vaultwarden', '/#/vault'), { waitUntil: 'domcontentloaded', timeout: 45000 }).catch(() => {});
-        await unlockVaultwardenLockedVault(page, vaultUser.password);
-        await dismissVaultwardenExtensionPrompt(page);
-        await unlockVaultwardenLoginForm(page, vaultUser.email, vaultUser.password);
-        await verifyVaultwardenPasswordToken(page, vaultUser);
-        await page.goto(serviceUrl('vaultwarden', '/#/vault'), { waitUntil: 'domcontentloaded', timeout: 45000 }).catch(() => {});
-        await unlockVaultwardenLockedVault(page, vaultUser.password);
-        await dismissVaultwardenExtensionPrompt(page);
-        await page.waitForFunction(
-          () => /My Vault|Vaults|Items|Search vault|Generator/i.test(document.body.innerText),
-          null,
-          { timeout: 60000 }
-        );
-        await createVaultwardenDemoItem(page);
-        await dismissVaultwardenExtensionPrompt(page);
-        await page.screenshot({ path: screenshotPath('vaultwarden-authenticated.jpg'), type: 'jpeg', quality: 85, fullPage: true });
-      } finally {
-        cleanupVaultwardenSyntheticUser(vaultUser.email);
-      }
+      const vaultwardenAppUrl = serviceUrl('vaultwarden');
+      const vaultwardenMasterPassword = process.env.VAULTWARDEN_TEST_MASTER_PASSWORD
+        || `${testUser.username.replace(/[^A-Za-z0-9]/g, '') || 'playwright'}Vault!2026`;
+      const vaultwardenSsoIdentifier = process.env.VAULTWARDEN_ORG_ID?.trim()
+        || testUser.email.split('@').pop()
+        || stackDomain;
+
+      await page.addInitScript(() => {
+        const flags = [
+          'browserExtensionPromptDismissed',
+          'browserExtensionOnboardingDismissed',
+          'browserExtensionOnboardingComplete',
+          'browserExtensionBannerDismissed',
+          'autofillOnboardingDismissed',
+          'autofillOnboardingComplete',
+          'installBrowserExtensionDismissed',
+        ];
+        for (const flag of flags) {
+          localStorage.setItem(flag, 'true');
+          sessionStorage.setItem(flag, 'true');
+        }
+        localStorage.setItem('showBrowserExtensionPrompt', 'false');
+        localStorage.setItem('showBrowserExtensionOnboarding', 'false');
+        localStorage.setItem('showAutofillOnboarding', 'false');
+        localStorage.setItem('bwInstalled', 'true');
+      });
+
+      await testOIDCService(
+        page,
+        'Vaultwarden',
+        vaultwardenAppUrl,
+        /My Vault|Vaults|Folders|Items|Search vault|Join organization|Create account|Set initial password|Your vault is locked/i,
+        ['Keycloak', 'SSO', 'Single sign-on', 'Use single sign-on'],
+        {
+          disallowPatterns: [/SSO identifier/i, /Use single sign-on/i],
+          disallowUrlPatterns: [/#\/sso\b/i, /\/sso\b/i, /#\/login\b/i],
+          loginPath: `${vaultwardenAppUrl}#/login`,
+          loginButtonPatterns: [/use single sign-on|single sign-on|sso|enterprise|login/i],
+          ssoIdentifier: vaultwardenSsoIdentifier,
+          ssoEmail: testUser.email,
+          skipSsoEmail: true,
+          authenticatedRecoveryPath: `${vaultwardenAppUrl}#/settings/account`,
+          uiPatternOverride: /My Vault|Vaults|Folders|Items|Search vault|Send|Generator|Vaultwarden Web|Your vault is locked|Add it later|Get the extension|Name|Email|Profile/i,
+          skipScreenshot: true,
+          authenticatedProbe: async (page) => page.evaluate(async () => {
+            for (const endpoint of ['/api/accounts/profile', '/api/sync?excludeDomains=true']) {
+              try {
+                const response = await fetch(endpoint, {
+                  credentials: 'include',
+                  headers: { Accept: 'application/json' },
+                });
+                if (response.ok) {
+                  return true;
+                }
+              } catch {
+                continue;
+              }
+            }
+            return false;
+          }).catch(() => false),
+          postLogin: async (page) => {
+            await initializeVaultwardenMasterPassword(page, vaultwardenMasterPassword);
+            await unlockVaultwardenLockedVault(page, vaultwardenMasterPassword);
+            await dismissVaultwardenExtensionPrompt(page);
+          },
+          oidcLinkPatterns: [/single sign-on/i, /sso/i],
+        }
+      );
+
+      await page.goto(serviceUrl('vaultwarden', '/#/vault'), { waitUntil: 'domcontentloaded', timeout: 45000 }).catch(() => {});
+      await unlockVaultwardenLockedVault(page, vaultwardenMasterPassword);
+      await dismissVaultwardenExtensionPrompt(page);
+      await page.waitForFunction(
+        () => /My Vault|Vaults|Items|Search vault|Generator/i.test(document.body.innerText),
+        null,
+        { timeout: 60000 }
+      );
+      await createVaultwardenDemoItem(page);
+      await dismissVaultwardenExtensionPrompt(page);
+      await page.screenshot({ path: screenshotPath('vaultwarden-authenticated.jpg'), type: 'jpeg', quality: 85, fullPage: true });
     });
   });
 
