@@ -99,6 +99,7 @@ prepare_host_runtime_dirs
 prepare_runtime_dir "$runtime_root"
 render_config_tree "$BUNDLE_ROOT/stack.config" "$runtime_configs_dir"
 mapfile -t runtime_env_keys < <(collect_runtime_env_keys "$runtime_configs_dir" "$BUNDLE_ROOT/global.settings" "$BUNDLE_ROOT/docker-compose.yml")
+mapfile -t runtime_env_keys < <(printf '%s\n' "${runtime_env_keys[@]}" STACK_RUNTIME_DIR | sort -u)
 write_env_file "$runtime_env_file" "${runtime_env_keys[@]}"
 write_build_info "$BUNDLE_ROOT/build-info.json" "$runtime_root/build-info.json"
 
