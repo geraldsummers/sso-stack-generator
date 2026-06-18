@@ -854,10 +854,11 @@ async function unlockVaultwardenLoginForm(page: Page, email: string, password: s
       await page.waitForLoadState('networkidle', { timeout: 15000 }).catch(() => {});
     }
   }
-  const passwordTextbox = page.locator('input[type="password"]').first();
-  if (await passwordTextbox.isVisible({ timeout: 10000 }).catch(() => false)) {
-    await passwordTextbox.fill(password).catch(() => {});
-  } else {
+  const passwordFieldAvailable = await page.waitForFunction(() => {
+    const passwordFields = Array.from(document.querySelectorAll('input[type="password"]')) as HTMLInputElement[];
+    return passwordFields.some((field) => field.type !== 'hidden' && !field.disabled && (field.offsetParent !== null || field.getClientRects().length > 0));
+  }, undefined, { timeout: 10000 }).then(() => true).catch(() => false);
+  if (!passwordFieldAvailable) {
     const bodyTextAfterEmail = (await page.locator('body').textContent().catch(() => '')) || '';
     throw new Error(`Vaultwarden local login did not expose a master password field after email entry. Visible text: ${bodyTextAfterEmail.slice(0, 500)}`);
   }
@@ -875,7 +876,9 @@ async function unlockVaultwardenLoginForm(page: Page, email: string, password: s
       field.dispatchEvent(new Event('blur', { bubbles: true }));
     };
     for (const field of Array.from(document.querySelectorAll('input[type="password"]')) as HTMLInputElement[]) {
-      setValue(field, password);
+      if (field.type !== 'hidden' && !field.disabled && (field.offsetParent !== null || field.getClientRects().length > 0)) {
+        setValue(field, password);
+      }
     }
     const submit = (Array.from(document.querySelectorAll('button')) as HTMLButtonElement[])
       .find((button) => /log in with master password|log in|unlock/i.test(button.textContent || '') && !/single sign-on|sso/i.test(button.textContent || ''));
