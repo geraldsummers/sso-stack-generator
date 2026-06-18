@@ -71,7 +71,11 @@ import {
   isBookStackTransientOidcErrorState,
 } from '../../utils/drivers/browser-route-driver';
 
-function createLocator(options: { visible?: boolean | boolean[] } = {}) {
+function createLocator(options: {
+  visible?: boolean | boolean[];
+  innerText?: string;
+  innerTextError?: Error;
+} = {}) {
   const locator: any = {};
   const visibleSequence = Array.isArray(options.visible) ? [...options.visible] : null;
 
@@ -84,6 +88,13 @@ function createLocator(options: { visible?: boolean | boolean[] } = {}) {
     return options.visible ?? true;
   });
   locator.click = jest.fn(async () => undefined);
+  if (options.innerTextError) {
+    locator.innerText = jest.fn(async () => {
+      throw options.innerTextError;
+    });
+  } else if (typeof options.innerText === 'string') {
+    locator.innerText = jest.fn(async () => options.innerText);
+  }
 
   return locator;
 }
@@ -226,6 +237,71 @@ describe('browser-route-driver', () => {
 
       expect(page.goto).toHaveBeenCalledTimes(2);
       expect(page.waitForTimeout).toHaveBeenCalledWith(1500);
+    });
+
+    it('tolerates load-state and content probe failures while matching body text', async () => {
+      const bodyLocator = createLocator({ innerText: 'Demo Ready' });
+      const page = createPage({
+        locators: {
+          body: bodyLocator,
+        },
+        onGoto: (_url, currentPage) => {
+          currentPage.__setBody('ignored fallback body');
+        },
+      });
+      page.waitForLoadState = jest.fn(async () => {
+        throw new Error('load state unavailable');
+      });
+      page.title = jest.fn(async () => {
+        throw new Error('title unavailable');
+      });
+      page.textContent = jest.fn(async () => {
+        throw new Error('body text unavailable');
+      });
+      const route = createRoute({
+        host: 'public-demo',
+        label: 'Public Demo',
+        anonymous: { kind: 'public_page', matcher: /Demo Ready/ },
+      });
+
+      await expect(assertAnonymousContract(page, route)).resolves.toBeUndefined();
+
+      expect(page.waitForLoadState).toHaveBeenCalledWith('domcontentloaded', { timeout: 10000 });
+      expect(bodyLocator.innerText).toHaveBeenCalledWith({ timeout: 1000 });
+    });
+
+    it('fails blank service-login pages after bounded failed readiness navigations', async () => {
+      const page = createPage();
+      let gotoCalls = 0;
+      page.goto = jest.fn(async (url: string) => {
+        gotoCalls += 1;
+        if (gotoCalls === 1) {
+          page.__setUrl(url);
+          page.__setTitle('');
+          page.__setBody('');
+          return;
+        }
+        throw new Error('service still starting');
+      });
+      page.waitForLoadState = jest.fn(async () => {
+        throw new Error('load state unavailable');
+      });
+      const route = createRoute({
+        host: 'bookstack',
+        label: 'BookStack',
+        anonymous: {
+          kind: 'service_login',
+          matcher: /BookStack|Login/,
+        },
+      });
+
+      await expect(assertAnonymousContract(page, route)).rejects.toThrow(
+        'BookStack anonymous login page remained blank after bounded readiness navigation.'
+      );
+
+      expect(page.waitForLoadState).toHaveBeenCalledWith('domcontentloaded', { timeout: 10000 });
+      expect(page.waitForLoadState).toHaveBeenCalledWith('networkidle', { timeout: 10000 });
+      expect(page.goto).toHaveBeenCalledTimes(13);
     });
 
     it('accepts forward-auth routes that land on the Keycloak boundary', async () => {
@@ -481,6 +557,73 @@ describe('browser-route-driver', () => {
       expect(indexedLocator.count).toHaveBeenCalledTimes(1);
       expect(indexedLocator.nth).toHaveBeenCalledWith(0);
       expect(indexedLocator.nth).toHaveBeenCalledWith(1);
+    });
+
+    it('reports missing smoke selectors when indexed selector count fails', async () => {
+      const nowValues = [0, 0, 1, 70001];
+      jest.spyOn(Date, 'now').mockImplementation(() => nowValues.shift() ?? 70001);
+      const indexedLocator = createLocator({ visible: false });
+      indexedLocator.count = jest.fn(async () => {
+        throw new Error('selector count unavailable');
+      });
+      indexedLocator.nth = jest.fn();
+      const page = createPage({
+        locators: {
+          '#ready': indexedLocator,
+        },
+        onGoto: (_url, currentPage) => {
+          currentPage.__setUrl('https://status.datamancy.net/');
+          currentPage.__setBody('Ready Content');
+        },
+      });
+      const route = createRoute({
+        host: 'status',
+        label: 'Status',
+        kind: 'public',
+        smoke: {
+          matcher: /Ready Content/,
+          selector: '#ready',
+        },
+      });
+
+      await expect(assertSmokeContract(page, route, user)).rejects.toThrow(
+        'Status authenticated page did not satisfy smoke contract'
+      );
+      expect(indexedLocator.count).toHaveBeenCalledTimes(1);
+      expect(indexedLocator.nth).not.toHaveBeenCalled();
+    });
+
+    it('continues scanning indexed smoke selectors when one visibility probe fails', async () => {
+      const firstMatch = createLocator({ visible: false });
+      firstMatch.isVisible = jest.fn(async () => {
+        throw new Error('detached selector');
+      });
+      const secondMatch = createLocator({ visible: true });
+      const indexedLocator = createLocator({ visible: false });
+      indexedLocator.count = jest.fn(async () => 2);
+      indexedLocator.nth = jest.fn((index: number) => (index === 0 ? firstMatch : secondMatch));
+      const page = createPage({
+        locators: {
+          '#ready': indexedLocator,
+        },
+        onGoto: (_url, currentPage) => {
+          currentPage.__setUrl('https://status.datamancy.net/');
+          currentPage.__setBody('Ready Content');
+        },
+      });
+      const route = createRoute({
+        host: 'status',
+        label: 'Status',
+        kind: 'public',
+        smoke: {
+          matcher: /Ready Content/,
+          selector: '#ready',
+        },
+      });
+
+      await expect(assertSmokeContract(page, route, user)).resolves.toBeUndefined();
+      expect(firstMatch.isVisible).toHaveBeenCalledTimes(1);
+      expect(secondMatch.isVisible).toHaveBeenCalledTimes(1);
     });
 
     it('reports stuck smoke pages with a redacted content summary after bounded recovery', async () => {
