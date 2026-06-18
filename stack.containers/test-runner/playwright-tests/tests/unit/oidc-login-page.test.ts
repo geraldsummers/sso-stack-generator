@@ -39,6 +39,7 @@ function createLocator(options: FakeLocatorOptions = {}) {
 function createClickPage(options: {
   oidcLocator?: ReturnType<typeof createLocator>;
   signInLocator?: ReturnType<typeof createLocator>;
+  authHrefLocator?: ReturnType<typeof createLocator>;
   hrefLocator?: ReturnType<typeof createLocator>;
   currentUrl?: string;
   waitForUrlTargetUrl?: string;
@@ -47,6 +48,7 @@ function createClickPage(options: {
   const oidcLocator = options.oidcLocator ?? createLocator();
   const signInLocator = options.signInLocator ?? createLocator({ visible: false });
   const hrefLocator = options.hrefLocator ?? createLocator({ visible: false });
+  const authHrefLocator = options.authHrefLocator ?? hrefLocator;
   const currentUrl = options.currentUrl ?? 'https://bookstack.datamancy.net/login';
   const waitForUrlTargetUrl = options.waitForUrlTargetUrl ?? currentUrl;
 
@@ -76,6 +78,9 @@ function createClickPage(options: {
     }),
     getByText: jest.fn(() => oidcLocator),
     locator: jest.fn((selector: string) => {
+      if (selector.startsWith('a:has-text(')) {
+        return authHrefLocator;
+      }
       if (selector.includes('href*="openid"') || selector.includes('href*="oidc"') || selector.includes('href*="oauth"') || selector.includes('href*="sso"')) {
         return hrefLocator;
       }
@@ -192,6 +197,57 @@ describe('OIDCLoginPage.clickOIDCButton', () => {
     });
   });
 
+  it('clicks visible OIDC controls when href inspection is unavailable', async () => {
+    const oidcLocator = createLocator({ visible: true });
+    delete oidcLocator.getAttribute;
+    const page = createClickPage({
+      oidcLocator,
+      currentUrl: 'https://bookstack.datamancy.net/login',
+      waitForUrlTargetUrl: 'https://keycloak.datamancy.net/realms/webservices/protocol/openid-connect/auth?client_id=demo',
+    });
+
+    const oidcPage = new OIDCLoginPage(page as never);
+
+    await expect(oidcPage.clickOIDCButton('Keycloak')).resolves.toBeUndefined();
+    expect(oidcLocator.click).toHaveBeenCalledWith({
+      force: true,
+      noWaitAfter: true,
+    });
+    expect(page.goto).not.toHaveBeenCalled();
+  });
+
+  it('uses turbo method fallback when data-method inspection fails', async () => {
+    const hrefLocator = createLocator({ visible: true });
+    hrefLocator.getAttribute = jest.fn(async (name: string) => {
+      if (name === 'href') {
+        return '/oauth/login';
+      }
+      if (name === 'data-method') {
+        throw new Error('attribute unavailable');
+      }
+      if (name === 'data-turbo-method') {
+        return 'get';
+      }
+      return null;
+    });
+    const page = createClickPage({
+      oidcLocator: createLocator({ visible: false }),
+      hrefLocator,
+      currentUrl: 'https://bookstack.datamancy.net/login',
+      waitForUrlTargetUrl: 'https://keycloak.datamancy.net/realms/webservices/protocol/openid-connect/auth?client_id=demo',
+    });
+
+    const oidcPage = new OIDCLoginPage(page as never);
+
+    await expect(oidcPage.clickOIDCButton('Keycloak')).resolves.toBeUndefined();
+    expect(page.goto).toHaveBeenCalledWith(
+      'https://bookstack.datamancy.net/oauth/login',
+      { waitUntil: 'domcontentloaded', timeout: 30000 },
+    );
+    expect(hrefLocator.getAttribute).toHaveBeenCalledWith('data-method');
+    expect(hrefLocator.getAttribute).toHaveBeenCalledWith('data-turbo-method');
+  });
+
   it('uses Keycloak as the default OIDC button label', async () => {
     const oidcLocator = createLocator({ visible: true });
     const page = createClickPage({
@@ -268,6 +324,57 @@ describe('OIDCLoginPage.clickOIDCButton', () => {
     await expect(oidcPage.clickOIDCButton('Keycloak')).resolves.toBeUndefined();
     expect(hrefLocator.click).toHaveBeenCalledWith({ force: true, noWaitAfter: true });
     expect(console.log).toHaveBeenCalledWith('   ✓ Clicked OIDC button: Keycloak');
+  });
+
+  it('navigates through the generic href fallback when named OIDC controls are absent', async () => {
+    const hrefLocator = createLocator({
+      visible: true,
+      attributes: {
+        href: '/sso/start',
+      },
+    });
+    const page = createClickPage({
+      oidcLocator: createLocator({ visible: false }),
+      signInLocator: createLocator({ visible: false }),
+      authHrefLocator: createLocator({ visible: false }),
+      hrefLocator,
+      currentUrl: 'https://forgejo.datamancy.net/user/login',
+      waitForUrlTargetUrl: 'https://keycloak.datamancy.net/realms/webservices/protocol/openid-connect/auth?client_id=forgejo',
+    });
+
+    const oidcPage = new OIDCLoginPage(page as never);
+
+    await expect(oidcPage.clickOIDCButton('Keycloak')).resolves.toBeUndefined();
+    expect(page.goto).toHaveBeenCalledWith(
+      'https://forgejo.datamancy.net/sso/start',
+      { waitUntil: 'domcontentloaded', timeout: 30000 },
+    );
+    expect(console.log).toHaveBeenCalledWith('   ✓ Clicked OIDC link by href match');
+  });
+
+  it('clicks the generic href fallback when the fallback link requires script handling', async () => {
+    const hrefLocator = createLocator({
+      visible: true,
+      attributes: {
+        href: '/sso/start',
+        'data-turbo-method': 'post',
+      },
+    });
+    const page = createClickPage({
+      oidcLocator: createLocator({ visible: false }),
+      signInLocator: createLocator({ visible: false }),
+      authHrefLocator: createLocator({ visible: false }),
+      hrefLocator,
+      currentUrl: 'https://forgejo.datamancy.net/user/login',
+      waitForUrlTargetUrl: 'https://keycloak.datamancy.net/realms/webservices/protocol/openid-connect/auth?client_id=forgejo',
+    });
+
+    const oidcPage = new OIDCLoginPage(page as never);
+
+    await expect(oidcPage.clickOIDCButton('Keycloak')).resolves.toBeUndefined();
+    expect(page.goto).not.toHaveBeenCalled();
+    expect(hrefLocator.click).toHaveBeenCalledWith({ noWaitAfter: true });
+    expect(console.log).toHaveBeenCalledWith('   ✓ Clicked OIDC link by href match');
   });
 
   it('falls back through thrown visibility checks before using the href-based OIDC link', async () => {
