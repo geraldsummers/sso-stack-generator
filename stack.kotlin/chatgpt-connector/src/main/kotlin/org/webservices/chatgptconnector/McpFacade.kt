@@ -25,6 +25,8 @@ import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.put
 import kotlinx.serialization.json.putJsonArray
 import kotlinx.serialization.json.putJsonObject
+import java.net.URLEncoder
+import java.nio.charset.StandardCharsets
 import java.util.Base64
 
 class McpFacade(
@@ -92,7 +94,7 @@ class McpFacade(
                 arr.jsonArray.mapNotNull { (it as? JsonPrimitive)?.contentOrNull }
             } ?: listOf("*"),
             mode = arguments["mode"]?.let { (it as JsonPrimitive).content } ?: "hybrid",
-            limit = arguments["limit"]?.let { (it as JsonPrimitive).content.toIntOrNull() } ?: 10,
+            limit = (arguments["limit"]?.let { (it as JsonPrimitive).content.toIntOrNull() } ?: 10).coerceIn(1, 50),
             audience = "agent"
         )
         val response = httpClient.post("${config.searchServiceBaseUrl}/_search") {
@@ -105,7 +107,7 @@ class McpFacade(
 
     private suspend fun callFetch(arguments: JsonObject): JsonElement {
         val id = arguments["id"]?.let { (it as JsonPrimitive).content } ?: return buildJsonObject { put("error", "missing id") }
-        val response = httpClient.get("${config.searchServiceBaseUrl}/_doc/$id") {
+        val response = httpClient.get("${config.searchServiceBaseUrl}/_doc/${pathSegment(id)}") {
             applySearchAuth()
         }
         return openSearchDocument(id, response.body<JsonElement>())
@@ -150,6 +152,9 @@ class McpFacade(
             })
         })
     }
+
+    private fun pathSegment(value: String): String =
+        URLEncoder.encode(value, StandardCharsets.UTF_8).replace("+", "%20")
 
     private fun openSearchResponse(raw: JsonElement, mode: String): JsonElement {
         val hits = raw.jsonObject["hits"]?.jsonObject

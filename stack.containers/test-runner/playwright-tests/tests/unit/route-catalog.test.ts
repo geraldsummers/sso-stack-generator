@@ -109,10 +109,10 @@ describe('route-catalog', () => {
     expect(sogo.visual?.pathForUser?.({
       username: 'pw-test',
       email: 'pw-test@datamancy.net',
-    })).toBeUndefined();
-    expect(sogo.visual?.path).toBe('/SOGo/');
-    expect(sogo.visual?.selector).toBeUndefined();
-    expect(sogo.visual?.matcher.test('Calendar | webservices Mail')).toBe(true);
+    })).toBe('/SOGo/so/pw-test/Preferences#!/calendars');
+    expect(sogo.visual?.path).toBeUndefined();
+    expect(sogo.visual?.selector).toBe('text=/Preferences|Default reminder|Week begins on|Time Zone/i');
+    expect(sogo.visual?.matcher.test('Preferences | Calendar | Default reminder')).toBe(true);
 
     expect(donetick.visual?.matcher.test('Loading... This is taking longer than usual.')).toBe(false);
     expect(donetick.visual?.disallowMatcher?.test('Loading... This is taking longer than usual.')).toBe(true);

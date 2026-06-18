@@ -389,6 +389,12 @@ PY
   if ! render_has AIRFLOW_WEBSERVER_SECRET_KEY || [ -z "$(render_get AIRFLOW_WEBSERVER_SECRET_KEY)" ]; then
     render_set AIRFLOW_WEBSERVER_SECRET_KEY "$(derive_stack_secret airflow-webserver 64)"
   fi
+  if ! render_has MONITORING_API_KEY || [ -z "$(render_get MONITORING_API_KEY)" ]; then
+    render_set MONITORING_API_KEY "$(derive_stack_secret monitoring-api 64)"
+  fi
+  if ! render_has MASTODON_API_TOKEN || [ -z "$(render_get MASTODON_API_TOKEN)" ]; then
+    render_set MASTODON_API_TOKEN "$(derive_stack_secret mastodon-api-token 64)"
+  fi
   render_set OPENSEARCH_BASIC_AUTH "$(printf 'admin:%s' "$(render_get OPENSEARCH_ADMIN_PASSWORD)" | base64 | tr -d '\n')"
   if ! render_has WORKSPACE_AGENT_TOKEN_SECRET || [ -z "$(render_get WORKSPACE_AGENT_TOKEN_SECRET)" ]; then
     render_set WORKSPACE_AGENT_TOKEN_SECRET "$(derive_stack_secret workspace-agent-token 64)"

@@ -7,6 +7,7 @@ import os
 import re
 import secrets
 import string
+import threading
 import urllib.parse
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -15,6 +16,7 @@ from urllib import request, error
 
 USERNAME_RE = re.compile(r"^[A-Za-z0-9_.@-]{1,160}$")
 CSS_TOKEN_RE = re.compile(r"^[A-Za-z0-9#(),.% -]{1,80}$")
+INVITE_STATE_LOCK = threading.Lock()
 
 
 def env(name: str, default: str = "") -> str:
@@ -179,6 +181,12 @@ def mark_invite_used(invite: dict) -> None:
     key = invite_key(invite)
     uses[key] = int(uses.get(key, 0)) + 1
     save_state(state)
+
+
+def consume_invite(invite: dict, email: str) -> None:
+    with INVITE_STATE_LOCK:
+        assert_invite_available(invite, email)
+        mark_invite_used(invite)
 
 
 def generate_temp_password() -> str:
@@ -462,9 +470,8 @@ class Handler(BaseHTTPRequestHandler):
                 invite = find_invite(code)
                 if invite is None:
                     raise ValueError("invite code is invalid")
-                assert_invite_available(invite, email)
+                consume_invite(invite, email)
                 user_id, temp_password, groups, required_actions = create_keycloak_user(username, email, invite)
-                mark_invite_used(invite)
                 if self.headers.get("Accept", "").lower().find("application/json") >= 0:
                     self.send_json(HTTPStatus.CREATED, {
                         "ok": True,

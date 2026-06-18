@@ -1,9 +1,11 @@
 import { expect, test } from '@playwright/test';
 import {
   authenticatedSessionState,
+  screenshotRoot,
   testForwardAuthService,
 } from '../shared/forward-auth';
 import { serviceUrl } from '../../../utils/stack-urls';
+import * as path from 'path';
 
 test.use({ storageState: authenticatedSessionState });
 
@@ -42,6 +44,7 @@ test('Workspaces - authenticated users can create and delete a workspace', async
       {
         waitForSelectorVisible: '#createButton',
         requireSelectorVisible: true,
+        skipScreenshot: true,
         onAfterLoad: async (page) => {
           const meResponse = await page.request.get(workspaceApiUrl('/api/me'));
           expect(meResponse.ok(), '/api/me should succeed for authenticated users').toBeTruthy();
@@ -71,6 +74,12 @@ test('Workspaces - authenticated users can create and delete a workspace', async
 	          const row = page.locator(`#workspaceRows tr:has-text("${displayName}")`).first();
 	          await expect(row).toContainText(/running|provisioning/i, { timeout: 30_000 });
 	          await expect(page.locator('#createNotice')).toContainText(/created/i, { timeout: 30_000 });
+	          await page.screenshot({
+	            path: path.join(screenshotRoot, 'workspaces-authenticated.jpeg'),
+	            type: 'jpeg',
+	            quality: 85,
+	            fullPage: true,
+	          });
 
 	          const shellResponse = await page.request.get(created.shell.url);
 	          expect(

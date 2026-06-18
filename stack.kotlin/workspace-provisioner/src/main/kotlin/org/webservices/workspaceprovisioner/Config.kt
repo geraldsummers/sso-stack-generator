@@ -16,6 +16,7 @@ data class WorkspaceProvisionerConfig(
     val searchServicePassword: String?,
     val searchServiceToken: String?,
     val trustedProxySecret: String?,
+    val allowedBearerGroups: Set<String>,
     val agentTokenSecret: String,
     val agentTokenTtlSeconds: Long,
     val workspaceClientId: String,
@@ -63,6 +64,7 @@ fun loadConfig(): WorkspaceProvisionerConfig = WorkspaceProvisionerConfig(
     searchServicePassword = System.getenv("WORKSPACE_PROVISIONER_OPENSEARCH_PASSWORD")?.takeIf { it.isNotBlank() },
     searchServiceToken = System.getenv("WORKSPACE_PROVISIONER_SEARCH_SERVICE_TOKEN")?.takeIf { it.isNotBlank() },
     trustedProxySecret = System.getenv("WORKSPACE_PROVISIONER_TRUSTED_PROXY_SECRET")?.takeIf { it.isNotBlank() },
+    allowedBearerGroups = envList("WORKSPACE_PROVISIONER_ALLOWED_BEARER_GROUPS", "admins,operators,agents").toSet(),
     agentTokenSecret = envRequired("WORKSPACE_PROVISIONER_AGENT_TOKEN_SECRET"),
     agentTokenTtlSeconds = envLong("WORKSPACE_PROVISIONER_AGENT_TOKEN_TTL_SECONDS", 86_400L),
     workspaceClientId = env("WORKSPACE_PROVISIONER_WORKSPACE_CLIENT_ID", "workspace-cli"),
@@ -94,6 +96,11 @@ fun loadConfig(): WorkspaceProvisionerConfig = WorkspaceProvisionerConfig(
 )
 
 private fun env(name: String, defaultValue: String): String = System.getenv(name)?.takeIf { it.isNotBlank() } ?: defaultValue
+private fun envList(name: String, defaultValue: String): List<String> =
+    env(name, defaultValue)
+        .split(',', ';', ' ')
+        .map { it.trim() }
+        .filter { it.isNotBlank() }
 private fun envRequired(name: String): String =
     System.getenv(name)?.takeIf { it.isNotBlank() } ?: error("$name must be set")
 

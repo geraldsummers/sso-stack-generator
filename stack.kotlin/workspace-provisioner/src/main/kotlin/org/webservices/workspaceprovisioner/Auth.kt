@@ -64,12 +64,16 @@ class Authenticator(
         }
         if (response.status != HttpStatusCode.OK) return null
         val userInfo = response.body<UserInfoResponse>()
+        val groups = userInfo.groups.orEmpty()
+        if (groups.none { it in config.allowedBearerGroups }) {
+            return null
+        }
         val username = userInfo.preferredUsername?.takeIf { it.isNotBlank() }
             ?: userInfo.sub.substringBefore('@').ifBlank { userInfo.sub }
         return PrincipalIdentity(
             username = username,
             email = userInfo.email,
-            groups = userInfo.groups.orEmpty(),
+            groups = groups,
             source = "oidc_bearer"
         )
     }

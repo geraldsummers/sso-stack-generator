@@ -18,15 +18,26 @@ test.use({ storageState: authenticatedSessionState });
 
   test('Seafile - Access with forward auth', async ({ page }) => {
     test.setTimeout(180000);
-    await testForwardAuthService(
-      page,
-      'Seafile',
-      serviceUrl('seafile'),
-      /Seafile|Libraries|My Libraries|Shared with me|Favorites|Shared Links|Devices|Wiki/i,
-      {
-        waitForSelectorVisible: 'text=/Libraries|My Libraries|Shared with me|Favorites/i',
-        waitForSelectorTimeoutMs: 30000,
-        onAfterLoad: async (page) => {
+    const uploadedFiles: { repoId: string; fileName: string }[] = [];
+    const cleanupSeafileFixtures = async () => {
+      for (const uploaded of uploadedFiles.reverse()) {
+        await page.request.delete(serviceUrl('seafile', `/api2/repos/${uploaded.repoId}/file/?p=/${encodeURIComponent(uploaded.fileName)}`), {
+          headers: { Referer: serviceUrl('seafile') },
+        }).catch((error) => {
+          console.warn(`   ⚠️  Failed to delete Seafile fixture ${uploaded.fileName}: ${String((error as Error)?.message || error)}`);
+        });
+      }
+    };
+    try {
+      await testForwardAuthService(
+        page,
+        'Seafile',
+        serviceUrl('seafile'),
+        /Seafile|Libraries|My Libraries|Shared with me|Favorites|Shared Links|Devices|Wiki/i,
+        {
+          waitForSelectorVisible: 'text=/Libraries|My Libraries|Shared with me|Favorites/i',
+          waitForSelectorTimeoutMs: 30000,
+          onAfterLoad: async (page) => {
           const onlyOfficeFixture = readSeafileOnlyOfficeFixture();
 
           const dismissWelcomeModal = async () => {
@@ -122,6 +133,7 @@ test.use({ storageState: authenticatedSessionState });
               },
             });
             expect(uploadResponse.ok()).toBeTruthy();
+            uploadedFiles.push({ repoId, fileName });
           };
 
           const preferredLibraryName = 'Playwright Demo Library';
@@ -307,7 +319,10 @@ test.use({ storageState: authenticatedSessionState });
 
           await expect(page.getByText(new RegExp(docName, 'i')).first()).toBeVisible({ timeout: 30000 });
           await expect(page.getByText(new RegExp(notesName, 'i')).first()).toBeVisible({ timeout: 30000 });
-        },
-      }
-    );
+          },
+        }
+      );
+    } finally {
+      await cleanupSeafileFixtures();
+    }
   });

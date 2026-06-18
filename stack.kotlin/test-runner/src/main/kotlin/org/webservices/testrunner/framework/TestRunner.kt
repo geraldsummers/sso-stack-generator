@@ -105,8 +105,8 @@ class TestRunner(
         System.out.flush()
         log("  [TEST] ${descriptor.id} ($name) ... ")
         val startedAt = System.currentTimeMillis()
-        val result = try {
-            val ctx = TestContext(client, auth, tokens)
+        val ctx = TestContext(client, auth, tokens)
+        var result = try {
             ctx.block()
             val duration = System.currentTimeMillis() - startedAt
             TestResult.Success(descriptor.id, duration).also {
@@ -153,6 +153,25 @@ class TestRunner(
                     System.out.flush()
                     log(message3)
                 }
+            }
+        }
+        val cleanupFailures = ctx.runCleanups()
+        if (cleanupFailures.isNotEmpty()) {
+            val duration = System.currentTimeMillis() - startedAt
+            val cleanupMessage = cleanupFailures.joinToString("; ")
+            result = when (val current = result) {
+                is TestResult.Success -> TestResult.Failure(descriptor.id, "cleanup failed: $cleanupMessage", duration)
+                is TestResult.Failure -> current.copy(error = "${current.error}; cleanup failed: $cleanupMessage", durationMs = duration)
+                is TestResult.Skipped -> current
+            }
+            if (result is TestResult.Failure) {
+                val message1 = "✗ CLEANUP (${duration}ms)"
+                val message2 = "      $cleanupMessage"
+                println(message1)
+                println(message2)
+                System.out.flush()
+                log(message1)
+                log(message2)
             }
         }
         results.add(result)
@@ -318,6 +337,27 @@ class TestContext(
     val auth: AuthHelper,
     val tokens: TokenManager
 ) {
+    private val cleanupCallbacks = mutableListOf<suspend TestContext.() -> Unit>()
+
+    fun cleanup(block: suspend TestContext.() -> Unit) {
+        cleanupCallbacks.add(block)
+    }
+
+    suspend fun runCleanups(): List<String> {
+        if (cleanupCallbacks.isEmpty()) {
+            return emptyList()
+        }
+
+        return cleanupCallbacks.asReversed().mapNotNull { cleanup ->
+            try {
+                cleanup()
+                null
+            } catch (e: Throwable) {
+                e.message ?: e::class.simpleName ?: "unknown cleanup failure"
+            }
+        }
+    }
+
     
     infix fun String.shouldContain(substring: String) {
         if (!this.contains(substring)) {

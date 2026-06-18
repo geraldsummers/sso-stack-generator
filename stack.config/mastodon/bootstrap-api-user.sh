@@ -4,10 +4,14 @@ set -euo pipefail
 api_username="${MASTODON_API_USERNAME:-${STACK_ADMIN_USER:-sysadmin}}"
 api_email="${MASTODON_API_EMAIL:-${STACK_ADMIN_EMAIL:-admin@webservices.net}}"
 api_password="${MASTODON_API_PASSWORD:-${STACK_ADMIN_PASSWORD:-}}"
-api_token="${MASTODON_API_TOKEN:-${api_password}}"
+api_token="${MASTODON_API_TOKEN:-}"
 
 if [ -z "${api_password}" ]; then
   echo "[mastodon-api-user] MASTODON_API_PASSWORD/STACK_ADMIN_PASSWORD is empty, skipping local API user bootstrap"
+  exit 0
+fi
+if [ -z "${api_token}" ]; then
+  echo "[mastodon-api-user] MASTODON_API_TOKEN is empty, skipping local API token bootstrap"
   exit 0
 fi
 

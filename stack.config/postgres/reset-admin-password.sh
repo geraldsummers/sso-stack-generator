@@ -14,7 +14,17 @@ if [ "$CURRENT_PASSWORD" != "$NEW_PASSWORD" ]; then
     echo "Password mismatch detected. Updating postgres admin password..."
 
     # Use postgres superuser to change password
-    psql -U postgres -d postgres -c "ALTER USER postgres WITH PASSWORD '$NEW_PASSWORD';"
+    psql -v ON_ERROR_STOP=1 \
+      -v new_password="$NEW_PASSWORD" \
+      -U postgres \
+      -d postgres <<-'EOSQL'
+        SET webservices.new_password TO :'new_password';
+        DO $$
+        BEGIN
+          EXECUTE format('ALTER USER postgres WITH PASSWORD %L', current_setting('webservices.new_password'));
+        END
+        $$;
+EOSQL
 
     echo "Postgres admin password updated successfully"
 else

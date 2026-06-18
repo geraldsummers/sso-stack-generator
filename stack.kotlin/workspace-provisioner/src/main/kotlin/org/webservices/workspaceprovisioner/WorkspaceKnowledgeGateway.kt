@@ -22,6 +22,8 @@ import kotlinx.serialization.json.doubleOrNull
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.put
+import java.net.URLEncoder
+import java.nio.charset.StandardCharsets
 import java.util.Base64
 
 @kotlinx.serialization.Serializable
@@ -58,7 +60,7 @@ class WorkspaceKnowledgeGateway(
     }
 
     suspend fun document(documentId: String, collection: String?): JsonProxyResponse {
-        val response = httpClient.get("$baseUrl/_doc/$documentId") {
+        val response = httpClient.get("$baseUrl/_doc/${pathSegment(documentId)}") {
             token?.let { header("X-Internal-Token", it) }
             applyBasicAuth()
         }
@@ -73,7 +75,7 @@ class WorkspaceKnowledgeGateway(
     }
 
     private fun openSearchQuery(request: WorkspaceKnowledgeSearchRequest): JsonObject = buildJsonObject {
-        put("size", request.limit)
+        put("size", request.limit.coerceIn(1, 50))
         put("query", buildJsonObject {
             put("bool", buildJsonObject {
                 put("must", buildJsonArray {
@@ -97,6 +99,9 @@ class WorkspaceKnowledgeGateway(
             })
         })
     }
+
+    private fun pathSegment(value: String): String =
+        URLEncoder.encode(value, StandardCharsets.UTF_8).replace("+", "%20")
 
     private fun toSearchResponse(raw: String, mode: String): String {
         val root = json.parseToJsonElement(raw).jsonObject

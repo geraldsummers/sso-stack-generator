@@ -54,7 +54,11 @@ async function keycloakGlobalTeardown() {
     const stackAdminUser = optionalEnv('STACK_ADMIN_USER');
     const removedStaleUsers = await keycloakClient.cleanupManagedTestUsers(stackAdminUser ? [stackAdminUser] : []);
     if (removedStaleUsers.length > 0) {
+      const removedStaleJupyterContainers = removeJupyterContainersForUsers(removedStaleUsers);
       console.log(`🧹 Removed stale managed Keycloak users: ${removedStaleUsers.join(', ')}\n`);
+      if (removedStaleJupyterContainers.length > 0) {
+        console.log(`🧹 Removed stale Jupyter notebook containers: ${removedStaleJupyterContainers.join(', ')}\n`);
+      }
     }
   } catch (error) {
     console.error('❌ Failed to clean up Keycloak users:', error);

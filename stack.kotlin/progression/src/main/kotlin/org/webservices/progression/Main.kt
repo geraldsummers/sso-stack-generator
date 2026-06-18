@@ -53,42 +53,40 @@ fun Application.configureServer(
         get("/health") {
             call.respond(mapOf("status" to "ok"))
         }
-        route("/api") {
-            get("/progress") {
-                scanners.scan()
-                call.respond(engine.view())
-            }
-            get("/progress/next") {
-                scanners.scan()
-                call.respond(engine.view().primaryNextTask ?: mapOf("status" to "complete"))
-            }
-            get("/tasks/{id}") {
-                scanners.scan()
-                val id = call.parameters["id"] ?: return@get call.respond(HttpStatusCode.BadRequest, mapOf("error" to "missing task id"))
-                call.respond(engine.task(id) ?: return@get call.respond(HttpStatusCode.NotFound, mapOf("error" to "task not found")))
-            }
-            get("/dashboards") {
-                scanners.scan()
-                call.respond(engine.view().dashboards)
-            }
-            get("/dashboards/{id}") {
-                scanners.scan()
-                val id = call.parameters["id"] ?: return@get call.respond(HttpStatusCode.BadRequest, mapOf("error" to "missing dashboard id"))
-                call.respond(engine.dashboard(id) ?: return@get call.respond(HttpStatusCode.NotFound, mapOf("error" to "dashboard not found")))
-            }
-            get("/services/{id}") {
-                scanners.scan()
-                val id = call.parameters["id"] ?: return@get call.respond(HttpStatusCode.BadRequest, mapOf("error" to "missing service id"))
+	        route("/api") {
+	            get("/progress") {
+	                call.respond(engine.view())
+	            }
+	            get("/progress/next") {
+	                call.respond(engine.view().primaryNextTask ?: mapOf("status" to "complete"))
+	            }
+	            get("/tasks/{id}") {
+	                val id = call.parameters["id"] ?: return@get call.respond(HttpStatusCode.BadRequest, mapOf("error" to "missing task id"))
+	                call.respond(engine.task(id) ?: return@get call.respond(HttpStatusCode.NotFound, mapOf("error" to "task not found")))
+	            }
+	            get("/dashboards") {
+	                call.respond(engine.view().dashboards)
+	            }
+	            get("/dashboards/{id}") {
+	                val id = call.parameters["id"] ?: return@get call.respond(HttpStatusCode.BadRequest, mapOf("error" to "missing dashboard id"))
+	                call.respond(engine.dashboard(id) ?: return@get call.respond(HttpStatusCode.NotFound, mapOf("error" to "dashboard not found")))
+	            }
+	            get("/services/{id}") {
+	                val id = call.parameters["id"] ?: return@get call.respond(HttpStatusCode.BadRequest, mapOf("error" to "missing service id"))
                 if (id != "bookstack") {
                     call.respond(HttpStatusCode.NotFound, mapOf("error" to "service not implemented in progression MVP"))
                     return@get
                 }
                 call.respond(engine.bookstackService())
-            }
-            get("/evidence/{id}") {
-                val id = call.parameters["id"] ?: return@get call.respond(HttpStatusCode.BadRequest, mapOf("error" to "missing evidence id"))
-                call.respond(store.readEvidence(id) ?: return@get call.respond(HttpStatusCode.NotFound, mapOf("error" to "evidence not found")))
-            }
+	            }
+	            get("/evidence/{id}") {
+	                val id = call.parameters["id"] ?: return@get call.respond(HttpStatusCode.BadRequest, mapOf("error" to "missing evidence id"))
+	                if (!id.matches(Regex("""[A-Za-z0-9_.-]{1,128}"""))) {
+	                    call.respond(HttpStatusCode.BadRequest, mapOf("error" to "invalid evidence id"))
+	                    return@get
+	                }
+	                call.respond(store.readEvidence(id) ?: return@get call.respond(HttpStatusCode.NotFound, mapOf("error" to "evidence not found")))
+	            }
             post("/scan") {
                 call.respond(scanners.scan())
             }

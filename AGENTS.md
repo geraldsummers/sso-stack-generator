@@ -125,6 +125,46 @@ Important constraints:
 - the compose project name stays `webservices`
 - remote deployment verification belongs to `./verify.sh`, not ad hoc wrappers
 
+## Screenshot And Visual Evidence Standard
+
+Screenshot coverage for public and optional modules is part of the platform
+contract. It is not acceptable to pass visual work by hiding failures.
+
+Rules:
+- Public and optional service modules with browser-visible capability need real
+  screenshots unless the module is explicitly classified as private or
+  non-browser/API-only.
+- Private modules are excluded from public screenshot requirements by default;
+  do not use that exception for public optional modules.
+- Required screenshots must be captured from the real deployed app/module, not
+  from fake HTML, placeholder cards, mocked images, generic dashboards, blank
+  states, setup wizards, or login pages.
+- Screenshots must contain realistic synthetic data or clear authenticated
+  operational state that proves the module capability.
+- If auth, onboarding, seed data, app configuration, or server behavior prevents
+  a real screenshot, fix the harness and/or the owning server-side source/config.
+  Do not mark the module done, demote the module, or substitute fake evidence.
+- Every screenshot task must include an explicit coverage matrix: required
+  module, expected artifact path/name, evidence expected in the image/page, and
+  pass/fail state.
+- File existence is not enough. Inspect the emitted artifacts for visual
+  usability and evidence: correct app, populated state, readable crop, no login
+  redirect, no empty/error/setup screen, no fake placeholder.
+- Keep iterating on the failing target until the screenshot emits as a real,
+  usable artifact. Do not switch to unrelated work while required screenshots
+  are missing or fake.
+
+Expected remediation loop:
+1. Enumerate required public/optional screenshot targets from the module and
+   route inventories.
+2. Compare required targets with emitted artifacts.
+3. Run the narrow failing Playwright screenshot test.
+4. Inspect screenshot, trace/logs, and server logs.
+5. Patch harness, seed data, module config, or server-side code.
+6. Redeploy/restart the minimum affected service set.
+7. Re-run the narrow target.
+8. Repeat until every required screenshot is real, populated, and usable.
+
 ## Practical Rules
 
 - Prefer shell for repo scripting unless it becomes unreasonable.

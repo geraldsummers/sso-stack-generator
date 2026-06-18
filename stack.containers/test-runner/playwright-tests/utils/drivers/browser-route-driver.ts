@@ -431,16 +431,71 @@ export async function captureVisualSnapshot(
   };
 
   await assertSmokeContract(page, { ...route, smoke: effectiveSmoke }, user);
+  const cleanup = route.host === 'chatgpt-connector'
+    ? await prepareChatGptConnectorVisual(page)
+    : async () => {};
 
   const screenshotDir = path.join(screenshotRoot, 'visual');
   fs.mkdirSync(screenshotDir, { recursive: true });
   const screenshotPath = path.join(screenshotDir, `${visual.fileStem}.jpeg`);
-  await page.screenshot({
-    path: screenshotPath,
-    type: 'jpeg',
-    quality: visual.quality ?? 85,
-    fullPage: visual.fullPage ?? true,
-  });
+  try {
+    await page.screenshot({
+      path: screenshotPath,
+      type: 'jpeg',
+      quality: visual.quality ?? 85,
+      fullPage: visual.fullPage ?? true,
+    });
+  } finally {
+    await cleanup();
+  }
 
   return screenshotPath;
+}
+
+async function prepareChatGptConnectorVisual(page: Page): Promise<() => Promise<void>> {
+  const accountId = await page.evaluate(async () => {
+    async function api(path: string, options: RequestInit = {}) {
+      const response = await fetch(path, {
+        ...options,
+        headers: {
+          'content-type': 'application/json',
+          ...(options.headers || {}),
+        },
+      });
+      const text = await response.text();
+      const payload = text ? JSON.parse(text) : null;
+      if (!response.ok) {
+        throw new Error(payload?.error || `${response.status} ${response.statusText}`);
+      }
+      return payload;
+    }
+
+    const created = await api('/api/agent-accounts', {
+      method: 'POST',
+      body: JSON.stringify({
+        displayName: `Northstar Ops Agent ${new Date().toISOString().slice(0, 10)}`,
+        scopes: ['search', 'fetch', 'pipeline_status', 'workspace_readiness'],
+      }),
+    });
+    await api(`/api/agent-accounts/${created.id}/tokens`, {
+      method: 'POST',
+      body: JSON.stringify({
+        scopes: ['search', 'fetch', 'pipeline_status', 'workspace_readiness'],
+        ttlSeconds: 86400,
+      }),
+    });
+    return created.id as string;
+  });
+
+  await page.reload({ waitUntil: 'domcontentloaded' });
+  await expect(page.locator('body')).toContainText(/Northstar Ops Agent|token\.minted|account\.created/i, { timeout: 30000 });
+
+  return async () => {
+    await page.evaluate(async (id) => {
+      await fetch(`/api/agent-accounts/${id}/close`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+      }).catch(() => {});
+    }, accountId).catch(() => {});
+  };
 }

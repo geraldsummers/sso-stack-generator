@@ -21,6 +21,18 @@ fi
 BOOKSTACK_TOKEN_ID="$BOOKSTACK_API_TOKEN_ID"
 BOOKSTACK_TOKEN_SECRET="$BOOKSTACK_API_TOKEN_SECRET"
 BOOKSTACK_TOKEN_TTL_DAYS="${BOOKSTACK_API_TOKEN_TTL_DAYS:-90}"
+case "$BOOKSTACK_TOKEN_ID" in
+    (*[!A-Za-z0-9._:-]*|'')
+        echo "[BookStack API Token] ERROR: BOOKSTACK_API_TOKEN_ID contains unsupported characters"
+        exit 1
+        ;;
+esac
+case "$BOOKSTACK_TOKEN_SECRET" in
+    (*[!A-Za-z0-9._:-]*|'')
+        echo "[BookStack API Token] ERROR: BOOKSTACK_API_TOKEN_SECRET contains unsupported characters"
+        exit 1
+        ;;
+esac
 if ! printf '%s' "$BOOKSTACK_TOKEN_TTL_DAYS" | grep -Eq '^[0-9]+$'; then
     echo "[BookStack API Token] ERROR: BOOKSTACK_API_TOKEN_TTL_DAYS must be a positive integer"
     exit 1
@@ -69,9 +81,9 @@ echo "[BookStack API Token] Using automation user ID: $USER_ID"
 echo "[BookStack API Token] Removing old token if exists..."
 php artisan tinker --execute="BookStack\Api\ApiToken::where('name', 'webservices Automation')->delete();" 2>/dev/null
 echo "[BookStack API Token] Creating API token..."
-ESCAPED_TOKEN_ID=$(php -r "echo addslashes('$BOOKSTACK_TOKEN_ID');")
-ESCAPED_TOKEN_SECRET=$(php -r "echo addslashes('$BOOKSTACK_TOKEN_SECRET');")
-ESCAPED_TOKEN_EXPIRES_AT=$(php -r "echo addslashes('$BOOKSTACK_TOKEN_EXPIRES_AT');")
+ESCAPED_TOKEN_ID=$(BOOKSTACK_TOKEN_ID="$BOOKSTACK_TOKEN_ID" php -r "echo addslashes(getenv('BOOKSTACK_TOKEN_ID'));")
+ESCAPED_TOKEN_SECRET=$(BOOKSTACK_TOKEN_SECRET="$BOOKSTACK_TOKEN_SECRET" php -r "echo addslashes(getenv('BOOKSTACK_TOKEN_SECRET'));")
+ESCAPED_TOKEN_EXPIRES_AT=$(BOOKSTACK_TOKEN_EXPIRES_AT="$BOOKSTACK_TOKEN_EXPIRES_AT" php -r "echo addslashes(getenv('BOOKSTACK_TOKEN_EXPIRES_AT'));")
 CREATE_CMD="\$user = BookStack\Users\Models\User::find($USER_ID); "
 CREATE_CMD+="\$token = new BookStack\Api\ApiToken(); "
 CREATE_CMD+="\$token->user_id = \$user->id; "

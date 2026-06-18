@@ -242,6 +242,8 @@ test('Element (Matrix Web) - OIDC login flow', async ({ page }) => {
           }
 
           const cleanupButtons = [
+            page.getByRole('button', { name: /not now/i }).first(),
+            page.getByRole('button', { name: /^continue$/i }).first(),
             page.getByRole('button', { name: /dismiss/i }).first(),
             page.getByRole('button', { name: /^ok$/i }).first(),
             page.getByRole('button', { name: /got it/i }).first(),
@@ -299,6 +301,60 @@ test('Element (Matrix Web) - OIDC login flow', async ({ page }) => {
 
           if (matrixAccessToken) {
             await assertElementDisplayName(page, homeserverUrl, matrixAccessToken, matrixUserId);
+            const roomAlias = `#general:matrix.${domain}`;
+            const joinResponse = await page.request.post(`${homeserverUrl}/_matrix/client/v3/join/${encodeURIComponent(roomAlias)}`, {
+              headers: { Authorization: `Bearer ${matrixAccessToken}` },
+              data: {},
+            }).catch(() => null);
+            const joinPayload = joinResponse?.ok() ? await joinResponse.json().catch(() => null) : null;
+            const roomId = joinPayload?.room_id || roomAlias;
+            const seededMessage = 'Northwind Field Operations handoff is ready. Alice Morgan has the delivery runbook and backup evidence.';
+            await page.request.put(
+              `${homeserverUrl}/_matrix/client/v3/rooms/${encodeURIComponent(roomId)}/send/m.room.message/${Date.now()}`,
+              {
+                headers: { Authorization: `Bearer ${matrixAccessToken}` },
+                data: {
+                  msgtype: 'm.text',
+                  body: seededMessage,
+                },
+              }
+            ).catch(() => null);
+            const roomTargets = [roomId, roomAlias];
+            let roomMessageVisible = false;
+            for (const roomTarget of roomTargets) {
+              await page.goto(serviceUrl('element', `/#/room/${encodeURIComponent(roomTarget)}`), {
+                waitUntil: 'domcontentloaded',
+                timeout: 30000,
+              }).catch(() => {});
+              await page.waitForLoadState('networkidle', { timeout: 15000 }).catch(() => {});
+              await page.waitForTimeout(1500);
+              const notNowButton = page.getByRole('button', { name: /not now/i }).first();
+              if (await notNowButton.isVisible().catch(() => false)) {
+                await notNowButton.click({ force: true }).catch(() => {});
+                await page.waitForTimeout(800);
+              }
+              const bodyText = (await page.locator('body').textContent().catch(() => '')) || '';
+              if (bodyText.includes(seededMessage)) {
+                roomMessageVisible = true;
+                break;
+              }
+            }
+            if (!roomMessageVisible) {
+              const generalRoom = page.getByRole('treeitem', { name: /General/i })
+                .or(page.getByRole('link', { name: /General/i }))
+                .or(page.locator('text=/^General$/i'))
+                .first();
+              if (await generalRoom.isVisible().catch(() => false)) {
+                await generalRoom.click({ force: true }).catch(() => {});
+                await page.waitForTimeout(2500);
+              }
+              const bodyText = (await page.locator('body').textContent().catch(() => '')) || '';
+              roomMessageVisible = bodyText.includes(seededMessage);
+            }
+            expect(
+              roomMessageVisible,
+              'Element screenshot must show the seeded General room message, not just the Home shell.'
+            ).toBe(true);
           } else if (profileDisplayName) {
             expectPropagatedDisplayName(
               'Element (Matrix Web)',
@@ -313,6 +369,44 @@ test('Element (Matrix Web) - OIDC login flow', async ({ page }) => {
             ).toMatch(new RegExp(`Welcome\\s+${escapeRegex(expectedElementDisplayName)}|${escapeRegex(expectedElementDisplayName)}`, 'i'));
           }
 
+          const generalRoomAlias = `#general:matrix.${domain}`;
+          const generalRoomTargets = [
+            serviceUrl('element', `/#/room/${encodeURIComponent(generalRoomAlias)}`),
+            serviceUrl('element', `/#/room/${generalRoomAlias}`),
+          ];
+          let generalRoomVisible = false;
+          for (const target of generalRoomTargets) {
+            await page.goto(target, { waitUntil: 'domcontentloaded', timeout: 30000 }).catch(() => {});
+            await page.waitForLoadState('networkidle', { timeout: 15000 }).catch(() => {});
+            await page.waitForTimeout(1800);
+            const notNowButton = page.getByRole('button', { name: /not now/i }).first();
+            if (await notNowButton.isVisible().catch(() => false)) {
+              await notNowButton.click({ force: true }).catch(() => {});
+              await page.waitForTimeout(800);
+            }
+            const bodyText = (await page.locator('body').textContent().catch(() => '')) || '';
+            if (/\bGeneral\b/i.test(bodyText) && /#\/room\//i.test(page.url())) {
+              generalRoomVisible = true;
+              break;
+            }
+          }
+          if (!generalRoomVisible) {
+            const generalRoom = page.getByRole('treeitem', { name: /General/i })
+              .or(page.getByRole('link', { name: /General/i }))
+              .or(page.locator('text=/^General$/i'))
+              .first();
+            if (await generalRoom.isVisible().catch(() => false)) {
+              await generalRoom.click({ force: true }).catch(() => {});
+              await page.waitForTimeout(2500);
+            }
+            const bodyText = (await page.locator('body').textContent().catch(() => '')) || '';
+            generalRoomVisible = /\bGeneral\b/i.test(bodyText) && !/#\/home\b/i.test(page.url());
+          }
+          expect(
+            generalRoomVisible,
+            'Element screenshot must show the General room instead of the Home shell.'
+          ).toBe(true);
+
           await page.evaluate(({ matrixUserId: userId, matrixHomeserverUrl: hsUrl }) => {
             const existing = document.getElementById('__element-server-evidence');
             if (existing) {
@@ -321,7 +415,7 @@ test('Element (Matrix Web) - OIDC login flow', async ({ page }) => {
 
             const banner = document.createElement('div');
             banner.id = '__element-server-evidence';
-            banner.innerHTML = `<strong>Homeserver</strong>: ${hsUrl}<br /><strong>Matrix ID</strong>: ${userId}`;
+            banner.innerHTML = `<strong>Homeserver</strong>: ${hsUrl}<br /><strong>Matrix ID</strong>: ${userId}<br /><strong>Room</strong>: General<br /><strong>Seed</strong>: Northwind Field Operations handoff · Alice Morgan`;
             banner.style.position = 'fixed';
             banner.style.right = '16px';
             banner.style.bottom = '16px';

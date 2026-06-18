@@ -5,6 +5,7 @@ CONFIG_DIR="/config"
 AUTH_FILE="${CONFIG_DIR}/.storage/auth"
 ONBOARDING_FILE="${CONFIG_DIR}/.storage/onboarding"
 CORE_FILE="${CONFIG_DIR}/.storage/core.config"
+LOVELACE_FILE="${CONFIG_DIR}/.storage/lovelace"
 
 echo "Starting Home Assistant pre-init..."
 mkdir -p "${CONFIG_DIR}/.storage"
@@ -235,9 +236,49 @@ EOF
     echo "Core config written"
 }
 
+ensure_demo_lovelace_dashboard() {
+    cat > "${LOVELACE_FILE}" <<'EOF'
+{
+  "version": 1,
+  "minor_version": 1,
+  "key": "lovelace",
+  "data": {
+    "config": {
+      "title": "Stack operations",
+      "views": [
+        {
+          "title": "Operations",
+          "path": "operations",
+          "cards": [
+            {
+              "type": "markdown",
+              "title": "Northwind Field Operations",
+              "content": "## Automation briefing\nBackup restore drill: **verified**\nClient portal latency: **normal**\nAccess review: **scheduled for Friday**"
+            },
+            {
+              "type": "entities",
+              "title": "Synthetic automation signals",
+              "entities": ["sun.sun"]
+            },
+            {
+              "type": "markdown",
+              "title": "Next actions",
+              "content": "- Notify operations lead Rae Chen\n- Upload renewal evidence packet\n- Confirm overnight backup window"
+            }
+          ]
+        }
+      ]
+    }
+  }
+}
+EOF
+    echo "Demo Lovelace dashboard written"
+}
+
 create_admin_user
 reconcile_stack_admin_users
 mark_onboarding_complete
 ensure_core_config
+ensure_demo_lovelace_dashboard
 
 echo "Home Assistant pre-init complete"

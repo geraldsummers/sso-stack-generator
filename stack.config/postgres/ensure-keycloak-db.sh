@@ -15,17 +15,19 @@ until pg_isready -h "$POSTGRES_HOST" -p "$POSTGRES_PORT" -U "$POSTGRES_USER" -d 
 done
 
 psql -v ON_ERROR_STOP=1 \
+  -v keycloak_password="$POSTGRES_KEYCLOAK_PASSWORD" \
   -h "$POSTGRES_HOST" \
-  -p "$POSTGRES_PORT" \
-  --username "$POSTGRES_USER" \
-  --dbname "$POSTGRES_DB" <<-EOSQL
-    DO \$\$
-    BEGIN
-      IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = 'keycloak') THEN
-        CREATE USER keycloak WITH PASSWORD \$pwd\$$POSTGRES_KEYCLOAK_PASSWORD\$pwd\$;
-      ELSE
-        ALTER USER keycloak WITH PASSWORD \$pwd\$$POSTGRES_KEYCLOAK_PASSWORD\$pwd\$;
-      END IF;
+	  -p "$POSTGRES_PORT" \
+	  --username "$POSTGRES_USER" \
+	  --dbname "$POSTGRES_DB" <<-EOSQL
+	    SET webservices.keycloak_password TO :'keycloak_password';
+	    DO \$\$
+	    BEGIN
+	      IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = 'keycloak') THEN
+	        EXECUTE format('CREATE USER keycloak WITH PASSWORD %L', current_setting('webservices.keycloak_password'));
+	      ELSE
+	        EXECUTE format('ALTER USER keycloak WITH PASSWORD %L', current_setting('webservices.keycloak_password'));
+	      END IF;
     END
     \$\$;
     SELECT 'CREATE DATABASE keycloak OWNER keycloak'

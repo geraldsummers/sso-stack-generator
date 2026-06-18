@@ -31,6 +31,13 @@
 # cookies, and full client IPs out of Loki; dashboards use appended
 # user/service fields instead.
 (access_observability) {
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options "nosniff"
+		Referrer-Policy "same-origin"
+		Permissions-Policy "camera=(), microphone=(), geolocation=()"
+		-Server
+	}
 	log {
 		output stdout
 		format filter {
@@ -47,47 +54,30 @@
 # Snippet for Keycloak-backed OAuth2 Proxy Forward Auth.
 (keycloak_auth_base) {
 	route {
-		@trusted_proxy_{args[0]} {
-			header X-Trusted-Proxy-Secret {$WORKSPACE_PROXY_AUTH_SECRET}
-			remote_ip private_ranges
-		}
-		handle @trusted_proxy_{args[0]} {
-			request_header Remote-User {http.request.header.X-Remote-User}
-			request_header Remote-Groups {http.request.header.X-Remote-Groups}
-			request_header Remote-Name {http.request.header.X-Remote-Name}
-			request_header Remote-Email {http.request.header.X-Remote-Email}
-			request_header -X-Trusted-Proxy-Secret
-			log_append auth_user {http.request.header.Remote-User}
-			log_append service {args[0]}
-		}
+		request_header -Remote-User
+		request_header -Remote-Groups
+		request_header -Remote-Name
+		request_header -Remote-Email
+		request_header -X-Remote-User
+		request_header -X-Remote-Groups
+		request_header -X-Remote-Name
+		request_header -X-Remote-Email
+		request_header -X-Auth-Request-User
+		request_header -X-Auth-Request-Groups
+		request_header -X-Auth-Request-Email
+		request_header -X-Trusted-Proxy-Secret
+		request_header -Authorization
 
-		handle {
-			route {
-				request_header -Remote-User
-				request_header -Remote-Groups
-				request_header -Remote-Name
-					request_header -Remote-Email
-					request_header -X-Remote-User
-					request_header -X-Remote-Groups
-					request_header -X-Remote-Name
-					request_header -X-Remote-Email
-					request_header -X-Auth-Request-User
-					request_header -X-Auth-Request-Groups
-					request_header -X-Auth-Request-Email
-					request_header -Authorization
-
-					forward_auth keycloak-auth-gateway:4180 {
-					uri /oauth2/auth
-					copy_headers X-Auth-Request-Preferred-Username>Remote-User X-Auth-Request-Groups>Remote-Groups X-Auth-Request-Email>Remote-Email
-					@unauth status 401 403
-					handle_response @unauth {
-						redir https://keycloak-auth.{$DOMAIN}/oauth2/start?rd={scheme}://{host}{uri} temporary
-					}
-				}
-				log_append auth_user {http.request.header.Remote-User}
-				log_append service {args[0]}
+		forward_auth keycloak-auth-gateway:4180 {
+			uri /oauth2/auth
+			copy_headers X-Auth-Request-Preferred-Username>Remote-User X-Auth-Request-Groups>Remote-Groups X-Auth-Request-Email>Remote-Email
+			@unauth status 401 403
+			handle_response @unauth {
+				redir https://keycloak-auth.{$DOMAIN}/oauth2/start?rd={scheme}://{host}{uri} temporary
 			}
 		}
+		log_append auth_user {http.request.header.Remote-User}
+		log_append service {args[0]}
 	}
 }
 
@@ -970,6 +960,7 @@ vllm-router.{$DOMAIN} {
 	import access_observability
 	route {
 		import keycloak_auth vllm_router
+		import keycloak_group_allow vllm_router admins|operators|agents
 		reverse_proxy vllm-router:8010
 	}
 }
@@ -986,12 +977,12 @@ forgejo.{$DOMAIN} {
 # webservices-component-end forgejo
 
 # webservices-component-start search
-# OpenSearch API (protected - all authenticated users)
+# OpenSearch API (protected - operators only; Caddy injects admin credentials upstream)
 search.{$DOMAIN} {
 	import access_observability
 	route {
 		import keycloak_auth search
-		import keycloak_group_allow search admins|operators|agents
+		import keycloak_group_allow search admins|operators
 		reverse_proxy http://opensearch:9200 {
 			header_up Authorization "Basic {$OPENSEARCH_BASIC_AUTH}"
 		}

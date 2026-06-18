@@ -29,13 +29,15 @@ import { logPageTelemetry, setupNetworkLogging } from '../../../utils/telemetry'
 
 test('Planka - OIDC login flow', async ({ page }) => {
     test.setTimeout(120000);
-    await testOIDCService(
-      page,
-      'Planka',
-      serviceUrl('planka'),
-      /Stack Demo Board|Backlog|In Progress|Done|Bazel migration rollout|Playwright screenshot sweep/i,
-      ['Keycloak', 'SSO', 'OIDC'],
-      {
+    let cleanupPlankaBoard = async () => {};
+    try {
+      await testOIDCService(
+        page,
+        'Planka',
+        serviceUrl('planka'),
+        /Stack Demo Board|Backlog|In Progress|Done|Bazel migration rollout|Playwright screenshot sweep/i,
+        ['Keycloak', 'SSO', 'OIDC'],
+        {
         disallowPatterns: [
           /Log in to Planka|Log in with SSO|E-mail or username/i,
           /Consent Request|the above application is requesting the following permissions/i,
@@ -233,7 +235,7 @@ test('Planka - OIDC login flow', async ({ page }) => {
           await assertPlankaDisplayName(page, plankaApiToken, testUser.username);
 
           const plankaApiRequest = async (
-            method: 'get' | 'post',
+            method: 'delete' | 'get' | 'post',
             url: string,
             data?: Record<string, unknown>
           ) => {
@@ -246,6 +248,9 @@ test('Planka - OIDC login flow', async ({ page }) => {
             };
             if (method === 'get') {
               return page.request.get(url, commonOptions);
+            }
+            if (method === 'delete') {
+              return page.request.delete(url, commonOptions);
             }
             return page.request.post(url, {
               ...commonOptions,
@@ -265,6 +270,9 @@ test('Planka - OIDC login flow', async ({ page }) => {
               await expectOk(createProjectResponse, 'create project');
               project = (await createProjectResponse.json()).item;
             }
+            cleanupPlankaBoard = async () => {
+              await plankaApiRequest('delete', `${apiBase}/projects/${project.id}`).catch(() => {});
+            };
 
             const projectDetailResponse = await plankaApiRequest('get', `${apiBase}/projects/${project.id}`);
             await expectOk(projectDetailResponse, 'show project');
@@ -368,6 +376,11 @@ test('Planka - OIDC login flow', async ({ page }) => {
           }
           await page.waitForTimeout(1500);
         },
-      }
-    );
+        }
+      );
+    } finally {
+      await cleanupPlankaBoard().catch((error) => {
+        console.warn(`   ⚠️  Failed to delete Planka screenshot project: ${String((error as Error)?.message || error)}`);
+      });
+    }
   });

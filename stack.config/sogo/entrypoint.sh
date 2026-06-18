@@ -34,18 +34,34 @@ export SOGO_OPENID_SCOPE="${SOGO_OPENID_SCOPE:-openid profile email}"
 export SOGO_OPENID_EMAIL_PARAM="${SOGO_OPENID_EMAIL_PARAM:-email}"
 export SOGO_OPENID_TOKEN_CHECK_INTERVAL="${SOGO_OPENID_TOKEN_CHECK_INTERVAL:-300}"
 
+case "$SOGO_DB_NAME" in
+  (*[!A-Za-z0-9_]*|'') echo "SOGO_DB_NAME must contain only letters, numbers, and underscores" >&2; exit 1 ;;
+esac
+case "$SOGO_DB_USER" in
+  (*[!A-Za-z0-9_]*|'') echo "SOGO_DB_USER must contain only letters, numbers, and underscores" >&2; exit 1 ;;
+esac
+
+sql_hex() {
+  printf '%s' "$1" | od -An -tx1 | tr -d ' \n'
+}
+
+SOGO_DB_PASSWORD_HEX="$(sql_hex "$SOGO_DB_PASSWORD")"
+
 until mariadb -h "$SOGO_DB_HOST" -P "$SOGO_DB_PORT" -u root -p"$MARIADB_ADMIN_PASSWORD" --protocol=TCP --ssl=0 -e "SELECT 1" >/dev/null 2>&1; do
   sleep 2
 done
 
 mariadb -h "$SOGO_DB_HOST" -P "$SOGO_DB_PORT" -u root -p"$MARIADB_ADMIN_PASSWORD" --protocol=TCP --ssl=0 <<-EOSQL
-  CREATE DATABASE IF NOT EXISTS \`$SOGO_DB_NAME\`
-    CHARACTER SET utf8mb4
-    COLLATE utf8mb4_unicode_ci;
-  CREATE USER IF NOT EXISTS '$SOGO_DB_USER'@'%' IDENTIFIED BY '$SOGO_DB_PASSWORD';
-  ALTER USER '$SOGO_DB_USER'@'%' IDENTIFIED BY '$SOGO_DB_PASSWORD';
-  GRANT ALL PRIVILEGES ON \`$SOGO_DB_NAME\`.* TO '$SOGO_DB_USER'@'%';
-  FLUSH PRIVILEGES;
+	  CREATE DATABASE IF NOT EXISTS \`$SOGO_DB_NAME\`
+	    CHARACTER SET utf8mb4
+	    COLLATE utf8mb4_unicode_ci;
+	  SET @sogo_db_password = CONVERT(UNHEX('$SOGO_DB_PASSWORD_HEX') USING utf8mb4);
+	  SET @sql = CONCAT('CREATE USER IF NOT EXISTS ''$SOGO_DB_USER''@''%'' IDENTIFIED BY ', QUOTE(@sogo_db_password));
+	  PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+	  SET @sql = CONCAT('ALTER USER ''$SOGO_DB_USER''@''%'' IDENTIFIED BY ', QUOTE(@sogo_db_password));
+	  PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+	  GRANT ALL PRIVILEGES ON \`$SOGO_DB_NAME\`.* TO '$SOGO_DB_USER'@'%';
+	  FLUSH PRIVILEGES;
 EOSQL
 
 mariadb -h "$SOGO_DB_HOST" -P "$SOGO_DB_PORT" -u root -p"$MARIADB_ADMIN_PASSWORD" --protocol=TCP --ssl=0 "$SOGO_DB_NAME" <<-'EOSQL'

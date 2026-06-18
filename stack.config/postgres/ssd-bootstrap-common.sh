@@ -16,56 +16,70 @@ POSTGRES_TEST_RUNNER_PASSWORD="${POSTGRES_TEST_RUNNER_PASSWORD:?ERROR: POSTGRES_
 psql_base=(
   psql
   -v ON_ERROR_STOP=1
-  --host "$POSTGRES_HOST"
-  --port "$POSTGRES_PORT"
-  --username "$POSTGRES_USER"
-)
+	  --host "$POSTGRES_HOST"
+	  --port "$POSTGRES_PORT"
+	  --username "$POSTGRES_USER"
+	  -v agent_password="$POSTGRES_AGENT_PASSWORD"
+	  -v forgejo_password="$POSTGRES_FORGEJO_PASSWORD"
+	  -v openwebui_password="$POSTGRES_OPENWEBUI_PASSWORD"
+	  -v mastodon_password="$POSTGRES_MASTODON_PASSWORD"
+	  -v pipeline_password="$POSTGRES_PIPELINE_PASSWORD"
+	  -v airflow_password="$POSTGRES_AIRFLOW_PASSWORD"
+	  -v test_runner_password="$POSTGRES_TEST_RUNNER_PASSWORD"
+	)
 
 bootstrap_postgres_ssd() {
-  "${psql_base[@]}" --dbname "$POSTGRES_DB" <<-EOSQL
-    DO \$\$
-    BEGIN
-        IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = 'agent_observer') THEN
-            CREATE USER agent_observer WITH PASSWORD \$pwd\$$POSTGRES_AGENT_PASSWORD\$pwd\$;
-        ELSE
-            ALTER USER agent_observer WITH PASSWORD \$pwd\$$POSTGRES_AGENT_PASSWORD\$pwd\$;
-        END IF;
+	  "${psql_base[@]}" --dbname "$POSTGRES_DB" <<-EOSQL
+	    SET webservices.agent_password TO :'agent_password';
+	    SET webservices.forgejo_password TO :'forgejo_password';
+	    SET webservices.openwebui_password TO :'openwebui_password';
+	    SET webservices.mastodon_password TO :'mastodon_password';
+	    SET webservices.pipeline_password TO :'pipeline_password';
+	    SET webservices.airflow_password TO :'airflow_password';
+	    SET webservices.test_runner_password TO :'test_runner_password';
+	    DO \$\$
+	    BEGIN
+	        IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = 'agent_observer') THEN
+	            EXECUTE format('CREATE USER agent_observer WITH PASSWORD %L', current_setting('webservices.agent_password'));
+	        ELSE
+	            EXECUTE format('ALTER USER agent_observer WITH PASSWORD %L', current_setting('webservices.agent_password'));
+	        END IF;
 
-        IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = 'forgejo') THEN
-            CREATE USER forgejo WITH PASSWORD \$pwd\$$POSTGRES_FORGEJO_PASSWORD\$pwd\$;
-        ELSE
-            ALTER USER forgejo WITH PASSWORD \$pwd\$$POSTGRES_FORGEJO_PASSWORD\$pwd\$;
-        END IF;
+	        IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = 'forgejo') THEN
+	            EXECUTE format('CREATE USER forgejo WITH PASSWORD %L', current_setting('webservices.forgejo_password'));
+	        ELSE
+	            EXECUTE format('ALTER USER forgejo WITH PASSWORD %L', current_setting('webservices.forgejo_password'));
+	        END IF;
 
-        IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = 'openwebui') THEN
-            CREATE USER openwebui WITH PASSWORD \$pwd\$$POSTGRES_OPENWEBUI_PASSWORD\$pwd\$;
-        ELSE
-            ALTER USER openwebui WITH PASSWORD \$pwd\$$POSTGRES_OPENWEBUI_PASSWORD\$pwd\$;
-        END IF;
+	        IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = 'openwebui') THEN
+	            EXECUTE format('CREATE USER openwebui WITH PASSWORD %L', current_setting('webservices.openwebui_password'));
+	        ELSE
+	            EXECUTE format('ALTER USER openwebui WITH PASSWORD %L', current_setting('webservices.openwebui_password'));
+	        END IF;
 
-        IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = 'mastodon') THEN
-            CREATE USER mastodon WITH PASSWORD \$pwd\$$POSTGRES_MASTODON_PASSWORD\$pwd\$;
-        ELSE
-            ALTER USER mastodon WITH PASSWORD \$pwd\$$POSTGRES_MASTODON_PASSWORD\$pwd\$;
-        END IF;
+	        IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = 'mastodon') THEN
+	            EXECUTE format('CREATE USER mastodon WITH PASSWORD %L', current_setting('webservices.mastodon_password'));
+	        ELSE
+	            EXECUTE format('ALTER USER mastodon WITH PASSWORD %L', current_setting('webservices.mastodon_password'));
+	        END IF;
 
-        IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = 'pipeline_user') THEN
-            CREATE USER pipeline_user WITH PASSWORD \$pwd\$$POSTGRES_PIPELINE_PASSWORD\$pwd\$;
-        ELSE
-            ALTER USER pipeline_user WITH PASSWORD \$pwd\$$POSTGRES_PIPELINE_PASSWORD\$pwd\$;
-        END IF;
+	        IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = 'pipeline_user') THEN
+	            EXECUTE format('CREATE USER pipeline_user WITH PASSWORD %L', current_setting('webservices.pipeline_password'));
+	        ELSE
+	            EXECUTE format('ALTER USER pipeline_user WITH PASSWORD %L', current_setting('webservices.pipeline_password'));
+	        END IF;
 
-        IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = 'airflow') THEN
-            CREATE USER airflow WITH PASSWORD \$pwd\$$POSTGRES_AIRFLOW_PASSWORD\$pwd\$;
-        ELSE
-            ALTER USER airflow WITH PASSWORD \$pwd\$$POSTGRES_AIRFLOW_PASSWORD\$pwd\$;
-        END IF;
+	        IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = 'airflow') THEN
+	            EXECUTE format('CREATE USER airflow WITH PASSWORD %L', current_setting('webservices.airflow_password'));
+	        ELSE
+	            EXECUTE format('ALTER USER airflow WITH PASSWORD %L', current_setting('webservices.airflow_password'));
+	        END IF;
 
-        IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = 'test_runner_user') THEN
-            CREATE USER test_runner_user WITH PASSWORD \$pwd\$$POSTGRES_TEST_RUNNER_PASSWORD\$pwd\$;
-        ELSE
-            ALTER USER test_runner_user WITH PASSWORD \$pwd\$$POSTGRES_TEST_RUNNER_PASSWORD\$pwd\$;
-        END IF;
+	        IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = 'test_runner_user') THEN
+	            EXECUTE format('CREATE USER test_runner_user WITH PASSWORD %L', current_setting('webservices.test_runner_password'));
+	        ELSE
+	            EXECUTE format('ALTER USER test_runner_user WITH PASSWORD %L', current_setting('webservices.test_runner_password'));
+	        END IF;
     END
     \$\$;
 

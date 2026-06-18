@@ -588,6 +588,7 @@ def render_infra_unit(description: str, exec_start: str, part_of_targets: List[s
         "",
         "[Service]",
         "Type=oneshot",
+        "NoNewPrivileges=yes",
         "RemainAfterExit=yes",
         f"ExecStart={exec_start}",
         "",
@@ -604,7 +605,10 @@ def render_path_contract_condition(contract: PathContract, runtime_env_file: str
         "dir": "-d",
     }.get(contract.kind, "-e")
     if "$" in contract.path:
-        return f"ExecCondition=/bin/sh -c {shlex.quote(f'. {runtime_env_file}; test {test_flag} {contract.path}')}"
+        if "$(" in contract.path or "`" in contract.path:
+            raise ValueError(f"path contract contains disallowed shell substitution: {contract.path}")
+        quoted_path = contract.path.replace("\\", "\\\\").replace('"', '\\"')
+        return f"ExecCondition=/bin/sh -c {shlex.quote(f'. {runtime_env_file}; test {test_flag} \"{quoted_path}\"')}"
     return f"ExecCondition=/usr/bin/test {test_flag} {contract.path}"
 
 
@@ -635,6 +639,7 @@ def render_job_unit(description: str, exec_start: str, exec_stop: str, requires:
         "",
         "[Service]",
         "Type=oneshot",
+        "NoNewPrivileges=yes",
         "RemainAfterExit=yes",
         "TimeoutStartSec=1800",
     ])
@@ -666,6 +671,7 @@ def render_service_unit(description: str, exec_start: str, exec_stop: str, exec_
         "[Service]",
         "Type=notify",
         "NotifyAccess=all",
+        "NoNewPrivileges=yes",
         "KillMode=control-group",
         "Restart=on-failure",
         "RestartSec=5s",
@@ -697,6 +703,7 @@ def render_healthy_unit(description: str, exec_start: str, primary_unit: str, ru
         "",
         "[Service]",
         "Type=oneshot",
+        "NoNewPrivileges=yes",
         "RemainAfterExit=yes",
         "TimeoutStartSec=900",
     ]
@@ -716,6 +723,7 @@ def render_diagnostics_unit(diagnostics_helper: str) -> str:
         "",
         "[Service]",
         "Type=oneshot",
+        "NoNewPrivileges=yes",
         f"ExecStart={shell_join([diagnostics_helper, '%I'])}",
     ]
     return "\n".join(lines) + "\n"

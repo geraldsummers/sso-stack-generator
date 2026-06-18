@@ -74,6 +74,18 @@ fun resolveTokenExpiry(env: Map<String, String>): String {
         .format(formatter)
 }
 
+fun requireSafeTokenValue(name: String, value: String): String {
+    val allowed = Regex("""[A-Za-z0-9._:-]{1,256}""")
+    if (!allowed.matches(value)) {
+        println("[ERROR] $name contains unsupported characters")
+        kotlin.system.exitProcess(1)
+    }
+    return value
+}
+
+fun phpStringLiteral(value: String): String =
+    "'" + value.replace("\\", "\\\\").replace("'", "\\'") + "'"
+
 fun main() {
     val root = detectRoot()
     val envFile = resolveRuntimeEnvFile(root)
@@ -84,15 +96,15 @@ fun main() {
 
     val env = parseEnvFile(envFile)
 
-    val tokenId = env["BOOKSTACK_API_TOKEN_ID"] ?: run {
+    val tokenId = requireSafeTokenValue("BOOKSTACK_API_TOKEN_ID", env["BOOKSTACK_API_TOKEN_ID"] ?: run {
         println("[ERROR] BOOKSTACK_API_TOKEN_ID not found in ${envFile.path}")
         kotlin.system.exitProcess(1)
-    }
+    })
 
-    val tokenSecret = env["BOOKSTACK_API_TOKEN_SECRET"] ?: run {
+    val tokenSecret = requireSafeTokenValue("BOOKSTACK_API_TOKEN_SECRET", env["BOOKSTACK_API_TOKEN_SECRET"] ?: run {
         println("[ERROR] BOOKSTACK_API_TOKEN_SECRET not found in ${envFile.path}")
         kotlin.system.exitProcess(1)
-    }
+    })
 
     println("[INFO] Injecting BookStack API token...")
     println("[INFO] Token identifier loaded")
@@ -141,9 +153,9 @@ fun main() {
         ${'$'}token = new BookStack\Api\ApiToken();
         ${'$'}token->user_id = ${'$'}user->id;
         ${'$'}token->name = 'webservices Automation';
-        ${'$'}token->token_id = '$tokenId';
-        ${'$'}token->secret = \Illuminate\Support\Facades\Hash::make('$tokenSecret');
-        ${'$'}token->expires_at = '$expiresAt';
+        ${'$'}token->token_id = ${phpStringLiteral(tokenId)};
+        ${'$'}token->secret = \Illuminate\Support\Facades\Hash::make(${phpStringLiteral(tokenSecret)});
+        ${'$'}token->expires_at = ${phpStringLiteral(expiresAt)};
         ${'$'}token->save();
         echo 'Token created successfully';
     """.trimIndent()

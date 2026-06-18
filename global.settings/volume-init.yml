@@ -10,15 +10,15 @@ services:
         mkdir -p /mnt/vector_root/qdrant
         mkdir -p /mnt/vector_root/opensearch
         mkdir -p /mnt/pg_ssd_root/postgres-ssd
-        mkdir -p ${SEAFILE_MEDIA_ROOT}
-        mkdir -p ${JELLYFIN_MEDIA_ROOT}
+        mkdir -p "${SEAFILE_MEDIA_ROOT}"
+        mkdir -p "${JELLYFIN_MEDIA_ROOT}"
         echo "Setting permissions..."
         chmod 755 /mnt/vector_root/qdrant
         chmod 755 /mnt/vector_root/opensearch
         chmod 755 /mnt/pg_ssd_root/postgres-ssd
-        chmod 755 ${SEAFILE_MEDIA_ROOT}
-        chown ${MEDIA_WRITER_UID}:${MEDIA_WRITER_GID} ${JELLYFIN_MEDIA_ROOT}
-        chmod 775 ${JELLYFIN_MEDIA_ROOT}
+        chmod 755 "${SEAFILE_MEDIA_ROOT}"
+        chown "${MEDIA_WRITER_UID}:${MEDIA_WRITER_GID}" "${JELLYFIN_MEDIA_ROOT}"
+        chmod 775 "${JELLYFIN_MEDIA_ROOT}"
         echo "✓ Volume directories initialized successfully"
     volumes:
       - ${VECTOR_DB_ROOT}:/mnt/vector_root:rw

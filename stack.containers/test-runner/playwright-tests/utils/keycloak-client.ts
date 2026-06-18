@@ -182,16 +182,23 @@ export class KeycloakClient {
     const token = await this.adminToken();
     const preserved = new Set(preservedUsers);
     const usersById = new Map<string, KeycloakUserRepresentation>();
+    const pageSize = 100;
     for (const search of ['pl', 'playwright-']) {
-      const response = await fetch(`${this.baseUrl}/admin/realms/${encodeURIComponent(this.realm)}/users?search=${encodeURIComponent(search)}&max=100`, {
-        headers: this.authHeaders(token),
-      });
-      if (!response.ok) {
-        throw new Error(`Keycloak managed user search failed: HTTP ${response.status} ${await response.text()}`);
-      }
-      for (const user of (await response.json()) as KeycloakUserRepresentation[]) {
-        if (user.id) {
-          usersById.set(user.id, user);
+      for (let first = 0; ; first += pageSize) {
+        const response = await fetch(`${this.baseUrl}/admin/realms/${encodeURIComponent(this.realm)}/users?search=${encodeURIComponent(search)}&first=${first}&max=${pageSize}`, {
+          headers: this.authHeaders(token),
+        });
+        if (!response.ok) {
+          throw new Error(`Keycloak managed user search failed: HTTP ${response.status} ${await response.text()}`);
+        }
+        const users = (await response.json()) as KeycloakUserRepresentation[];
+        for (const user of users) {
+          if (user.id) {
+            usersById.set(user.id, user);
+          }
+        }
+        if (users.length < pageSize) {
+          break;
         }
       }
     }

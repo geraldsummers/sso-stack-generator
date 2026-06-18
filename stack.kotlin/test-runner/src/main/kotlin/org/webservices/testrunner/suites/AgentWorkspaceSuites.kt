@@ -657,6 +657,12 @@ private class AgentWorkspaceHarness(
     private val directWorkspaceContainerName = "agent-workspace-$tenantId"
     private val directWorkspaceVolumeName = "agent-home-$tenantId"
 
+    init {
+        Runtime.getRuntime().addShutdownHook(Thread {
+            runCatching { cleanupDirectResources() }
+        })
+    }
+
     fun prerequisiteFailure(): String? {
         if (!File(AGENT_WORKSPACE_CONTEXT).exists()) {
             return "missing agent workspace image context at $AGENT_WORKSPACE_CONTEXT"

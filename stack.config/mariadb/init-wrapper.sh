@@ -28,17 +28,54 @@ echo "  MARIADB_BOOKSTACK_PASSWORD: [SET]"
 echo "  MARIADB_SEAFILE_PASSWORD: [SET]"
 echo "  MARIADB_AGENT_PASSWORD: [SET]"
 echo ""
-if [ ! -f "/docker-entrypoint-initdb.d/init-template.sql" ]; then
-    echo "ERROR: init-template.sql not found"
-    exit 1
-fi
-echo "Substituting environment variables in template..."
-SUBSTITUTED_SQL=$(cat /docker-entrypoint-initdb.d/init-template.sql | \
-  sed "s/\$MARIADB_BOOKSTACK_PASSWORD/$MARIADB_BOOKSTACK_PASSWORD/g" | \
-  sed "s/\$MARIADB_SEAFILE_PASSWORD/$MARIADB_SEAFILE_PASSWORD/g" | \
-  sed "s/\$MARIADB_AGENT_PASSWORD/$MARIADB_AGENT_PASSWORD/g")
+sql_hex() {
+    printf '%s' "$1" | od -An -tx1 | tr -d ' \n'
+}
+
+BOOKSTACK_PASSWORD_HEX="$(sql_hex "$MARIADB_BOOKSTACK_PASSWORD")"
+SEAFILE_PASSWORD_HEX="$(sql_hex "$MARIADB_SEAFILE_PASSWORD")"
+AGENT_PASSWORD_HEX="$(sql_hex "$MARIADB_AGENT_PASSWORD")"
+
+echo "Building SQL initialization with escaped password literals..."
+read -r -d '' SUBSTITUTED_SQL <<EOSQL || true
+CREATE DATABASE IF NOT EXISTS bookstack CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+CREATE DATABASE IF NOT EXISTS ccnet_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+CREATE DATABASE IF NOT EXISTS seafile_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+CREATE DATABASE IF NOT EXISTS seahub_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+
+SET @bookstack_password = CONVERT(UNHEX('$BOOKSTACK_PASSWORD_HEX') USING utf8mb4);
+SET @seafile_password = CONVERT(UNHEX('$SEAFILE_PASSWORD_HEX') USING utf8mb4);
+SET @agent_password = CONVERT(UNHEX('$AGENT_PASSWORD_HEX') USING utf8mb4);
+
+SET @sql = CONCAT('CREATE USER IF NOT EXISTS ''bookstack''@''%'' IDENTIFIED BY ', QUOTE(@bookstack_password));
+PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+SET @sql = CONCAT('ALTER USER ''bookstack''@''%'' IDENTIFIED BY ', QUOTE(@bookstack_password));
+PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+
+SET @sql = CONCAT('CREATE USER IF NOT EXISTS ''seafile''@''%'' IDENTIFIED BY ', QUOTE(@seafile_password));
+PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+SET @sql = CONCAT('ALTER USER ''seafile''@''%'' IDENTIFIED BY ', QUOTE(@seafile_password));
+PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+
+GRANT ALL PRIVILEGES ON bookstack.* TO 'bookstack'@'%';
+GRANT ALL PRIVILEGES ON ccnet_db.* TO 'seafile'@'%';
+GRANT ALL PRIVILEGES ON seafile_db.* TO 'seafile'@'%';
+GRANT ALL PRIVILEGES ON seahub_db.* TO 'seafile'@'%';
+
+SET @sql = CONCAT('CREATE USER IF NOT EXISTS ''agent_observer''@''%'' IDENTIFIED BY ', QUOTE(@agent_password));
+PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+SET @sql = CONCAT('ALTER USER ''agent_observer''@''%'' IDENTIFIED BY ', QUOTE(@agent_password));
+PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+
+GRANT SELECT ON bookstack.* TO 'agent_observer'@'%';
+GRANT SELECT ON ccnet_db.* TO 'agent_observer'@'%';
+GRANT SELECT ON seafile_db.* TO 'agent_observer'@'%';
+GRANT SELECT ON seahub_db.* TO 'agent_observer'@'%';
+
+FLUSH PRIVILEGES;
+EOSQL
 echo "Generated SQL (first 10 lines, passwords hidden):"
-echo "$SUBSTITUTED_SQL" | head -10 | sed 's/IDENTIFIED BY.*$/IDENTIFIED BY [HIDDEN]/'
+echo "$SUBSTITUTED_SQL" | head -10 | sed 's/UNHEX([^)]*)/UNHEX([HIDDEN])/g; s/IDENTIFIED BY.*$/IDENTIFIED BY [HIDDEN]/'
 echo ""
 echo "Executing SQL initialization..."
 echo "$SUBSTITUTED_SQL" | mariadb -u root -p"${MYSQL_ROOT_PASSWORD}"

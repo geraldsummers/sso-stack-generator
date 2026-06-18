@@ -12,5 +12,4 @@ COPY stack.containers/progression/entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
 
 EXPOSE 8130
-USER progression
 ENTRYPOINT ["/entrypoint.sh"]

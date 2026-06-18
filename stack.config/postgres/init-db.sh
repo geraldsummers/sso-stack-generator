@@ -12,65 +12,87 @@ POSTGRES_AGENT_PASSWORD="${POSTGRES_AGENT_PASSWORD:?ERROR: POSTGRES_AGENT_PASSWO
 POSTGRES_TXGATEWAY_USER="${POSTGRES_TXGATEWAY_USER:-txgateway}"
 POSTGRES_TXGATEWAY_PASSWORD="${POSTGRES_TXGATEWAY_PASSWORD:?ERROR: POSTGRES_TXGATEWAY_PASSWORD not set}"
 # PGPASSWORD already set by docker-compose environment
-psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" <<-EOSQL
-    -- Create users with passwords from environment (must be created before databases for ownership)
-    -- Use DO block to check if user exists before creating
-    DO \$\$
-    BEGIN
-        IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = 'planka') THEN
-            CREATE USER planka WITH PASSWORD \$pwd\$$POSTGRES_PLANKA_PASSWORD\$pwd\$;
-        ELSE
-            ALTER USER planka WITH PASSWORD \$pwd\$$POSTGRES_PLANKA_PASSWORD\$pwd\$;
-        END IF;
-        IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = 'synapse') THEN
-            CREATE USER synapse WITH PASSWORD \$pwd\$$POSTGRES_SYNAPSE_PASSWORD\$pwd\$;
-        ELSE
-            ALTER USER synapse WITH PASSWORD \$pwd\$$POSTGRES_SYNAPSE_PASSWORD\$pwd\$;
-        END IF;
-        IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = 'matrix_authentication_service') THEN
-            CREATE USER matrix_authentication_service WITH PASSWORD \$pwd\$$POSTGRES_MATRIX_AUTHENTICATION_SERVICE_PASSWORD\$pwd\$;
-        ELSE
-            ALTER USER matrix_authentication_service WITH PASSWORD \$pwd\$$POSTGRES_MATRIX_AUTHENTICATION_SERVICE_PASSWORD\$pwd\$;
-        END IF;
-        IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = 'grafana') THEN
-            CREATE USER grafana WITH PASSWORD \$pwd\$$POSTGRES_GRAFANA_PASSWORD\$pwd\$;
-        ELSE
-            ALTER USER grafana WITH PASSWORD \$pwd\$$POSTGRES_GRAFANA_PASSWORD\$pwd\$;
-        END IF;
-        IF LENGTH('$POSTGRES_KEYCLOAK_PASSWORD') > 0 THEN
-            IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = 'keycloak') THEN
-                CREATE USER keycloak WITH PASSWORD \$pwd\$$POSTGRES_KEYCLOAK_PASSWORD\$pwd\$;
-            ELSE
-                ALTER USER keycloak WITH PASSWORD \$pwd\$$POSTGRES_KEYCLOAK_PASSWORD\$pwd\$;
-            END IF;
-        END IF;
-        IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = 'vaultwarden') THEN
-            CREATE USER vaultwarden WITH PASSWORD \$pwd\$$POSTGRES_VAULTWARDEN_PASSWORD\$pwd\$;
-        ELSE
-            ALTER USER vaultwarden WITH PASSWORD \$pwd\$$POSTGRES_VAULTWARDEN_PASSWORD\$pwd\$;
-        END IF;
-        -- Create homeassistant user if password is set (HA may use SQLite instead)
-        IF LENGTH('$POSTGRES_HOMEASSISTANT_PASSWORD') > 0 THEN
-            IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = 'homeassistant') THEN
-                CREATE USER homeassistant WITH PASSWORD \$pwd\$$POSTGRES_HOMEASSISTANT_PASSWORD\$pwd\$;
-            ELSE
-                ALTER USER homeassistant WITH PASSWORD \$pwd\$$POSTGRES_HOMEASSISTANT_PASSWORD\$pwd\$;
-            END IF;
-        END IF;
+psql -v ON_ERROR_STOP=1 \
+    -v planka_password="$POSTGRES_PLANKA_PASSWORD" \
+    -v synapse_password="$POSTGRES_SYNAPSE_PASSWORD" \
+    -v matrix_authentication_service_password="$POSTGRES_MATRIX_AUTHENTICATION_SERVICE_PASSWORD" \
+    -v grafana_password="$POSTGRES_GRAFANA_PASSWORD" \
+    -v keycloak_password="$POSTGRES_KEYCLOAK_PASSWORD" \
+    -v vaultwarden_password="$POSTGRES_VAULTWARDEN_PASSWORD" \
+    -v homeassistant_password="$POSTGRES_HOMEASSISTANT_PASSWORD" \
+    -v agent_password="$POSTGRES_AGENT_PASSWORD" \
+    -v txgateway_user="$POSTGRES_TXGATEWAY_USER" \
+    -v txgateway_password="$POSTGRES_TXGATEWAY_PASSWORD" \
+    --username "$POSTGRES_USER" \
+    --dbname "$POSTGRES_DB" <<-EOSQL
+	    -- Create users with passwords from environment (must be created before databases for ownership)
+	    -- Use DO block to check if user exists before creating
+	    SET webservices.planka_password TO :'planka_password';
+	    SET webservices.synapse_password TO :'synapse_password';
+	    SET webservices.matrix_authentication_service_password TO :'matrix_authentication_service_password';
+	    SET webservices.grafana_password TO :'grafana_password';
+	    SET webservices.keycloak_password TO :'keycloak_password';
+	    SET webservices.vaultwarden_password TO :'vaultwarden_password';
+	    SET webservices.homeassistant_password TO :'homeassistant_password';
+	    SET webservices.agent_password TO :'agent_password';
+	    SET webservices.txgateway_user TO :'txgateway_user';
+	    SET webservices.txgateway_password TO :'txgateway_password';
+	    DO \$\$
+	    BEGIN
+	        IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = 'planka') THEN
+	            EXECUTE format('CREATE USER planka WITH PASSWORD %L', current_setting('webservices.planka_password'));
+	        ELSE
+	            EXECUTE format('ALTER USER planka WITH PASSWORD %L', current_setting('webservices.planka_password'));
+	        END IF;
+	        IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = 'synapse') THEN
+	            EXECUTE format('CREATE USER synapse WITH PASSWORD %L', current_setting('webservices.synapse_password'));
+	        ELSE
+	            EXECUTE format('ALTER USER synapse WITH PASSWORD %L', current_setting('webservices.synapse_password'));
+	        END IF;
+	        IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = 'matrix_authentication_service') THEN
+	            EXECUTE format('CREATE USER matrix_authentication_service WITH PASSWORD %L', current_setting('webservices.matrix_authentication_service_password'));
+	        ELSE
+	            EXECUTE format('ALTER USER matrix_authentication_service WITH PASSWORD %L', current_setting('webservices.matrix_authentication_service_password'));
+	        END IF;
+	        IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = 'grafana') THEN
+	            EXECUTE format('CREATE USER grafana WITH PASSWORD %L', current_setting('webservices.grafana_password'));
+	        ELSE
+	            EXECUTE format('ALTER USER grafana WITH PASSWORD %L', current_setting('webservices.grafana_password'));
+	        END IF;
+	        IF LENGTH(current_setting('webservices.keycloak_password')) > 0 THEN
+	            IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = 'keycloak') THEN
+	                EXECUTE format('CREATE USER keycloak WITH PASSWORD %L', current_setting('webservices.keycloak_password'));
+	            ELSE
+	                EXECUTE format('ALTER USER keycloak WITH PASSWORD %L', current_setting('webservices.keycloak_password'));
+	            END IF;
+	        END IF;
+	        IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = 'vaultwarden') THEN
+	            EXECUTE format('CREATE USER vaultwarden WITH PASSWORD %L', current_setting('webservices.vaultwarden_password'));
+	        ELSE
+	            EXECUTE format('ALTER USER vaultwarden WITH PASSWORD %L', current_setting('webservices.vaultwarden_password'));
+	        END IF;
+	        -- Create homeassistant user if password is set (HA may use SQLite instead)
+	        IF LENGTH(current_setting('webservices.homeassistant_password')) > 0 THEN
+	            IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = 'homeassistant') THEN
+	                EXECUTE format('CREATE USER homeassistant WITH PASSWORD %L', current_setting('webservices.homeassistant_password'));
+	            ELSE
+	                EXECUTE format('ALTER USER homeassistant WITH PASSWORD %L', current_setting('webservices.homeassistant_password'));
+	            END IF;
+	        END IF;
         -- Shadow agent accounts are created per-user via obsolete/scripts/security/create-shadow-agent-account.main.kts
         -- Each user gets: {username}-agent role with read-only access to agent_observer schema
-        -- Create global agent_observer account for tests and anonymous access (fallback only)
-        IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = 'agent_observer') THEN
-            CREATE USER agent_observer WITH PASSWORD \$pwd\$$POSTGRES_AGENT_PASSWORD\$pwd\$;
-        ELSE
-            ALTER USER agent_observer WITH PASSWORD \$pwd\$$POSTGRES_AGENT_PASSWORD\$pwd\$;
-        END IF;
-        -- Create txgateway service user (for tx-gateway and evm-broadcaster services)
-        IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = '$POSTGRES_TXGATEWAY_USER') THEN
-            EXECUTE format('CREATE USER %I WITH PASSWORD %L', '$POSTGRES_TXGATEWAY_USER', '$POSTGRES_TXGATEWAY_PASSWORD');
-        ELSE
-            EXECUTE format('ALTER USER %I WITH PASSWORD %L', '$POSTGRES_TXGATEWAY_USER', '$POSTGRES_TXGATEWAY_PASSWORD');
-        END IF;
+	        -- Create global agent_observer account for tests and anonymous access (fallback only)
+	        IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = 'agent_observer') THEN
+	            EXECUTE format('CREATE USER agent_observer WITH PASSWORD %L', current_setting('webservices.agent_password'));
+	        ELSE
+	            EXECUTE format('ALTER USER agent_observer WITH PASSWORD %L', current_setting('webservices.agent_password'));
+	        END IF;
+	        -- Create txgateway service user (for tx-gateway and evm-broadcaster services)
+	        IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = current_setting('webservices.txgateway_user')) THEN
+	            EXECUTE format('CREATE USER %I WITH PASSWORD %L', current_setting('webservices.txgateway_user'), current_setting('webservices.txgateway_password'));
+	        ELSE
+	            EXECUTE format('ALTER USER %I WITH PASSWORD %L', current_setting('webservices.txgateway_user'), current_setting('webservices.txgateway_password'));
+	        END IF;
     END
     \$\$;
     -- Keep template databases clean; application databases are created explicitly below.

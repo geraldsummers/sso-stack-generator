@@ -45,6 +45,9 @@ fun tokenExpiry(): String {
         .format(formatter)
 }
 
+fun phpStringLiteral(value: String): String =
+    "'" + value.replace("\\", "\\\\").replace("'", "\\'") + "'"
+
 fun main() {
     println("[INFO] Generating BookStack API token...")
 
@@ -101,13 +104,18 @@ fun main() {
         )
     }
 
-    val createCmd = "\$user = BookStack\\Users\\Models\\User::find($userId); " +
+    val safeUserId = userId.toLongOrNull() ?: run {
+        println("[ERROR] Unexpected automation user ID: $userId")
+        kotlin.system.exitProcess(1)
+    }
+
+    val createCmd = "\$user = BookStack\\Users\\Models\\User::find($safeUserId); " +
         "\$token = new BookStack\\Api\\ApiToken(); " +
         "\$token->user_id = \$user->id; " +
         "\$token->name = 'webservices Automation'; " +
-        "\$token->token_id = '$tokenId'; " +
-        "\$token->secret = \\Illuminate\\Support\\Facades\\Hash::make('$tokenSecret'); " +
-        "\$token->expires_at = '$expiresAt'; " +
+        "\$token->token_id = ${phpStringLiteral(tokenId)}; " +
+        "\$token->secret = \\Illuminate\\Support\\Facades\\Hash::make(${phpStringLiteral(tokenSecret)}); " +
+        "\$token->expires_at = ${phpStringLiteral(expiresAt)}; " +
         "\$token->save(); " +
         "echo 'Token created successfully';"
 

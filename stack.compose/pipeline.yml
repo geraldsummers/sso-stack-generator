@@ -45,6 +45,7 @@ services:
       AIRFLOW_ADMIN_PASSWORD: ${AIRFLOW_ADMIN_PASSWORD}
       AIRFLOW_ADMIN_EMAIL: ${STACK_ADMIN_EMAIL}
       AIRFLOW_CONN_INGESTION_RUNNER: http://ingestion-runner:8090
+      MONITORING_API_KEY: ${MONITORING_API_KEY}
     volumes: &airflow_volumes
       - ./configs/airflow/dags:/opt/airflow/dags:ro
       - ./configs/airflow/webserver_config.py:/opt/airflow/webserver_config.py:ro
@@ -152,6 +153,7 @@ services:
         condition: service_started
     environment:
       INGESTION_RUNNER_PORT: 8090
+      MONITORING_API_KEY: ${MONITORING_API_KEY}
       POSTGRES_DSN: postgresql://pipeline_user:${POSTGRES_PIPELINE_PASSWORD}@postgres-ssd:5432/webservices
       NATS_URL: nats://${NATS_USER}:${NATS_PASSWORD}@nats:4222
       NATS_STREAM_MAX_BYTES: ${NATS_STREAM_MAX_BYTES:-2147483648}
@@ -171,7 +173,7 @@ services:
       AGENT_DOCS_PATH: /configs/agent-docs
       RSS_FEED_URLS: "https://cointelegraph.com/rss,https://www.coindesk.com/arc/outboundfeeds/rss/,https://decrypt.co/feed,https://www.theblock.co/rss.xml,https://www.marketwatch.com/rss/topstories,https://feeds.reuters.com/reuters/businessNews,https://feeds.bbci.co.uk/news/business/rss.xml,https://rss.nytimes.com/services/xml/rss/nyt/Business.xml,https://rss.nytimes.com/services/xml/rss/nyt/Technology.xml,https://hnrss.org/frontpage,https://feeds.arstechnica.com/arstechnica/index,https://www.investing.com/rss/news_25.rss,https://feeds.bbci.co.uk/news/world/rss.xml,https://www.abc.net.au/news/feed/51120/rss.xml"
       WIKIPEDIA_DUMP_PATH: "https://dumps.wikimedia.org/enwiki/latest/enwiki-latest-pages-articles.xml.bz2"
-      WIKIPEDIA_MAX_ARTICLES: "${WIKIPEDIA_MAX_ARTICLES:-2147483647}"
+      WIKIPEDIA_MAX_ARTICLES: "${WIKIPEDIA_MAX_ARTICLES:-500}"
     volumes:
       - pipeline_data:/data
       - ./configs/stack-knowledge:/configs/stack-knowledge:ro

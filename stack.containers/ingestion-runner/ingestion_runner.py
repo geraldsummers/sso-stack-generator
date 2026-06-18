@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import bz2
+import hmac
 import hashlib
 import html
 import io
@@ -18,8 +19,8 @@ import feedparser
 import psycopg
 import requests
 from bs4 import BeautifulSoup
-from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel
+from fastapi import Depends, FastAPI, Header, HTTPException
+from pydantic import BaseModel, Field
 
 
 COLLECTIONS = {
@@ -42,11 +43,19 @@ DEFAULT_EMBEDDING_BATCH_SIZE = 16
 
 class RunRequest(BaseModel):
     source: str
-    limit: int | None = None
+    limit: int | None = Field(default=None, ge=1, le=5000)
     publish: bool = False
 
 
 app = FastAPI(title="webservices ingestion runner")
+
+
+def require_api_key(x_api_key: str | None = Header(default=None)) -> None:
+    configured = os.getenv("MONITORING_API_KEY", "").strip()
+    if not configured:
+        return
+    if not x_api_key or not hmac.compare_digest(x_api_key, configured):
+        raise HTTPException(status_code=401, detail="invalid or missing API key")
 
 
 def utcnow() -> str:
@@ -914,19 +923,19 @@ def health() -> dict[str, str]:
 
 
 @app.get("/sources")
-def sources() -> dict[str, Any]:
+def sources(_: None = Depends(require_api_key)) -> dict[str, Any]:
     for source in COLLECTIONS:
         ensure_source(source)
     return {"sources": [source_stats(source) for source in COLLECTIONS]}
 
 
 @app.get("/status")
-def status() -> dict[str, Any]:
+def status(_: None = Depends(require_api_key)) -> dict[str, Any]:
     return {"status": "ok", "uptime": 0, "sources": [source_stats(source) for source in COLLECTIONS]}
 
 
 @app.get("/readiness/{source}")
-def readiness(source: str) -> dict[str, Any]:
+def readiness(source: str, _: None = Depends(require_api_key)) -> dict[str, Any]:
     if source not in COLLECTIONS:
         raise HTTPException(status_code=404, detail=f"unknown source: {source}")
     ensure_source(source)
@@ -934,7 +943,7 @@ def readiness(source: str) -> dict[str, Any]:
 
 
 @app.post("/bootstrap")
-def bootstrap() -> dict[str, Any]:
+def bootstrap(_: None = Depends(require_api_key)) -> dict[str, Any]:
     ensure_opensearch_index()
     for source, collection in COLLECTIONS.items():
         ensure_source(source)
@@ -943,7 +952,7 @@ def bootstrap() -> dict[str, Any]:
 
 
 @app.post("/run")
-def run_ingestion(request: RunRequest) -> dict[str, Any]:
+def run_ingestion(request: RunRequest, _: None = Depends(require_api_key)) -> dict[str, Any]:
     source = request.source
     if source not in COLLECTIONS:
         raise HTTPException(status_code=400, detail=f"unknown source: {source}")
@@ -962,7 +971,7 @@ def run_ingestion(request: RunRequest) -> dict[str, Any]:
 
 
 @app.post("/publish")
-def publish(request: RunRequest) -> dict[str, Any]:
+def publish(request: RunRequest, _: None = Depends(require_api_key)) -> dict[str, Any]:
     source = request.source
     if source not in COLLECTIONS:
         raise HTTPException(status_code=400, detail=f"unknown source: {source}")

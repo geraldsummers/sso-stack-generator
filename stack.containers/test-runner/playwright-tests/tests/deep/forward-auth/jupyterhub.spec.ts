@@ -65,6 +65,7 @@ async function dismissJupyterNewsPrompt(page: import('@playwright/test').Page): 
 
   test('JupyterHub - Spawn notebook with forward auth', async ({ page }) => {
     test.setTimeout(180000);
+    let createdNotebook: { userBase: string; notebookName: string; headers: Record<string, string> } | null = null;
     try {
       await testForwardAuthService(
         page,
@@ -171,6 +172,7 @@ async function dismissJupyterNewsPrompt(page: import('@playwright/test').Page): 
               const body = await createResponse.text().catch(() => '');
               throw new Error(`Notebook create failed (${createResponse.status()}): ${body.slice(0, 500)}`);
             }
+            createdNotebook = { userBase, notebookName, headers: requestHeaders };
             const verifyNotebook = await page.request.get(`${userBase}/api/contents/${notebookName}`);
             expect(verifyNotebook.ok()).toBeTruthy();
 
@@ -227,6 +229,14 @@ async function dismissJupyterNewsPrompt(page: import('@playwright/test').Page): 
         }
       );
     } finally {
+      if (createdNotebook) {
+        const notebook = createdNotebook as { userBase: string; notebookName: string; headers: Record<string, string> };
+        await page.request.delete(`${notebook.userBase}/api/contents/${encodeURIComponent(notebook.notebookName)}`, {
+          headers: notebook.headers,
+        }).catch((error) => {
+          console.warn(`   ⚠️  Failed to delete Jupyter notebook fixture ${notebook.notebookName}: ${String((error as Error)?.message || error)}`);
+        });
+      }
       const removedJupyterContainers = removeJupyterContainersForUsers([testUser.username]);
       if (removedJupyterContainers.length > 0) {
         console.log(`   🧹 Removed Jupyter notebook containers: ${removedJupyterContainers.join(', ')}`);

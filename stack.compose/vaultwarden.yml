@@ -22,7 +22,7 @@ services:
       INVITATIONS_ALLOWED: ${VAULTWARDEN_INVITATIONS_ALLOWED:-false}
       SHOW_PASSWORD_HINT: false
       SSO_ENABLED: true
-      SSO_ONLY: true
+      SSO_ONLY: ${VAULTWARDEN_SSO_ONLY:-true}
       SSO_AUTHORITY: https://keycloak.${DOMAIN}/realms/webservices
       SSO_CLIENT_ID: vaultwarden
       SSO_CLIENT_SECRET: ${VAULTWARDEN_OAUTH_SECRET}

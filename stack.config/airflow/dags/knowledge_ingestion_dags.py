@@ -8,6 +8,7 @@ from airflow.decorators import dag, task
 
 
 RUNNER_URL = os.getenv("AIRFLOW_CONN_INGESTION_RUNNER", "http://ingestion-runner:8090").rstrip("/")
+RUNNER_API_KEY = os.getenv("MONITORING_API_KEY", "").strip()
 
 SOURCES = {
     "wikipedia": timedelta(days=30),
@@ -38,7 +39,8 @@ PUBLISHABLE_SOURCES = [
 
 
 def call_runner(path: str, payload: dict) -> dict:
-    response = requests.post(f"{RUNNER_URL}{path}", json=payload, timeout=60 * 30)
+    headers = {"X-API-Key": RUNNER_API_KEY} if RUNNER_API_KEY else None
+    response = requests.post(f"{RUNNER_URL}{path}", json=payload, headers=headers, timeout=60 * 30)
     response.raise_for_status()
     return response.json()
 
