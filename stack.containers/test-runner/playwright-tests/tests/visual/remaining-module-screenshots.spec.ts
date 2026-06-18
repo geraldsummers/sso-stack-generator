@@ -1771,22 +1771,28 @@ test.describe('Remaining real screenshot coverage', () => {
           preLogin: async (page) => {
             await beginVaultwardenOidcByIdentifier(page, vaultwardenSsoIdentifier);
           },
-          authenticatedProbe: async (page) => page.evaluate(async () => {
-            for (const endpoint of ['/api/accounts/profile', '/api/sync?excludeDomains=true']) {
-              try {
-                const response = await fetch(endpoint, {
-                  credentials: 'include',
-                  headers: { Accept: 'application/json' },
-                });
-                if (response.ok) {
-                  return true;
-                }
-              } catch {
-                continue;
-              }
+          authenticatedProbe: async (page) => {
+            const bodyText = (await page.textContent('body').catch(() => '')) || '';
+            if (/#\/lock\b/i.test(page.url()) && /Your vault is locked|Unlock/i.test(bodyText)) {
+              return true;
             }
-            return false;
-          }).catch(() => false),
+            return page.evaluate(async () => {
+              for (const endpoint of ['/api/accounts/profile', '/api/sync?excludeDomains=true']) {
+                try {
+                  const response = await fetch(endpoint, {
+                    credentials: 'include',
+                    headers: { Accept: 'application/json' },
+                  });
+                  if (response.ok) {
+                    return true;
+                  }
+                } catch {
+                  continue;
+                }
+              }
+              return false;
+            }).catch(() => false);
+          },
           postLogin: async (page) => {
             await initializeVaultwardenMasterPassword(page, vaultwardenMasterPassword);
             await unlockVaultwardenLockedVault(page, vaultwardenMasterPassword);
