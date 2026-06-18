@@ -70,15 +70,6 @@ async function expectPageMatcher(page: Page, matcher: RegExp, description: strin
     .toBe(true);
 }
 
-async function expectPageNotMatcher(page: Page, matcher: RegExp, description: string): Promise<void> {
-  await expect
-    .poll(async () => !matcher.test(await combinedPageContent(page)), {
-      timeout: 5000,
-      message: `${description} should not match ${matcher}`,
-    })
-    .toBe(true);
-}
-
 async function waitForServiceLoginContent(page: Page, route: BrowserRoute, contract: Extract<AnonymousContract, { kind: 'service_login' }>): Promise<void> {
   const targetUrl = routeUrl(route, contract.path);
   let content = '';
