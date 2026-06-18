@@ -88,6 +88,13 @@ function createLocator(options: { visible?: boolean | boolean[] } = {}) {
   return locator;
 }
 
+function createIndexedLocator(visibleByIndex: boolean[]) {
+  const locator = createLocator({ visible: false });
+  locator.count = jest.fn(async () => visibleByIndex.length);
+  locator.nth = jest.fn((index: number) => createLocator({ visible: visibleByIndex[index] ?? false }));
+  return locator;
+}
+
 function createPage(options: {
   currentUrl?: string;
   title?: string;
@@ -449,6 +456,59 @@ describe('browser-route-driver', () => {
       await expect(assertSmokeContract(page, route, user)).resolves.toBeUndefined();
     });
 
+    it('uses indexed selector matches across smoke selector alternatives', async () => {
+      const indexedLocator = createIndexedLocator([false, true]);
+      const page = createPage({
+        locators: {
+          '.missing': indexedLocator,
+        },
+        onGoto: (_url, currentPage) => {
+          currentPage.__setUrl('https://status.datamancy.net/');
+          currentPage.__setBody('Ready Content');
+        },
+      });
+      const route = createRoute({
+        host: 'status',
+        label: 'Status',
+        kind: 'public',
+        smoke: {
+          matcher: /Ready Content/,
+          selector: '.missing, text=Ready Content',
+        },
+      });
+
+      await expect(assertSmokeContract(page, route, user)).resolves.toBeUndefined();
+      expect(indexedLocator.count).toHaveBeenCalledTimes(1);
+      expect(indexedLocator.nth).toHaveBeenCalledWith(0);
+      expect(indexedLocator.nth).toHaveBeenCalledWith(1);
+    });
+
+    it('reports stuck smoke pages with a redacted content summary after bounded recovery', async () => {
+      const nowValues = [0, 0, 1, 7000, 7000, 70001];
+      jest.spyOn(Date, 'now').mockImplementation(() => nowValues.shift() ?? 70001);
+      const page = createPage({
+        onGoto: (_url, currentPage) => {
+          currentPage.__setUrl('https://status.datamancy.net/dashboard?token=secret');
+          currentPage.__setBody('Loading... taking longer than usual');
+        },
+      });
+      const route = createRoute({
+        host: 'status',
+        label: 'Status',
+        kind: 'public',
+        smoke: {
+          path: '/dashboard',
+          matcher: /Ready Content/,
+        },
+      });
+
+      await expect(assertSmokeContract(page, route, user)).rejects.toThrow(
+        'Status authenticated page did not satisfy smoke contract at https://status.datamancy.net/dashboard?token=REDACTED; content: Loading... taking longer than usual'
+      );
+      expect(page.goto).toHaveBeenCalledTimes(2);
+      expect(page.waitForTimeout).toHaveBeenCalledWith(1000);
+    });
+
     it('logs into forward-auth smoke routes when they initially land on Keycloak', async () => {
       const page = createPage({
         locators: {
@@ -478,6 +538,43 @@ describe('browser-route-driver', () => {
       await expect(assertSmokeContract(page, route, user)).resolves.toBeUndefined();
       expect(KeycloakLoginPage).toHaveBeenCalledTimes(1);
       expect(mockKeycloakLogin).toHaveBeenCalledWith(page, 'gerald', 'secret');
+    });
+
+    it('returns to the smoke path when forward-auth login leaves the browser on Keycloak', async () => {
+      let visits = 0;
+      const page = createPage({
+        locators: {
+          'text=All Logs': createLocator({ visible: true }),
+        },
+        onGoto: (_url, currentPage) => {
+          visits += 1;
+          if (visits === 1) {
+            currentPage.__setUrl('https://keycloak.datamancy.net/?rd=https%3A%2F%2Fgrafana.datamancy.net%2Fd%2Flogs-home%2Flogs');
+            currentPage.__setBody('Keycloak Sign in');
+            return;
+          }
+          currentPage.__setUrl('https://grafana.datamancy.net/d/logs-home/logs');
+          currentPage.__setBody('All Logs Loki Refresh');
+        },
+      });
+      page.__onKeycloakLogin = async () => undefined;
+      const route = createRoute({
+        host: 'grafana',
+        label: 'Grafana',
+        kind: 'forward_auth',
+        smoke: {
+          path: '/d/logs-home/logs',
+          matcher: /All Logs|Loki/,
+          selector: 'text=All Logs',
+        },
+      });
+
+      await expect(assertSmokeContract(page, route, user)).resolves.toBeUndefined();
+      expect(page.goto).toHaveBeenCalledWith('https://grafana.datamancy.net/d/logs-home/logs', {
+        waitUntil: 'domcontentloaded',
+        timeout: 30000,
+      });
+      expect(page.goto).toHaveBeenCalledTimes(2);
     });
 
     it('skips OIDC login when the authenticated page is already ready', async () => {
@@ -545,6 +642,47 @@ describe('browser-route-driver', () => {
       expect(mockHandleConsentScreen).toHaveBeenCalledWith(page);
     });
 
+    it('uses an explicit OIDC start path before provider login', async () => {
+      let settingsVisits = 0;
+      const page = createPage({
+        locators: {
+          'input[name="full_name"]': createLocator({ visible: true }),
+        },
+        onGoto: (url, currentPage) => {
+          if (url === 'https://forgejo.datamancy.net/oauth/start') {
+            currentPage.__setUrl('https://keycloak.datamancy.net/realms/webservices/protocol/openid-connect/auth?client_id=forgejo');
+            currentPage.__setBody('Keycloak Sign in');
+            return;
+          }
+          if (url === 'https://forgejo.datamancy.net/user/settings') {
+            settingsVisits += 1;
+          }
+          currentPage.__setUrl('https://forgejo.datamancy.net/user/settings');
+          currentPage.__setBody(settingsVisits > 1 ? 'Account Profile' : 'Sign in with Keycloak');
+        },
+      });
+      page.__onKeycloakLogin = async () => {
+        page.__setUrl('https://forgejo.datamancy.net/user/settings');
+        page.__setBody('Account Profile');
+      };
+      const route = createRoute({
+        host: 'forgejo',
+        label: 'Forgejo',
+        kind: 'oidc_login',
+        smoke: {
+          path: '/user/settings',
+          oidcStartPath: '/oauth/start',
+          matcher: /Account|Profile/,
+          selector: 'input[name="full_name"]',
+        },
+      });
+
+      await expect(assertSmokeContract(page, route, user)).resolves.toBeUndefined();
+      expect(mockRouteUrl).toHaveBeenCalledWith(route, '/oauth/start');
+      expect(mockKeycloakLogin).toHaveBeenCalledWith(page, 'gerald', 'secret');
+      expect(mockClickOIDCButton).not.toHaveBeenCalled();
+    });
+
     it('recovers the transient BookStack OIDC callback error and continues to the smoke page', async () => {
       let bookPathVisits = 0;
       const page = createPage({
@@ -592,6 +730,63 @@ describe('browser-route-driver', () => {
       await expect(assertSmokeContract(page, route, user)).resolves.toBeUndefined();
       expect(mockKeycloakLogin).toHaveBeenCalledWith(page, 'gerald', 'secret');
       expect(page.goto).toHaveBeenCalledWith('https://bookstack.datamancy.net/', {
+        waitUntil: 'domcontentloaded',
+        timeout: 15000,
+      });
+    });
+
+    it('retries the BookStack OIDC button when callback recovery lands back on login', async () => {
+      let bookPathVisits = 0;
+      const retryButton = createLocator({ visible: true });
+      const page = createPage({
+        locators: {
+          'a[href="/books"]': createLocator({ visible: true }),
+          '#oidc-login': retryButton,
+        },
+        onGoto: (url, currentPage) => {
+          if (url === 'https://bookstack.datamancy.net/books') {
+            bookPathVisits += 1;
+            if (bookPathVisits === 1) {
+              currentPage.__setUrl('https://keycloak.datamancy.net/?rd=https%3A%2F%2Fbookstack.datamancy.net%2Fbooks');
+              currentPage.__setBody('Keycloak Sign in');
+            } else {
+              currentPage.__setUrl('https://bookstack.datamancy.net/books');
+              currentPage.__setBody('Books Shelves Recently Updated Pages');
+            }
+            return;
+          }
+
+          if (url === 'https://bookstack.datamancy.net/') {
+            currentPage.__setUrl('https://bookstack.datamancy.net/login');
+            currentPage.__setBody('Login with Keycloak');
+            return;
+          }
+
+          if (url === 'https://bookstack.datamancy.net/login') {
+            currentPage.__setUrl(url);
+            currentPage.__setBody('Login with Keycloak');
+          }
+        },
+      });
+      page.__onKeycloakLogin = async () => {
+        page.__setUrl('https://bookstack.datamancy.net/oidc/callback?code=abc123');
+        page.__setBody('An Error Occurred');
+      };
+      const route = createRoute({
+        host: 'bookstack',
+        label: 'BookStack',
+        kind: 'oidc_login',
+        smoke: {
+          path: '/books',
+          matcher: /Books|Shelves|Recently Updated Pages/,
+          selector: 'a[href="/books"]',
+          loginLabel: 'Keycloak',
+        },
+      });
+
+      await expect(assertSmokeContract(page, route, user)).resolves.toBeUndefined();
+      expect(retryButton.click).toHaveBeenCalledWith({ force: true });
+      expect(page.goto).toHaveBeenCalledWith('https://bookstack.datamancy.net/login', {
         waitUntil: 'domcontentloaded',
         timeout: 15000,
       });
