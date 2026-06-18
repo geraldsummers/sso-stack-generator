@@ -82,12 +82,15 @@ class ChatGptConnectorConfigTest {
         val pipeline = repoFileText("stack.compose/pipeline.yml")
         val dag = repoFileText("stack.config/airflow/dags/knowledge_ingestion_dags.py")
         val runner = repoFileText("stack.containers/ingestion-runner/ingestion_runner.py")
+        val agentDocs = repoRoot().resolve("stack.config/agent-docs/README.md")
 
         assertTrue(pipeline.contains("AGENT_DOCS_PATH: /configs/agent-docs"))
         assertTrue(pipeline.contains("./configs/agent-docs:/configs/agent-docs:ro"))
         assertTrue(dag.contains("\"agent_docs\""))
         assertTrue(runner.contains("\"agent_docs\": \"agent_docs\""))
         assertTrue(runner.contains("local_markdown_documents(source, os.getenv(\"AGENT_DOCS_PATH\""))
+        assertTrue(Files.isRegularFile(agentDocs))
+        assertTrue(Files.readString(agentDocs).contains("Source id: `agent_docs`"))
     }
 
     private fun appsTargetBlock(graph: String): String {
