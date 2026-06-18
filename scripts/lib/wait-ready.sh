@@ -136,6 +136,11 @@ systemd_unit_successful_oneshot() {
   [ "$active_state" = "active" ] && [ "$sub_state" = "exited" ] && [ "${result:-success}" = "success" ]
 }
 
+systemd_unit_skipped_exec_condition() {
+  local unit_name="$1"
+  [ "$(systemd_unit_result "$unit_name")" = "exec-condition" ]
+}
+
 service_state() {
   local compose_config="$1"
   local service_name="$2"
@@ -152,6 +157,10 @@ service_state() {
   }
   local state
   state="$(container_state "$container_name")"
+  if [ -z "$state" ] && systemd_unit_skipped_exec_condition "$unit_name"; then
+    printf 'skipped\n'
+    return 0
+  fi
   if [ -z "$state" ] && systemd_unit_successful_oneshot "$unit_name"; then
     printf 'exited\n'
     return 0
@@ -318,6 +327,8 @@ created_service_blockers() {
       if [ "${#blockers[@]}" -eq 0 ]; then
         blockers+=("$service_name:$state")
       fi
+      ;;
+    skipped)
       ;;
     *)
       blockers+=("$service_name:$state")
