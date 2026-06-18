@@ -965,6 +965,48 @@ async function unlockVaultwardenLockedVault(page: Page, password: string): Promi
   await page.waitForTimeout(2000);
 }
 
+async function beginVaultwardenOidcByIdentifier(page: Page, identifier: string): Promise<void> {
+  const vaultwardenAppUrl = serviceUrl('vaultwarden');
+  const vaultwardenSsoPath = `${vaultwardenAppUrl}#/sso?identifier=${encodeURIComponent(identifier)}`;
+
+  await page.goto(vaultwardenSsoPath, { waitUntil: 'domcontentloaded', timeout: 30000 }).catch(() => {});
+  await page.waitForLoadState('networkidle', { timeout: 10000 }).catch(() => {});
+
+  const identifierInput = page
+    .getByLabel(/sso identifier/i)
+    .or(page.locator('input[placeholder*="SSO"]'))
+    .or(page.locator('input[id*="bit-input"]'))
+    .or(page.locator('input').first())
+    .first();
+
+  if (await identifierInput.isVisible().catch(() => false)) {
+    await identifierInput.fill(identifier, { force: true }).catch(() => {});
+    await identifierInput.evaluate((element, nextValue) => {
+      const input = element as HTMLInputElement;
+      input.focus();
+      input.value = nextValue;
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+      input.dispatchEvent(new Event('change', { bubbles: true }));
+    }, identifier).catch(() => {});
+  }
+
+  const continueButton = page.getByRole('button', { name: /continue/i }).first();
+  if (await continueButton.isVisible().catch(() => false)) {
+    await continueButton.click({ force: true }).catch(() => {});
+  } else {
+    await identifierInput.press('Enter').catch(() => {});
+  }
+
+  await page.waitForURL(
+    (url) => {
+      const href = url.toString();
+      return /keycloak|identity\/connect\/authorize|auth\./i.test(href) || !/#\/sso\b/i.test(href);
+    },
+    { timeout: 20000 },
+  ).catch(() => {});
+  await page.waitForTimeout(1000);
+}
+
 async function initializeVaultwardenMasterPassword(page: Page, password: string): Promise<void> {
   await page.waitForFunction(() => /Master password|Finish joining|Join organization|Create account|Set password|Your vault is locked|My Vault|Vaults|Items|Search vault|Generator/i.test(document.body.innerText), null, { timeout: 30000 }).catch(() => {});
   const bodyText = (await page.locator('body').textContent().catch(() => '')) || '';
@@ -1726,6 +1768,9 @@ test.describe('Remaining real screenshot coverage', () => {
           authenticatedRecoveryPath: `${vaultwardenAppUrl}#/settings/account`,
           uiPatternOverride: /My Vault|Vaults|Folders|Items|Search vault|Send|Generator|Vaultwarden Web|Your vault is locked|Add it later|Get the extension|Name|Email|Profile/i,
           skipScreenshot: true,
+          preLogin: async (page) => {
+            await beginVaultwardenOidcByIdentifier(page, vaultwardenSsoIdentifier);
+          },
           authenticatedProbe: async (page) => page.evaluate(async () => {
             for (const endpoint of ['/api/accounts/profile', '/api/sync?excludeDomains=true']) {
               try {
