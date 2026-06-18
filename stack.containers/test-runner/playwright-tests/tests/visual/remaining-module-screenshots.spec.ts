@@ -770,6 +770,84 @@ async function hydrateDonetickSession(page: Page, username: string, password: st
 }
 
 async function unlockVaultwardenLoginForm(page: Page, email: string, password: string): Promise<void> {
+  const emailSelector = [
+    'input.vw-email-continue',
+    'input[type="email"]:not(.vw-email-sso)',
+    'input[autocomplete="username"]',
+    'input[name*="email" i]',
+    'input[id*="email" i]',
+    'input[aria-label*="email" i]',
+  ].join(', ');
+  const passwordSelector = [
+    'input[type="password"]',
+    'input[autocomplete="current-password"]',
+    'input[name*="password" i]',
+    'input[id*="password" i]',
+    'input[aria-label*="password" i]',
+  ].join(', ');
+  const fillAccessibleField = async (label: RegExp, selector: string, value: string): Promise<void> => {
+    for (const candidate of [
+      page.getByLabel(label).first(),
+      page.getByRole('textbox', { name: label }).first(),
+      page.locator(selector).first(),
+    ]) {
+      if (await candidate.count().catch(() => 0) === 0) {
+        continue;
+      }
+      await candidate.click({ force: true }).catch(() => {});
+      await candidate.fill(value, { force: true }).catch(() => {});
+      const filled = await candidate.evaluate((field, expectedValue) => {
+        return field instanceof HTMLInputElement && field.value === expectedValue;
+      }, value).catch(() => false);
+      if (filled) {
+        return;
+      }
+    }
+  };
+  const fillInputCandidates = async (selector: string, value: string, labelPattern: string): Promise<boolean> => {
+    return page.evaluate(({ selector, value, labelPattern }) => {
+      const matcher = new RegExp(labelPattern, 'i');
+      const setValue = (field: HTMLInputElement) => {
+        const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set;
+        field.focus();
+        if (setter) {
+          setter.call(field, value);
+        } else {
+          field.value = value;
+        }
+        field.dispatchEvent(new InputEvent('input', { bubbles: true, composed: true, inputType: 'insertText', data: value }));
+        field.dispatchEvent(new Event('change', { bubbles: true }));
+        field.dispatchEvent(new Event('blur', { bubbles: true }));
+      };
+      const labelTextFor = (field: HTMLInputElement): string => {
+        const parts = [
+          field.name,
+          field.id,
+          field.placeholder,
+          field.autocomplete,
+          field.getAttribute('aria-label'),
+        ];
+        const labelledBy = field.getAttribute('aria-labelledby');
+        if (labelledBy) {
+          for (const id of labelledBy.split(/\s+/)) {
+            parts.push(document.getElementById(id)?.textContent || '');
+          }
+        }
+        if (field.id) {
+          parts.push(...Array.from(document.querySelectorAll(`label[for="${CSS.escape(field.id)}"]`)).map((label) => label.textContent || ''));
+        }
+        return parts.filter(Boolean).join(' ');
+      };
+      const fields = Array.from(document.querySelectorAll(selector)) as HTMLInputElement[];
+      const preferred = fields.filter((field) => field.type !== 'hidden' && !/\bvw-email-sso\b/.test(field.className) && matcher.test(labelTextFor(field)));
+      const visible = fields.filter((field) => field.type !== 'hidden' && !/\bvw-email-sso\b/.test(field.className) && (field.offsetParent !== null || field.getClientRects().length > 0));
+      for (const field of [...preferred, ...visible]) {
+        setValue(field);
+      }
+      return [...preferred, ...visible].some((field) => field.value === value);
+    }, { selector, value, labelPattern }).catch(() => false);
+  };
+
   if (!/#\/login\b/i.test(page.url())) {
     await page.goto(serviceUrl('vaultwarden', '/#/login'), { waitUntil: 'domcontentloaded', timeout: 45000 }).catch(() => {});
   }
@@ -781,105 +859,41 @@ async function unlockVaultwardenLoginForm(page: Page, email: string, password: s
   if (!/Log in|Master password|Email address/i.test(bodyText)) {
     return;
   }
-  const localEmailTextbox = page.locator('input.vw-email-continue, input[type="email"]:not(.vw-email-sso), input[name="Email"], input[name="email"]').first();
-  if (await localEmailTextbox.isVisible({ timeout: 5000 }).catch(() => false)) {
-    await localEmailTextbox.click({ force: true }).catch(() => {});
-    await localEmailTextbox.fill(email, { force: true }).catch(() => {});
-  }
-  await page.evaluate((email) => {
-    const setValue = (field: HTMLInputElement, value: string) => {
-      const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set;
-      field.focus();
-      if (setter) {
-        setter.call(field, value);
-      } else {
-        field.value = value;
-      }
-      field.dispatchEvent(new InputEvent('input', { bubbles: true, composed: true, inputType: 'insertText', data: value }));
-      field.dispatchEvent(new Event('change', { bubbles: true }));
-      field.dispatchEvent(new Event('blur', { bubbles: true }));
-    };
-    const localEmailFields = Array.from(document.querySelectorAll('input.vw-email-continue, input[type="email"]:not(.vw-email-sso), input[name="Email"], input[name="email"]')) as HTMLInputElement[];
-    for (const field of localEmailFields) {
-      if (field.type !== 'hidden' && (field.offsetParent !== null || field.getClientRects().length > 0)) {
-        setValue(field, email);
-      }
-    }
-    if (localEmailFields.length === 0) {
-      const fallbackField = (Array.from(document.querySelectorAll('input[type="email"]')) as HTMLInputElement[])
-        .find((field) => !/\bvw-email-sso\b/.test(field.className) && field.type !== 'hidden');
-      if (fallbackField) {
-        setValue(fallbackField, email);
-      }
-    }
-  }, email).catch(() => {});
-  await expect(localEmailTextbox, 'Vaultwarden local login email field should contain the synthetic user email').toHaveValue(email, { timeout: 5000 }).catch(() => {});
+  await fillAccessibleField(/Email address|Email/i, emailSelector, email);
+  await fillInputCandidates(emailSelector, email, 'email');
   const continueButton = page.getByRole('button', { name: /^Continue$/i }).first();
   if (await continueButton.isVisible({ timeout: 3000 }).catch(() => false)) {
     await continueButton.click({ force: true }).catch(() => {});
     await page.waitForLoadState('networkidle', { timeout: 15000 }).catch(() => {});
   } else {
-    await localEmailTextbox.press('Enter').catch(() => {});
+    await page.keyboard.press('Enter').catch(() => {});
     await page.waitForLoadState('networkidle', { timeout: 15000 }).catch(() => {});
   }
   if (/#\/sso\b/i.test(page.url())) {
     await page.goto(serviceUrl('vaultwarden', '/#/login'), { waitUntil: 'domcontentloaded', timeout: 45000 }).catch(() => {});
     await page.waitForLoadState('networkidle', { timeout: 15000 }).catch(() => {});
-    const retryEmailTextbox = page.locator('input.vw-email-continue, input[type="email"]:not(.vw-email-sso), input[name="Email"], input[name="email"]').first();
-    if (await retryEmailTextbox.isVisible({ timeout: 5000 }).catch(() => false)) {
-      await retryEmailTextbox.fill(email, { force: true }).catch(() => {});
-      await page.evaluate((email) => {
-        const field = (Array.from(document.querySelectorAll('input.vw-email-continue, input[type="email"]:not(.vw-email-sso), input[name="Email"], input[name="email"]')) as HTMLInputElement[])
-          .find((candidate) => candidate.type !== 'hidden' && (candidate.offsetParent !== null || candidate.getClientRects().length > 0));
-        if (!field) {
-          return;
-        }
-        const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set;
-        field.focus();
-        if (setter) {
-          setter.call(field, email);
-        } else {
-          field.value = email;
-        }
-        field.dispatchEvent(new InputEvent('input', { bubbles: true, composed: true, inputType: 'insertText', data: email }));
-        field.dispatchEvent(new Event('change', { bubbles: true }));
-        field.dispatchEvent(new Event('blur', { bubbles: true }));
-      }, email).catch(() => {});
-      const retryContinue = page.getByRole('button', { name: /^Continue$/i }).first();
-      if (await retryContinue.isVisible({ timeout: 3000 }).catch(() => false)) {
-        await retryContinue.click({ force: true }).catch(() => {});
-      } else {
-        await retryEmailTextbox.press('Enter').catch(() => {});
-      }
-      await page.waitForLoadState('networkidle', { timeout: 15000 }).catch(() => {});
+    await fillAccessibleField(/Email address|Email/i, emailSelector, email);
+    await fillInputCandidates(emailSelector, email, 'email');
+    const retryContinue = page.getByRole('button', { name: /^Continue$/i }).first();
+    if (await retryContinue.isVisible({ timeout: 3000 }).catch(() => false)) {
+      await retryContinue.click({ force: true }).catch(() => {});
+    } else {
+      await page.keyboard.press('Enter').catch(() => {});
     }
+    await page.waitForLoadState('networkidle', { timeout: 15000 }).catch(() => {});
   }
   const passwordFieldAvailable = await page.waitForFunction(() => {
-    const passwordFields = Array.from(document.querySelectorAll('input[type="password"]')) as HTMLInputElement[];
-    return passwordFields.some((field) => field.type !== 'hidden' && !field.disabled && (field.offsetParent !== null || field.getClientRects().length > 0));
+    const bodyText = document.body?.textContent || '';
+    const passwordFields = Array.from(document.querySelectorAll('input[type="password"], input[autocomplete="current-password"], input[name*="password" i], input[id*="password" i], input[aria-label*="password" i]')) as HTMLInputElement[];
+    return /master password/i.test(bodyText) || passwordFields.some((field) => field.type !== 'hidden' && !field.disabled);
   }, undefined, { timeout: 10000 }).then(() => true).catch(() => false);
   if (!passwordFieldAvailable) {
     const bodyTextAfterEmail = (await page.locator('body').textContent().catch(() => '')) || '';
     throw new Error(`Vaultwarden local login did not expose a master password field after email entry. Visible text: ${bodyTextAfterEmail.slice(0, 500)}`);
   }
-  await page.evaluate((password) => {
-    const setValue = (field: HTMLInputElement, value: string) => {
-      const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set;
-      field.focus();
-      if (setter) {
-        setter.call(field, value);
-      } else {
-        field.value = value;
-      }
-      field.dispatchEvent(new InputEvent('input', { bubbles: true, composed: true, inputType: 'insertText', data: value }));
-      field.dispatchEvent(new Event('change', { bubbles: true }));
-      field.dispatchEvent(new Event('blur', { bubbles: true }));
-    };
-    for (const field of Array.from(document.querySelectorAll('input[type="password"]')) as HTMLInputElement[]) {
-      if (field.type !== 'hidden' && !field.disabled && (field.offsetParent !== null || field.getClientRects().length > 0)) {
-        setValue(field, password);
-      }
-    }
+  await fillAccessibleField(/Master password|Password/i, passwordSelector, password);
+  await fillInputCandidates(passwordSelector, password, 'password|master');
+  await page.evaluate(() => {
     const submit = (Array.from(document.querySelectorAll('button')) as HTMLButtonElement[])
       .find((button) => /log in with master password|log in|unlock/i.test(button.textContent || '') && !/single sign-on|sso/i.test(button.textContent || ''));
     submit?.click();
@@ -887,7 +901,7 @@ async function unlockVaultwardenLoginForm(page: Page, email: string, password: s
     if (form?.requestSubmit) {
       form.requestSubmit();
     }
-  }, password).catch(() => {});
+  }).catch(() => {});
   await page.keyboard.press('Enter').catch(() => {});
   await page.waitForLoadState('networkidle', { timeout: 30000 }).catch(() => {});
 }
