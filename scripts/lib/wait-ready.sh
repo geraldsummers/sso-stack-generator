@@ -184,6 +184,10 @@ service_exit_code() {
   container_name="$(service_container_name "$compose_config" "$service_name")"
   unit_name="$(systemd_unit_name_for_service "$service_name")"
   [ -n "$container_name" ] || {
+    if systemd_unit_skipped_exec_condition "$unit_name"; then
+      printf '0\n'
+      return 0
+    fi
     if systemd_unit_successful_oneshot "$unit_name"; then
       printf '0\n'
     else
@@ -193,6 +197,10 @@ service_exit_code() {
     return 0
   }
   if ! docker inspect "$container_name" >/dev/null 2>&1; then
+    if systemd_unit_skipped_exec_condition "$unit_name"; then
+      printf '0\n'
+      return 0
+    fi
     if systemd_unit_successful_oneshot "$unit_name"; then
       printf '0\n'
     else
