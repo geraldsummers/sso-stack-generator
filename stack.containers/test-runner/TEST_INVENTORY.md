@@ -2,7 +2,7 @@
 
 Generated from source globs so test-suite ownership and cleanup scope are visible in one place.
 
-Totals: 181 files, 989 discovered test/suite entries.
+Totals: 181 files, 993 discovered test/suite entries.
 
 ## Cleanup model
 
@@ -1335,6 +1335,10 @@ Runtime stack-contract suites run by stack.containers/test-runner/run-tests.sh k
 - Security Tests
 - Vaultwarden server is healthy
 - Vaultwarden web vault loads
+- CrowdSec IDS service is healthy
+- CrowdSec IDS acquires Caddy and identity logs
+- CrowdSec IDS metrics are available
+- CrowdSec IDS simulated alert creates a local decision
 
 ### `stack.kotlin/test-runner/src/main/kotlin/org/webservices/testrunner/suites/StackLlmCapabilityTests.kt`
 - No direct test entries; helper/suite registration source.
