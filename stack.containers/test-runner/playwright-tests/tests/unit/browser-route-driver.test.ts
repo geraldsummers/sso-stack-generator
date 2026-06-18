@@ -26,6 +26,7 @@ jest.mock('@playwright/test', () => {
       const visible = await actual.isVisible();
       (global as any).expect(visible).toBe(true);
     },
+    toContainText: async () => undefined,
   });
 
   mockExpect.poll = (callback: () => unknown | Promise<unknown>) => ({
@@ -135,6 +136,8 @@ function createPage(options: {
     }),
     url: jest.fn(() => state.currentUrl),
     screenshot: jest.fn(async () => undefined),
+    reload: jest.fn(async () => undefined),
+    evaluate: jest.fn(async (fn: any, arg?: any) => fn(arg)),
   };
 
   return page;
@@ -380,6 +383,43 @@ describe('browser-route-driver', () => {
 
       await expect(assertAnonymousContract(page, route)).resolves.toBeUndefined();
     });
+
+    it('returns immediately for non-ui anonymous contracts', async () => {
+      const page = createPage();
+      const route = createRoute({
+        host: 'qdrant',
+        label: 'Qdrant',
+        anonymous: { kind: 'non_ui' },
+      });
+
+      await expect(assertAnonymousContract(page, route)).resolves.toBeUndefined();
+    });
+
+    it('rejects orphaned anonymous contracts with the catalog reason', async () => {
+      const page = createPage();
+      const route = createRoute({
+        host: 'orphaned',
+        label: 'Orphaned Service',
+        anonymous: { kind: 'orphaned', reason: 'not in generated routes' },
+      });
+
+      await expect(assertAnonymousContract(page, route)).rejects.toThrow(
+        'Orphaned Service is marked orphaned and must be removed from Caddy exposure or catalogued correctly: not in generated routes'
+      );
+    });
+
+    it('rejects unsupported anonymous contract kinds', async () => {
+      const page = createPage();
+      const route = createRoute({
+        host: 'unknown',
+        label: 'Unknown Service',
+        anonymous: { kind: 'mystery' },
+      });
+
+      await expect(assertAnonymousContract(page, route)).rejects.toThrow(
+        'Unsupported anonymous contract for route unknown'
+      );
+    });
   });
 
   describe('assertSmokeContract', () => {
@@ -572,9 +612,81 @@ describe('browser-route-driver', () => {
         "API has unsupported smoke route kind 'non_ui'."
       );
     });
+
+    it('rejects routes that are not part of the smoke suite', async () => {
+      const page = createPage();
+      const route = createRoute({
+        host: 'docs',
+        label: 'Docs',
+        smoke: undefined,
+      });
+
+      await expect(assertSmokeContract(page, route, user)).rejects.toThrow(
+        'Docs is not part of the smoke suite.'
+      );
+    });
+
+    it('requires Playwright header support when smoke headers are configured', async () => {
+      const page = createPage({
+        onGoto: (_url, currentPage) => {
+          currentPage.__setUrl('https://status.datamancy.net/');
+          currentPage.__setBody('Demo Ready');
+        },
+      });
+      delete page.setExtraHTTPHeaders;
+      const route = createRoute({
+        host: 'status',
+        label: 'Status',
+        kind: 'public',
+        smoke: {
+          matcher: /Demo Ready/,
+          headers: {
+            'X-Test': 'true',
+          },
+        },
+      });
+
+      await expect(assertSmokeContract(page, route, user)).rejects.toThrow(
+        'Playwright page does not support per-route HTTP headers.'
+      );
+    });
+
+    it('uses user-specific smoke paths when provided', async () => {
+      const page = createPage({
+        onGoto: (_url, currentPage) => {
+          currentPage.__setUrl('https://profile.datamancy.net/users/gerald');
+          currentPage.__setBody('Profile for gerald');
+        },
+      });
+      const route = createRoute({
+        host: 'profile',
+        label: 'Profile',
+        kind: 'public',
+        smoke: {
+          matcher: /Profile for gerald/,
+          pathForUser: ({ username }: { username: string }) => `/users/${username}`,
+        },
+      });
+
+      await expect(assertSmokeContract(page, route, user)).resolves.toBeUndefined();
+      expect(mockRouteUrl).toHaveBeenCalledWith(route, '/users/gerald');
+    });
   });
 
   describe('captureVisualSnapshot', () => {
+    it('rejects routes that are not part of the visual suite', async () => {
+      const page = createPage();
+      const route = createRoute({
+        host: 'text-only',
+        label: 'Text Only',
+        visual: undefined,
+      });
+
+      await expect(captureVisualSnapshot(page, route, user, '/tmp/screenshots')).rejects.toThrow(
+        'Text Only is not part of the visual suite.'
+      );
+    });
+
     it('reuses the smoke flow and writes a screenshot into the visual output directory', async () => {
       const screenshotRoot = fs.mkdtempSync('/tmp/webservices-visual-test-');
       const page = createPage({
@@ -619,6 +731,58 @@ describe('browser-route-driver', () => {
       expect(page.setExtraHTTPHeaders).toHaveBeenCalledWith({
         'User-Agent': 'Visual Test Browser',
       });
+    });
+
+    it('prepares and cleans up ChatGPT connector visual demo data', async () => {
+      const screenshotRoot = fs.mkdtempSync('/tmp/webservices-chatgpt-visual-test-');
+      const fetchMock = jest.fn()
+        .mockResolvedValueOnce({
+          ok: true,
+          text: async () => JSON.stringify({ id: 'agent-1' }),
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          text: async () => JSON.stringify({ id: 'token-1' }),
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          text: async () => '',
+        });
+      const originalFetch = (global as any).fetch;
+      (global as any).fetch = fetchMock;
+      const page = createPage({
+        locators: {
+          '#agent-accounts': createLocator({ visible: true }),
+        },
+        onGoto: (_url, currentPage) => {
+          currentPage.__setUrl('https://chatgpt-connector.datamancy.net/');
+          currentPage.__setBody('Connector Ready');
+        },
+      });
+      const route = createRoute({
+        host: 'chatgpt-connector',
+        label: 'ChatGPT Connector',
+        kind: 'public',
+        visual: {
+          fileStem: 'chatgpt-connector',
+          path: '/',
+          matcher: /Connector Ready/,
+          selector: '#agent-accounts',
+        },
+      });
+
+      try {
+        await expect(captureVisualSnapshot(page, route, user, screenshotRoot)).resolves.toBe(
+          `${screenshotRoot}/visual/chatgpt-connector.jpeg`
+        );
+      } finally {
+        (global as any).fetch = originalFetch;
+      }
+
+      expect(page.reload).toHaveBeenCalledWith({ waitUntil: 'domcontentloaded' });
+      expect(fetchMock).toHaveBeenCalledWith('/api/agent-accounts', expect.objectContaining({ method: 'POST' }));
+      expect(fetchMock).toHaveBeenCalledWith('/api/agent-accounts/agent-1/tokens', expect.objectContaining({ method: 'POST' }));
+      expect(fetchMock).toHaveBeenCalledWith('/api/agent-accounts/agent-1/close', expect.objectContaining({ method: 'POST' }));
     });
   });
 });

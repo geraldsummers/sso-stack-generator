@@ -9,6 +9,7 @@ import { logPageTelemetry } from '../../utils/telemetry';
 type FakeLocatorOptions = {
   visible?: boolean | boolean[];
   waitForError?: Error;
+  attributes?: Record<string, string | null>;
 };
 
 function createLocator(options: FakeLocatorOptions = {}) {
@@ -29,6 +30,7 @@ function createLocator(options: FakeLocatorOptions = {}) {
         throw options.waitForError;
       })
     : jest.fn(async () => undefined);
+  locator.getAttribute = jest.fn(async (name: string) => options.attributes?.[name] ?? null);
   locator.click = jest.fn(async () => undefined);
 
   return locator;
@@ -61,6 +63,7 @@ function createClickPage(options: {
           }
         }),
     waitForLoadState: jest.fn(async () => undefined),
+    goto: jest.fn(async () => undefined),
     getByRole: jest.fn((role: string, roleOptions?: { name?: RegExp }) => {
       if (
         (role === 'link' || role === 'button')
@@ -138,6 +141,55 @@ describe('OIDCLoginPage.clickOIDCButton', () => {
     });
     expect(page.waitForURL).toHaveBeenCalledWith(expect.any(Function), { timeout: 15000 });
     expect(console.log).toHaveBeenCalledWith('   ✓ Redirected to Keycloak: https://keycloak.datamancy.net/realms/webservices/protocol/openid-connect/auth?client_id=demo\n');
+  });
+
+  it('navigates directly to safe OIDC links with hrefs', async () => {
+    const hrefLocator = createLocator({
+      visible: true,
+      attributes: {
+        href: '/realms/webservices/protocol/openid-connect/auth?client_id=demo',
+      },
+    });
+    const page = createClickPage({
+      oidcLocator: createLocator({ visible: false }),
+      hrefLocator,
+      currentUrl: 'https://bookstack.datamancy.net/login',
+      waitForUrlTargetUrl: 'https://keycloak.datamancy.net/realms/webservices/protocol/openid-connect/auth?client_id=demo',
+    });
+
+    const oidcPage = new OIDCLoginPage(page as never);
+
+    await expect(oidcPage.clickOIDCButton('Keycloak')).resolves.toBeUndefined();
+    expect(page.goto).toHaveBeenCalledWith(
+      'https://bookstack.datamancy.net/realms/webservices/protocol/openid-connect/auth?client_id=demo',
+      { waitUntil: 'domcontentloaded', timeout: 30000 },
+    );
+    expect(hrefLocator.click).not.toHaveBeenCalled();
+  });
+
+  it('clicks OIDC href controls that require a non-GET method instead of direct navigation', async () => {
+    const hrefLocator = createLocator({
+      visible: true,
+      attributes: {
+        href: '/oauth/login',
+        'data-method': 'post',
+      },
+    });
+    const page = createClickPage({
+      oidcLocator: createLocator({ visible: false }),
+      hrefLocator,
+      currentUrl: 'https://bookstack.datamancy.net/login',
+      waitForUrlTargetUrl: 'https://keycloak.datamancy.net/realms/webservices/protocol/openid-connect/auth?client_id=demo',
+    });
+
+    const oidcPage = new OIDCLoginPage(page as never);
+
+    await expect(oidcPage.clickOIDCButton('Keycloak')).resolves.toBeUndefined();
+    expect(page.goto).not.toHaveBeenCalled();
+    expect(hrefLocator.click).toHaveBeenCalledWith({
+      force: true,
+      noWaitAfter: true,
+    });
   });
 
   it('uses Keycloak as the default OIDC button label', async () => {

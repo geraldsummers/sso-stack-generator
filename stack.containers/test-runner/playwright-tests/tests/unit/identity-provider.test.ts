@@ -1,6 +1,8 @@
 import {
   createIdentityProviderAdapter,
   defaultIdentityProvider,
+  isIdentityProviderAuthUrl,
+  isIdentityProviderConsentUrl,
   keycloakIdentityProvider,
   resolveIdentityProviderId,
 } from '../../utils/identity-provider';
@@ -29,6 +31,27 @@ describe('identity-provider helper', () => {
     expect(keycloakIdentityProvider.authUrl('https://grafana.datamancy.net/')).toBe(
       'https://keycloak-auth.datamancy.net/oauth2/start?rd=https%3A%2F%2Fgrafana.datamancy.net%2F'
     );
+    expect(keycloakIdentityProvider.authUrl()).toBe('https://keycloak-auth.datamancy.net/oauth2/start');
+  });
+
+  it('recognizes legacy and non-URL Keycloak auth and consent boundaries', () => {
+    expect(
+      isIdentityProviderAuthUrl(
+        'https://identity.example.test/auth/realms/webservices/protocol/openid-connect/auth?client_id=legacy'
+      )
+    ).toBe(true);
+    expect(isIdentityProviderAuthUrl('/realms/webservices/protocol/openid-connect/auth?client_id=relative')).toBe(true);
+    expect(isIdentityProviderAuthUrl('not an identity auth url')).toBe(false);
+
+    expect(
+      isIdentityProviderConsentUrl(
+        'https://keycloak.example.test/realms/webservices/login-actions/required-action?execution=consent'
+      )
+    ).toBe(true);
+    expect(isIdentityProviderConsentUrl('https://keycloak.example.test/realms/webservices/consent')).toBe(true);
+    expect(isIdentityProviderConsentUrl('/realms/webservices/protocol/openid-connect/auth?prompt=consent')).toBe(true);
+    expect(isIdentityProviderConsentUrl('/realms/webservices/consent')).toBe(false);
+    expect(isIdentityProviderConsentUrl('/realms/webservices/protocol/openid-connect/auth?client_id=demo')).toBe(false);
   });
 
   it('exposes a Keycloak boundary without changing the Keycloak default', () => {
