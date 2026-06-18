@@ -38,6 +38,20 @@ describe('KeycloakClient', () => {
     expect(client.realm).toBe('webservices');
   });
 
+  it('uses external Keycloak URL and runtime defaults when optional environment values are blank', () => {
+    delete process.env.KEYCLOAK_INTERNAL_URL;
+    process.env.KEYCLOAK_URL = 'http://external-keycloak:8080/';
+    process.env.KEYCLOAK_REALM = '   ';
+    process.env.KEYCLOAK_ADMIN_USER = '   ';
+    process.env.KEYCLOAK_ADMIN_PASSWORD = 'secret';
+
+    const client = KeycloakClient.fromEnvironment();
+
+    expect(client.baseUrl).toBe('http://external-keycloak:8080');
+    expect(client.realm).toBe('webservices');
+    expect(client.adminUsername).toBe('admin');
+  });
+
   it('rejects incomplete runtime environment configuration', () => {
     delete process.env.KEYCLOAK_INTERNAL_URL;
     delete process.env.KEYCLOAK_URL;
@@ -187,6 +201,36 @@ describe('KeycloakClient', () => {
     expect(profile?.email).toBe('playwright-demo@example.test');
   });
 
+  it('loads profiles using username fallback when attributes and names are blank', async () => {
+    const client = new KeycloakClient({
+      baseUrl: 'http://keycloak:8080',
+      realm: 'webservices',
+      adminUsername: 'admin',
+      adminPassword: 'secret',
+    });
+    fetchMock
+      .mockResolvedValueOnce(okJson({ access_token: 'token' }))
+      .mockResolvedValueOnce(okJson([{
+        username: 'playwright-demo',
+        email: '',
+        firstName: '',
+        lastName: '',
+        attributes: { displayName: ['   ', ''] },
+      }]));
+
+    const profile = await client.getUserProfile('playwright-demo');
+
+    expect(profile).toEqual({
+      username: 'playwright-demo',
+      email: 'playwright-demo@datamancy.net',
+      givenName: '',
+      familyName: '',
+      commonName: 'playwright-demo',
+      displayName: 'playwright-demo',
+      fullName: 'playwright-demo',
+    });
+  });
+
   it('returns null for missing profiles', async () => {
     const client = new KeycloakClient({
       baseUrl: 'http://keycloak:8080',
@@ -214,6 +258,7 @@ describe('KeycloakClient', () => {
         { id: 'managed-id', username: 'plmosm1qtdabc1', attributes: { managedBy: ['webservices-playwright'] } },
         { id: 'real-id', username: 'gerald', attributes: { managedBy: ['webservices-playwright'] } },
         { id: 'foreign-id', username: 'playwright-foreign', attributes: { managedBy: ['other'] } },
+        { id: 'missing-username-id', attributes: { managedBy: ['webservices-playwright'] } },
       ]))
       .mockResolvedValueOnce(okJson([
         { id: 'legacy-id', username: 'playwright-legacy', attributes: { managedBy: ['webservices-playwright'] } },
@@ -295,6 +340,13 @@ describe('KeycloakClient', () => {
     await expect(client.createManagedUser(KeycloakClient.buildManagedUser('playwright-demo'))).rejects.toThrow(
       'Keycloak user create did not return a user id for playwright-demo.'
     );
+  });
+
+  it('falls back to generated user names when username prefixes contain no supported characters', () => {
+    const username = KeycloakClient.generateUsername('!!!');
+
+    expect(username).toMatch(/^u[a-z0-9]+/);
+    expect(username.length).toBeLessThanOrEqual(16);
   });
 
   it('treats missing users as already deleted', async () => {

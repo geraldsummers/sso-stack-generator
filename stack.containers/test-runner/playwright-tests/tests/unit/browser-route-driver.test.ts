@@ -239,6 +239,22 @@ describe('browser-route-driver', () => {
       expect(page.waitForTimeout).toHaveBeenCalledWith(1500);
     });
 
+    it('does not retry non-transient navigation failures', async () => {
+      const page = createPage({
+        gotoErrors: [new Error('net::ERR_NAME_NOT_RESOLVED')],
+      });
+      const route = createRoute({
+        host: 'public-demo',
+        label: 'Public Demo',
+        anonymous: { kind: 'public_page', matcher: /Demo Ready/ },
+      });
+
+      await expect(assertAnonymousContract(page, route)).rejects.toThrow('net::ERR_NAME_NOT_RESOLVED');
+
+      expect(page.goto).toHaveBeenCalledTimes(1);
+      expect(page.waitForTimeout).not.toHaveBeenCalled();
+    });
+
     it('tolerates load-state and content probe failures while matching body text', async () => {
       const bodyLocator = createLocator({ innerText: 'Demo Ready' });
       const page = createPage({
@@ -267,6 +283,28 @@ describe('browser-route-driver', () => {
       await expect(assertAnonymousContract(page, route)).resolves.toBeUndefined();
 
       expect(page.waitForLoadState).toHaveBeenCalledWith('domcontentloaded', { timeout: 10000 });
+      expect(bodyLocator.innerText).toHaveBeenCalledWith({ timeout: 1000 });
+    });
+
+    it('tolerates failed body inner-text probes while matching the page title', async () => {
+      const bodyLocator = createLocator({ innerTextError: new Error('inner text unavailable') });
+      const page = createPage({
+        title: 'Demo Ready',
+        locators: {
+          body: bodyLocator,
+        },
+      });
+      page.textContent = jest.fn(async () => {
+        throw new Error('body text unavailable');
+      });
+      const route = createRoute({
+        host: 'public-demo',
+        label: 'Public Demo',
+        anonymous: { kind: 'public_page', matcher: /Demo Ready/ },
+      });
+
+      await expect(assertAnonymousContract(page, route)).resolves.toBeUndefined();
+
       expect(bodyLocator.innerText).toHaveBeenCalledWith({ timeout: 1000 });
     });
 
@@ -369,6 +407,39 @@ describe('browser-route-driver', () => {
 
       expect(page.waitForLoadState).toHaveBeenCalledWith('domcontentloaded', { timeout: 10000 });
       expect(page.waitForLoadState).toHaveBeenCalledWith('networkidle', { timeout: 10000 });
+    });
+
+    it('accepts service-login routes that redirect to auth after readiness navigation when allowed', async () => {
+      const page = createPage({
+        locators: {
+          'input[name="username"], input[autocomplete="username"], #username-textfield, #username': createLocator(),
+          'input[name="password"], input[type="password"], #password-textfield, #password': createLocator(),
+        },
+      });
+      let visits = 0;
+      page.goto = jest.fn(async (url: string) => {
+        visits += 1;
+        if (visits === 1) {
+          page.__setUrl(url);
+          page.__setBody('');
+          return;
+        }
+        page.__setUrl('https://keycloak.datamancy.net/?rd=https%3A%2F%2Fbookstack.datamancy.net%2Flogin');
+        page.__setBody('Keycloak Sign in Username Password');
+      });
+      const route = createRoute({
+        host: 'bookstack',
+        label: 'BookStack',
+        anonymous: {
+          kind: 'service_login',
+          matcher: /BookStack|Login/,
+          allowAuthRedirect: true,
+        },
+      });
+
+      await expect(assertAnonymousContract(page, route)).resolves.toBeUndefined();
+
+      expect(page.goto).toHaveBeenCalledTimes(2);
     });
 
     it('re-navigates blank service-login pages until content renders', async () => {
@@ -626,6 +697,63 @@ describe('browser-route-driver', () => {
       expect(secondMatch.isVisible).toHaveBeenCalledTimes(1);
     });
 
+    it('treats selector visibility probe failures as not ready', async () => {
+      const nowValues = [0, 0, 1, 70001];
+      jest.spyOn(Date, 'now').mockImplementation(() => nowValues.shift() ?? 70001);
+      const brokenSelector = createLocator({ visible: true });
+      brokenSelector.isVisible = jest.fn(async () => {
+        throw new Error('selector detached');
+      });
+      const page = createPage({
+        locators: {
+          '#ready': brokenSelector,
+        },
+        onGoto: (_url, currentPage) => {
+          currentPage.__setUrl('https://status.datamancy.net/');
+          currentPage.__setBody('Ready Content');
+        },
+      });
+      const route = createRoute({
+        host: 'status',
+        label: 'Status',
+        kind: 'public',
+        smoke: {
+          matcher: /Ready Content/,
+          selector: '#ready',
+        },
+      });
+
+      await expect(assertSmokeContract(page, route, user)).rejects.toThrow(
+        'Status authenticated page did not satisfy smoke contract'
+      );
+      expect(brokenSelector.isVisible).toHaveBeenCalledTimes(1);
+    });
+
+    it('tolerates readiness load-state failures when smoke content is ready', async () => {
+      const page = createPage({
+        onGoto: (_url, currentPage) => {
+          currentPage.__setUrl('https://status.datamancy.net/');
+          currentPage.__setBody('Ready Content');
+        },
+      });
+      page.waitForLoadState = jest.fn(async () => {
+        throw new Error('load state unavailable');
+      });
+      const route = createRoute({
+        host: 'status',
+        label: 'Status',
+        kind: 'public',
+        smoke: {
+          matcher: /Ready Content/,
+        },
+      });
+
+      await expect(assertSmokeContract(page, route, user)).resolves.toBeUndefined();
+
+      expect(page.waitForLoadState).toHaveBeenCalledWith('domcontentloaded', { timeout: 5000 });
+      expect(page.waitForLoadState).toHaveBeenCalledWith('networkidle', { timeout: 5000 });
+    });
+
     it('reports stuck smoke pages with a redacted content summary after bounded recovery', async () => {
       const nowValues = [0, 0, 1, 7000, 7000, 70001];
       jest.spyOn(Date, 'now').mockImplementation(() => nowValues.shift() ?? 70001);
@@ -650,6 +778,54 @@ describe('browser-route-driver', () => {
       );
       expect(page.goto).toHaveBeenCalledTimes(2);
       expect(page.waitForTimeout).toHaveBeenCalledWith(1000);
+    });
+
+    it('rejects smoke pages containing disallowed content', async () => {
+      const nowValues = [0, 0, 1, 70001];
+      jest.spyOn(Date, 'now').mockImplementation(() => nowValues.shift() ?? 70001);
+      const page = createPage({
+        onGoto: (_url, currentPage) => {
+          currentPage.__setUrl('https://status.datamancy.net/');
+          currentPage.__setBody('Ready Content Error');
+        },
+      });
+      const route = createRoute({
+        host: 'status',
+        label: 'Status',
+        kind: 'public',
+        smoke: {
+          matcher: /Ready Content/,
+          disallowMatcher: /Error/,
+        },
+      });
+
+      await expect(assertSmokeContract(page, route, user)).rejects.toThrow(
+        'Status authenticated page did not satisfy smoke contract'
+      );
+    });
+
+    it('rejects smoke pages on disallowed URLs', async () => {
+      const nowValues = [0, 0, 1, 70001];
+      jest.spyOn(Date, 'now').mockImplementation(() => nowValues.shift() ?? 70001);
+      const page = createPage({
+        onGoto: (_url, currentPage) => {
+          currentPage.__setUrl('https://status.datamancy.net/auth/callback');
+          currentPage.__setBody('Ready Content');
+        },
+      });
+      const route = createRoute({
+        host: 'status',
+        label: 'Status',
+        kind: 'public',
+        smoke: {
+          matcher: /Ready Content/,
+          disallowUrlMatcher: /\/auth\//,
+        },
+      });
+
+      await expect(assertSmokeContract(page, route, user)).rejects.toThrow(
+        'Status authenticated page did not satisfy smoke contract'
+      );
     });
 
     it('logs into forward-auth smoke routes when they initially land on Keycloak', async () => {
@@ -785,6 +961,97 @@ describe('browser-route-driver', () => {
       expect(mockHandleConsentScreen).toHaveBeenCalledWith(page);
     });
 
+    it('waits through service-login content before starting OIDC login', async () => {
+      let settingsVisits = 0;
+      const page = createPage({
+        locators: {
+          'input[name="full_name"]': createLocator({ visible: true }),
+        },
+        onGoto: (url, currentPage) => {
+          if (url === 'https://forgejo.datamancy.net/login') {
+            currentPage.__setUrl(url);
+            currentPage.__setBody('Sign in with Keycloak');
+            return;
+          }
+          if (url === 'https://forgejo.datamancy.net/user/settings') {
+            settingsVisits += 1;
+          }
+          currentPage.__setUrl('https://forgejo.datamancy.net/user/settings');
+          currentPage.__setBody(settingsVisits > 1 ? 'Account Profile' : 'Sign in with Keycloak');
+        },
+      });
+      page.__onOidcClick = async () => {
+        page.__setUrl('https://forgejo.datamancy.net/user/settings');
+        page.__setBody('Account Profile');
+      };
+      const route = createRoute({
+        host: 'forgejo',
+        label: 'Forgejo',
+        kind: 'oidc_login',
+        anonymous: {
+          kind: 'service_login',
+          path: '/login',
+          matcher: /Sign in with Keycloak/,
+        },
+        smoke: {
+          path: '/user/settings',
+          matcher: /Account|Profile/,
+          selector: 'input[name="full_name"]',
+          loginLabel: 'Keycloak',
+        },
+      });
+
+      await expect(assertSmokeContract(page, route, user)).resolves.toBeUndefined();
+      expect(mockRouteUrl).toHaveBeenCalledWith(route, '/login');
+      expect(mockClickOIDCButton).toHaveBeenCalledWith(page, 'Keycloak');
+    });
+
+    it('continues OIDC login when service-login readiness and final URL waits fail', async () => {
+      let settingsVisits = 0;
+      const page = createPage({
+        locators: {
+          'input[name="full_name"]': createLocator({ visible: true }),
+        },
+        onGoto: (url, currentPage) => {
+          if (url === 'https://forgejo.datamancy.net/user/settings') {
+            settingsVisits += 1;
+            currentPage.__setUrl(url);
+            currentPage.__setBody(settingsVisits > 1 ? 'Account Profile' : 'Sign in with Keycloak');
+            return;
+          }
+          currentPage.__setUrl(url);
+          currentPage.__setBody('');
+        },
+      });
+      page.waitForURL = jest.fn(async () => {
+        throw new Error('url wait timed out');
+      });
+      page.__onOidcClick = async () => {
+        page.__setUrl('https://forgejo.datamancy.net/user/settings');
+        page.__setBody('Account Profile');
+      };
+      const route = createRoute({
+        host: 'forgejo',
+        label: 'Forgejo',
+        kind: 'oidc_login',
+        anonymous: {
+          kind: 'service_login',
+          path: '/login',
+          matcher: /Sign in with Keycloak/,
+        },
+        smoke: {
+          path: '/user/settings',
+          matcher: /Account|Profile/,
+          selector: 'input[name="full_name"]',
+          loginLabel: 'Keycloak',
+        },
+      });
+
+      await expect(assertSmokeContract(page, route, user)).resolves.toBeUndefined();
+      expect(mockClickOIDCButton).toHaveBeenCalledWith(page, 'Keycloak');
+      expect(page.waitForURL).toHaveBeenCalled();
+    });
+
     it('uses an explicit OIDC start path before provider login', async () => {
       let settingsVisits = 0;
       const page = createPage({
@@ -824,6 +1091,49 @@ describe('browser-route-driver', () => {
       expect(mockRouteUrl).toHaveBeenCalledWith(route, '/oauth/start');
       expect(mockKeycloakLogin).toHaveBeenCalledWith(page, 'gerald', 'secret');
       expect(mockClickOIDCButton).not.toHaveBeenCalled();
+    });
+
+    it('handles consent screens that appear after provider login', async () => {
+      let settingsVisits = 0;
+      const page = createPage({
+        locators: {
+          'input[name="full_name"]': createLocator({ visible: true }),
+        },
+        onGoto: (url, currentPage) => {
+          if (url === 'https://forgejo.datamancy.net/oauth/start') {
+            currentPage.__setUrl('https://keycloak.datamancy.net/realms/webservices/protocol/openid-connect/auth?client_id=forgejo');
+            currentPage.__setBody('Keycloak Sign in');
+            return;
+          }
+          if (url === 'https://forgejo.datamancy.net/user/settings') {
+            settingsVisits += 1;
+          }
+          currentPage.__setUrl('https://forgejo.datamancy.net/user/settings');
+          currentPage.__setBody(settingsVisits > 1 ? 'Account Profile' : 'Sign in with Keycloak');
+        },
+      });
+      page.__onKeycloakLogin = async () => {
+        page.__setUrl('https://keycloak.datamancy.net/consent/openid/decision?flow=oidc');
+      };
+      page.__onConsent = async () => {
+        page.__setUrl('https://forgejo.datamancy.net/user/settings');
+        page.__setBody('Account Profile');
+      };
+      const route = createRoute({
+        host: 'forgejo',
+        label: 'Forgejo',
+        kind: 'oidc_login',
+        smoke: {
+          path: '/user/settings',
+          oidcStartPath: '/oauth/start',
+          matcher: /Account|Profile/,
+          selector: 'input[name="full_name"]',
+        },
+      });
+
+      await expect(assertSmokeContract(page, route, user)).resolves.toBeUndefined();
+      expect(mockKeycloakLogin).toHaveBeenCalledWith(page, 'gerald', 'secret');
+      expect(mockHandleConsentScreen).toHaveBeenCalledWith(page);
     });
 
     it('recovers the transient BookStack OIDC callback error and continues to the smoke page', async () => {
@@ -933,6 +1243,53 @@ describe('browser-route-driver', () => {
         waitUntil: 'domcontentloaded',
         timeout: 15000,
       });
+    });
+
+    it('continues when BookStack callback recovery finds no retry control', async () => {
+      let bookPathVisits = 0;
+      const retryButton = createLocator({ visible: false });
+      const page = createPage({
+        locators: {
+          'a[href="/books"]': createLocator({ visible: true }),
+          '#oidc-login': retryButton,
+        },
+        onGoto: (url, currentPage) => {
+          if (url === 'https://bookstack.datamancy.net/books') {
+            bookPathVisits += 1;
+            if (bookPathVisits === 1) {
+              currentPage.__setUrl('https://keycloak.datamancy.net/?rd=https%3A%2F%2Fbookstack.datamancy.net%2Fbooks');
+              currentPage.__setBody('Keycloak Sign in');
+            } else {
+              currentPage.__setUrl('https://bookstack.datamancy.net/books');
+              currentPage.__setBody('Books Shelves Recently Updated Pages');
+            }
+            return;
+          }
+
+          if (url === 'https://bookstack.datamancy.net/' || url === 'https://bookstack.datamancy.net/login') {
+            currentPage.__setUrl('https://bookstack.datamancy.net/login');
+            currentPage.__setBody('Login');
+          }
+        },
+      });
+      page.__onKeycloakLogin = async () => {
+        page.__setUrl('https://bookstack.datamancy.net/oidc/callback?code=abc123');
+        page.__setBody('An Error Occurred');
+      };
+      const route = createRoute({
+        host: 'bookstack',
+        label: 'BookStack',
+        kind: 'oidc_login',
+        smoke: {
+          path: '/books',
+          matcher: /Books|Shelves|Recently Updated Pages/,
+          selector: 'a[href="/books"]',
+          loginLabel: 'Keycloak',
+        },
+      });
+
+      await expect(assertSmokeContract(page, route, user)).resolves.toBeUndefined();
+      expect(retryButton.click).not.toHaveBeenCalled();
     });
 
     it('rejects unsupported smoke route kinds', async () => {
@@ -1121,6 +1478,46 @@ describe('browser-route-driver', () => {
       expect(fetchMock).toHaveBeenCalledWith('/api/agent-accounts', expect.objectContaining({ method: 'POST' }));
       expect(fetchMock).toHaveBeenCalledWith('/api/agent-accounts/agent-1/tokens', expect.objectContaining({ method: 'POST' }));
       expect(fetchMock).toHaveBeenCalledWith('/api/agent-accounts/agent-1/close', expect.objectContaining({ method: 'POST' }));
+    });
+
+    it('reports ChatGPT connector visual setup API failures', async () => {
+      const screenshotRoot = fs.mkdtempSync('/tmp/webservices-chatgpt-visual-failure-test-');
+      const fetchMock = jest.fn().mockResolvedValueOnce({
+        ok: false,
+        status: 500,
+        statusText: 'Internal Server Error',
+        text: async () => JSON.stringify({ error: 'agent create failed' }),
+      });
+      const originalFetch = (global as any).fetch;
+      (global as any).fetch = fetchMock;
+      const page = createPage({
+        locators: {
+          '#agent-accounts': createLocator({ visible: true }),
+        },
+        onGoto: (_url, currentPage) => {
+          currentPage.__setUrl('https://chatgpt-connector.datamancy.net/');
+          currentPage.__setBody('Connector Ready');
+        },
+      });
+      const route = createRoute({
+        host: 'chatgpt-connector',
+        label: 'ChatGPT Connector',
+        kind: 'public',
+        visual: {
+          fileStem: 'chatgpt-connector',
+          path: '/',
+          matcher: /Connector Ready/,
+          selector: '#agent-accounts',
+        },
+      });
+
+      try {
+        await expect(captureVisualSnapshot(page, route, user, screenshotRoot)).rejects.toThrow('agent create failed');
+      } finally {
+        (global as any).fetch = originalFetch;
+      }
+
+      expect(page.screenshot).not.toHaveBeenCalled();
     });
   });
 });
