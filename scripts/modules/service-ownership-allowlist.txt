@@ -4,6 +4,7 @@ global.settings/volume-init.yml
 global.settings/volumes.yml
 global.settings/networks.yml
 stack.systemd/graph.json
+stack.config/components.json
 scripts/lib
 scripts/modules
 stack.kotlin/pipeline-common/src/main/kotlin/org/webservices/pipeline/config/Config.kt

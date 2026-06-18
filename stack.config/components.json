@@ -1,0 +1,368 @@
+{
+  "schemaVersion": 1,
+  "defaultComponents": [
+    "core"
+  ],
+  "components": {
+    "core": {
+      "name": "Core platform",
+      "description": "Edge, identity, shared databases, cache, Docker access proxies, and onboarding.",
+      "dependencies": [],
+      "composeFiles": [
+        "caddy.yml",
+        "docker-proxy.yml",
+        "keycloak.yml",
+        "keycloak-auth-gateway.yml",
+        "mariadb.yml",
+        "memcached.yml",
+        "onboarding.yml",
+        "postgres.yml",
+        "postgres-ssd.yml",
+        "valkey.yml"
+      ]
+    },
+    "observability": {
+      "name": "Observability",
+      "description": "Metrics, logs, dashboards, health automation, and update monitoring.",
+      "dependencies": [
+        "core",
+        "crowdsec",
+        "ntfy"
+      ],
+      "composeFiles": [
+        "alertmanager.yml",
+        "alloy.yml",
+        "autoheal.yml",
+        "cadvisor.yml",
+        "docker-exporter.yml",
+        "dozzle.yml",
+        "grafana.yml",
+        "loki.yml",
+        "node-exporter.yml",
+        "prometheus.yml",
+        "watchtower.yml"
+      ]
+    },
+    "inference": {
+      "name": "Inference",
+      "description": "Embedding inference and vector database services.",
+      "dependencies": [
+        "core"
+      ],
+      "composeFiles": [
+        "embedding.yml",
+        "qdrant.yml"
+      ]
+    },
+    "search": {
+      "name": "Search backends",
+      "description": "OpenSearch text search and Qdrant vector search APIs.",
+      "dependencies": [
+        "inference"
+      ],
+      "composeFiles": [
+        "opensearch.yml"
+      ]
+    },
+    "pipeline": {
+      "name": "Knowledge pipeline",
+      "description": "Airflow, NATS JetStream, and ingestion/publication runner services.",
+      "dependencies": [
+        "search",
+        "bookstack"
+      ],
+      "composeFiles": [
+        "pipeline.yml"
+      ]
+    },
+    "bookstack": {
+      "name": "BookStack",
+      "description": "Shared documentation and procedural docs publication target.",
+      "dependencies": [
+        "core"
+      ],
+      "composeFiles": [
+        "bookstack.yml"
+      ]
+    },
+    "progression": {
+      "name": "Sovereign compute progression",
+      "description": "Evidence-backed dashboard and stackctl apprenticeship layer.",
+      "dependencies": [
+        "bookstack"
+      ],
+      "composeFiles": [
+        "progression.yml"
+      ]
+    },
+    "chatgpt-connector": {
+      "name": "ChatGPT connector",
+      "description": "Model-context connector backed by search and workspace APIs.",
+      "dependencies": [
+        "workspace-provisioner"
+      ],
+      "composeFiles": [
+        "chatgpt-connector.yml"
+      ]
+    },
+    "workspace-provisioner": {
+      "name": "Workspace provisioner",
+      "description": "Authenticated disposable agent workspace controller.",
+      "dependencies": [
+        "search"
+      ],
+      "composeFiles": [
+        "workspace-provisioner.yml"
+      ]
+    },
+    "donetick": {
+      "name": "Donetick",
+      "description": "Household task and routine tracking.",
+      "dependencies": [
+        "core"
+      ],
+      "composeFiles": [
+        "donetick.yml"
+      ]
+    },
+    "crowdsec": {
+      "name": "CrowdSec",
+      "description": "Security event detection, local decisions, and alert simulation evidence.",
+      "dependencies": [
+        "core"
+      ],
+      "composeFiles": [
+        "crowdsec.yml"
+      ]
+    },
+    "erpnext": {
+      "name": "ERPNext",
+      "description": "ERPNext application runtime.",
+      "dependencies": [
+        "core"
+      ],
+      "composeFiles": [
+        "erpnext.yml"
+      ]
+    },
+    "forgejo": {
+      "name": "Forgejo",
+      "description": "Git forge service.",
+      "dependencies": [
+        "core"
+      ],
+      "composeFiles": [
+        "forgejo.yml"
+      ]
+    },
+    "forgejo-runner": {
+      "name": "Forgejo runner",
+      "description": "Forgejo Actions runner with isolated Docker access.",
+      "dependencies": [
+        "forgejo"
+      ],
+      "composeFiles": [
+        "forgejo-runner.yml"
+      ]
+    },
+    "homeassistant": {
+      "name": "Home Assistant",
+      "description": "Home automation service.",
+      "dependencies": [
+        "core"
+      ],
+      "composeFiles": [
+        "homeassistant.yml"
+      ]
+    },
+    "portal": {
+      "name": "Stack Portal",
+      "description": "Contract-driven portal for selected services, profile dashboards, and validation evidence.",
+      "dependencies": [
+        "core"
+      ],
+      "composeFiles": [
+        "portal.yml"
+      ]
+    },
+    "homepage": {
+      "name": "Homepage compatibility redirect",
+      "description": "Compatibility alias that selects the canonical portal and redirects homepage.<domain> to portal.<domain>.",
+      "dependencies": [
+        "portal"
+      ],
+      "composeFiles": []
+    },
+    "jellyfin": {
+      "name": "Jellyfin",
+      "description": "Media server and playback profile proxy.",
+      "dependencies": [
+        "core"
+      ],
+      "composeFiles": [
+        "jellyfin.yml"
+      ]
+    },
+    "jupyterhub": {
+      "name": "JupyterHub",
+      "description": "Shared notebook environment.",
+      "dependencies": [
+        "core"
+      ],
+      "composeFiles": [
+        "jupyter-notebook.yml",
+        "jupyterhub.yml"
+      ]
+    },
+    "kopia": {
+      "name": "Kopia",
+      "description": "Backup service.",
+      "dependencies": [
+        "core"
+      ],
+      "composeFiles": [
+        "kopia.yml"
+      ]
+    },
+    "mailserver": {
+      "name": "Mailserver",
+      "description": "Shared mail server.",
+      "dependencies": [
+        "core"
+      ],
+      "composeFiles": [
+        "mailserver.yml"
+      ]
+    },
+    "matrix": {
+      "name": "Matrix",
+      "description": "Synapse, Element, Matrix Authentication Service, and LiveKit RTC.",
+      "dependencies": [
+        "core"
+      ],
+      "composeFiles": [
+        "element.yml",
+        "livekit.yml",
+        "matrix-authentication-service.yml",
+        "synapse.yml"
+      ]
+    },
+    "mastodon": {
+      "name": "Mastodon",
+      "description": "Mastodon social runtime.",
+      "dependencies": [
+        "core"
+      ],
+      "composeFiles": [
+        "mastodon.yml"
+      ]
+    },
+    "ntfy": {
+      "name": "ntfy",
+      "description": "Shared notification service.",
+      "dependencies": [
+        "core"
+      ],
+      "composeFiles": [
+        "ntfy.yml"
+      ]
+    },
+    "onlyoffice": {
+      "name": "OnlyOffice",
+      "description": "Document editing backend for Seafile.",
+      "dependencies": [
+        "seafile"
+      ],
+      "composeFiles": [
+        "onlyoffice.yml"
+      ]
+    },
+    "planka": {
+      "name": "Planka",
+      "description": "Kanban project management.",
+      "dependencies": [
+        "core"
+      ],
+      "composeFiles": [
+        "planka.yml"
+      ]
+    },
+    "seafile": {
+      "name": "Seafile",
+      "description": "File sync and sharing service.",
+      "dependencies": [
+        "core"
+      ],
+      "composeFiles": [
+        "seafile.yml"
+      ]
+    },
+    "sogo": {
+      "name": "SOGo",
+      "description": "Groupware webmail and calendar service.",
+      "dependencies": [
+        "mailserver"
+      ],
+      "composeFiles": [
+        "sogo.yml"
+      ]
+    },
+    "vaultwarden": {
+      "name": "Vaultwarden",
+      "description": "Password manager service.",
+      "dependencies": [
+        "mailserver"
+      ],
+      "composeFiles": [
+        "vaultwarden.yml"
+      ]
+    },
+    "apps": {
+      "name": "All collaboration apps",
+      "description": "Convenience component for the platform-owned app suite.",
+      "dependencies": [
+        "bookstack",
+        "donetick",
+        "erpnext",
+        "forgejo",
+        "homeassistant",
+        "portal",
+        "jellyfin",
+        "jupyterhub",
+        "kopia",
+        "matrix",
+        "mastodon",
+        "ntfy",
+        "onlyoffice",
+        "planka",
+        "seafile",
+        "sogo",
+        "vaultwarden"
+      ],
+      "composeFiles": []
+    },
+    "full": {
+      "name": "Full platform",
+      "description": "Convenience component for every platform-owned service.",
+      "dependencies": [
+        "apps",
+        "chatgpt-connector",
+        "forgejo-runner",
+        "observability",
+        "pipeline",
+        "progression"
+      ],
+      "composeFiles": []
+    },
+    "huly": {
+      "name": "Huly",
+      "description": "Internal work cockpit for projects, tasks, documents, and employee execution.",
+      "dependencies": [
+        "core"
+      ],
+      "composeFiles": [
+        "huly.yml"
+      ]
+    }
+  }
+}
