@@ -297,6 +297,7 @@ build_derived_render_values() {
   render_set SYSTEMD_USER_UID "$(id -u)"
   render_set SYSTEMD_USER_GID "$(id -g)"
   render_set SYSTEMD_USER_RUNTIME_DIR "${XDG_RUNTIME_DIR:-/run/user/$(id -u)}"
+  render_set STACK_RUNTIME_DIR "${STACK_RUNTIME_DIR:-${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/webservices-runtime}"
   if ! render_has PLAYWRIGHT_IGNORE_HTTPS_ERRORS || [ -z "$(render_get PLAYWRIGHT_IGNORE_HTTPS_ERRORS)" ]; then
     render_set PLAYWRIGHT_IGNORE_HTTPS_ERRORS "false"
   fi

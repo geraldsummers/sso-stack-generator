@@ -82,6 +82,7 @@ component_lock_file="$BUNDLE_ROOT/site/components.lock.json"
 runtime_root="$(cd "$(dirname "$RUNTIME_ROOT")" && pwd -P)/$(basename "$RUNTIME_ROOT")"
 runtime_configs_dir="$(runtime_configs_dir_path "$DEPLOY_ROOT")"
 runtime_env_file="$(runtime_env_file_path "$DEPLOY_ROOT")"
+export STACK_RUNTIME_DIR="$runtime_root"
 
 render_set SITE_NAME "$site_name"
 component_selection_load_runtime "$site_manifest_path" "$component_catalog_file" "$component_lock_file"

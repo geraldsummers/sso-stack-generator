@@ -17,6 +17,30 @@ class StackDeploymentHelpersTest {
     }
 
     @Test
+    fun `progression uses selected stack runtime directory`() {
+        val progressionCompose = Files.readString(repoFile("stack.compose/progression.yml"))
+        val renderValues = Files.readString(repoFile("scripts/lib/render-values.sh"))
+        val renderRuntime = Files.readString(repoFile("scripts/deploy/render-runtime.sh"))
+
+        assertTrue(
+            progressionCompose.contains("\${STACK_RUNTIME_DIR:?STACK_RUNTIME_DIR is required}/progression:/runtime/progression"),
+            "Progression should mount the runtime directory selected by deploy runtime preparation"
+        )
+        assertTrue(
+            renderValues.contains("render_set STACK_RUNTIME_DIR"),
+            "Runtime env rendering should emit STACK_RUNTIME_DIR"
+        )
+        assertTrue(
+            renderRuntime.contains("export STACK_RUNTIME_DIR=\"\$runtime_root\""),
+            "render-runtime should pass the selected deploy runtime root into env rendering"
+        )
+        assertFalse(
+            progressionCompose.contains("SYSTEMD_USER_RUNTIME_DIR") && progressionCompose.contains("webservices-runtime/progression"),
+            "Progression must not bypass the selected fallback runtime directory"
+        )
+    }
+
+    @Test
     fun `docker compose command construction uses bundle root and runtime env`() {
         val bundleRoot = "/app/build"
         val composeFile = "$bundleRoot/docker-compose.yml"

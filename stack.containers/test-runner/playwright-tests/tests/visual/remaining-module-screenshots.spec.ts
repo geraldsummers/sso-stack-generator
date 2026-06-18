@@ -1646,6 +1646,11 @@ test.describe('Remaining real screenshot coverage', () => {
         await page.goto(serviceUrl('vaultwarden', '/#/vault'), { waitUntil: 'domcontentloaded', timeout: 45000 }).catch(() => {});
         await unlockVaultwardenLockedVault(page, vaultUser.password);
         await dismissVaultwardenExtensionPrompt(page);
+        await unlockVaultwardenLoginForm(page, vaultUser.email, vaultUser.password);
+        await verifyVaultwardenPasswordToken(page, vaultUser);
+        await page.goto(serviceUrl('vaultwarden', '/#/vault'), { waitUntil: 'domcontentloaded', timeout: 45000 }).catch(() => {});
+        await unlockVaultwardenLockedVault(page, vaultUser.password);
+        await dismissVaultwardenExtensionPrompt(page);
         await page.waitForFunction(
           () => /My Vault|Vaults|Items|Search vault|Generator/i.test(document.body.innerText),
           null,

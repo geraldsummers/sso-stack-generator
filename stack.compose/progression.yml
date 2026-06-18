@@ -27,7 +27,7 @@ services:
       - ./build/stack.config/caddy/Caddyfile:/bundle/stack.config/caddy/Caddyfile:ro
       - ./build/stack.config/keycloak/configure-runtime.sh:/bundle/stack.config/keycloak/configure-runtime.sh:ro
       - ./build/stack.systemd:/bundle/stack.systemd:ro
-      - ${SYSTEMD_USER_RUNTIME_DIR:?SYSTEMD_USER_RUNTIME_DIR is required}/webservices-runtime/progression:/runtime/progression
+      - ${STACK_RUNTIME_DIR:?STACK_RUNTIME_DIR is required}/progression:/runtime/progression
     healthcheck:
       test:
         - CMD-SHELL
