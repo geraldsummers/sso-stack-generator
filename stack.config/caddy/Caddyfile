@@ -27,9 +27,9 @@
 }
 
 # Privacy-bounded access logs for account/service usage dashboards.
-# Keep request bodies, request/response headers, URL paths, query strings,
-# cookies, and full client IPs out of Loki; dashboards use appended
-# user/service fields instead.
+# Keep request bodies, request/response headers, and cookies out of Loki.
+# HTTP IDS scenarios require Caddy to emit the request URI and exact client IP
+# so CrowdSec can classify probes and make actionable decisions.
 (access_observability) {
 	header {
 		Strict-Transport-Security "max-age=31536000; includeSubDomains"
@@ -43,10 +43,7 @@
 		format filter {
 			wrap json
 			request>headers delete
-			request>uri delete
 			resp_headers delete
-			request>remote_ip ip_mask 24 48
-			request>client_ip ip_mask 24 48
 		}
 	}
 }

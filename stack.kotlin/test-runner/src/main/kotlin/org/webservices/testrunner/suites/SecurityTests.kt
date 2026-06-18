@@ -60,19 +60,30 @@ suspend fun TestRunner.securityTests() = suite("Security Tests") {
         println("      ✓ CrowdSec metrics are available")
     }
 
-    test("CrowdSec IDS simulated alert creates a local decision") {
-        val simulatedIp = "203.0.113.250"
-        cleanup {
-            crowdsecExec("sh", "-lc", "cscli decisions delete --ip '$simulatedIp' >/dev/null 2>&1 || true")
-        }
+    test("CrowdSec IDS replayed Caddy attack trips detection") {
+        val result = crowdsecExec(
+            "sh", "-lc",
+            """
+            set -eu
+            log_file="${'$'}(mktemp)"
+            dump_dir="${'$'}(mktemp -d)"
+            trap 'rm -f "${'$'}log_file"; rm -rf "${'$'}dump_dir"' EXIT
 
-        crowdsecExec("sh", "-lc", "cscli decisions delete --ip '$simulatedIp' >/dev/null 2>&1 || true")
-        val result = crowdsecExec("webservices-crowdsec-simulate-alert", simulatedIp, "5m")
+            printf '%s\n' '{"level":"info","ts":1781819574.0889907,"logger":"http.log.access.log0","msg":"handled request","request":{"remote_ip":"198.51.100.250","client_ip":"198.51.100.250","proto":"HTTP/1.1","method":"GET","host":"portal.example.test","uri":"/w00tw00t.at.ISC.SANS.DFind:)"},"status":404}' > "${'$'}log_file"
+
+            crowdsec -dsn "file://${'$'}log_file" -type caddy -no-api -no-capi -dump-data "${'$'}dump_dir" >/tmp/crowdsec-ids-replay.out 2>&1
+            grep -F "performed 'ltsich/http-w00tw00t'" /tmp/crowdsec-ids-replay.out
+            grep -F 'scenario: ltsich/http-w00tw00t' "${'$'}dump_dir/bucket-dump.yaml"
+            grep -F 'source_ip' "${'$'}dump_dir/bucket-dump.yaml"
+            grep -F '198.51.100.250' "${'$'}dump_dir/bucket-dump.yaml"
+            rm -f /tmp/crowdsec-ids-replay.out
+            """.trimIndent()
+        )
         require(result.exitCode == 0) {
-            "CrowdSec simulated alert did not create a decision: ${result.output}"
+            "CrowdSec did not trip an IDS scenario from replayed Caddy attack logs: ${result.output}"
         }
-        result.output shouldContain simulatedIp
-        result.output shouldContain "webservices-simulated-alert"
-        println("      ✓ CrowdSec simulated alert produced a local decision for $simulatedIp")
+        result.output shouldContain "ltsich/http-w00tw00t"
+        result.output shouldContain "198.51.100.250"
+        println("      ✓ CrowdSec parser and scenario engine tripped on a replayed Caddy attack")
     }
 }

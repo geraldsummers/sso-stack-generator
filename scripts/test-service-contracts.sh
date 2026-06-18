@@ -185,6 +185,14 @@ grep -Fq './configs/crowdsec/acquis.yaml:/etc/crowdsec/acquis.yaml:ro' "$ROOT_DI
 grep -Fq './configs/crowdsec/simulate-alert.sh:/usr/local/bin/webservices-crowdsec-simulate-alert:ro' "$ROOT_DIR/stack.compose/crowdsec.yml"
 grep -Fq 'cscli decisions add' "$ROOT_DIR/stack.config/crowdsec/simulate-alert.sh"
 grep -Fq 'webservices-simulated-alert' "$ROOT_DIR/stack.config/crowdsec/simulate-alert.sh"
+if grep -Fq 'request>uri delete' "$ROOT_DIR/stack.config/caddy/Caddyfile"; then
+  printf '[service-contract-test] Caddy access logs must retain request URI for CrowdSec HTTP scenario detection\n' >&2
+  exit 1
+fi
+if grep -Eq 'request>(remote_ip|client_ip)[[:space:]]+ip_mask' "$ROOT_DIR/stack.config/caddy/Caddyfile"; then
+  printf '[service-contract-test] Caddy access logs must retain exact source IPs for actionable CrowdSec decisions\n' >&2
+  exit 1
+fi
 
 if rg -n 'gethomepage|homepage:3000|ghcr\.io/gethomepage' "$ROOT_DIR/stack.compose" "$ROOT_DIR/stack.config/caddy" >/dev/null; then
   printf '[service-contract-test] gethomepage runtime references must not remain in compose or Caddy\n' >&2

@@ -1338,7 +1338,7 @@ Runtime stack-contract suites run by stack.containers/test-runner/run-tests.sh k
 - CrowdSec IDS service is healthy
 - CrowdSec IDS acquires Caddy and identity logs
 - CrowdSec IDS metrics are available
-- CrowdSec IDS simulated alert creates a local decision
+- CrowdSec IDS replayed Caddy attack trips detection
 
 ### `stack.kotlin/test-runner/src/main/kotlin/org/webservices/testrunner/suites/StackLlmCapabilityTests.kt`
 - No direct test entries; helper/suite registration source.
