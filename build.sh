@@ -87,6 +87,10 @@ component_selection_write_metadata "$site_manifest_path" "$component_catalog" "$
 "$SCRIPT_DIR/scripts/generate-contract-reports.sh" \
   --catalog "$component_catalog" \
   --contracts "$DIST_DIR/build/stack.config/service-contracts.json" \
+  --profiles "$DIST_DIR/build/stack.config/portal-profiles.json" \
+  --theme "$DIST_DIR/build/stack.config/theme-contract.json" \
+  --demo-content "$DIST_DIR/build/stack.config/demo-content-contract.json" \
+  --pos-exploration "$DIST_DIR/build/stack.config/pos-exploration.json" \
   --lock "$DIST_DIR/build/site/components.lock.json" \
   --output-dir "$DIST_DIR/build/reports"
 log "selected components: $(jq -r '.components | join(", ")' "$DIST_DIR/build/site/components.lock.json")"
