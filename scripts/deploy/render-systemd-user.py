@@ -369,6 +369,13 @@ def project_relative_source(source: str, local_deploy_root: Path) -> Optional[st
     return f"./{relative.as_posix()}"
 
 
+def strip_deploy_root_from_template_path(source: str, local_deploy_root: Path) -> str:
+    deploy_root_prefix = f"{local_deploy_root.as_posix()}/"
+    if "$" in source and source.startswith(deploy_root_prefix):
+        return source[len(deploy_root_prefix):]
+    return source
+
+
 def infer_path_kind(source_path: Path, local_deploy_root: Path, local_bundle_root: Path) -> str:
     if source_path.exists():
         if source_path.is_dir():
@@ -406,10 +413,7 @@ def collect_path_contracts(domain: Domain, compose_config: dict, local_deploy_ro
             if not source:
                 continue
             if "$" in source:
-                contract_source = source
-                deploy_root_prefix = f"{local_deploy_root.as_posix()}/"
-                if contract_source.startswith(deploy_root_prefix):
-                    contract_source = contract_source[len(deploy_root_prefix):]
+                contract_source = strip_deploy_root_from_template_path(source, local_deploy_root)
                 existing = contracts.get(contract_source)
                 if existing is None or existing.kind == "exists":
                     contracts[contract_source] = PathContract(path=contract_source, kind="exists")
@@ -443,7 +447,9 @@ def normalize_service_mounts(service_config: dict, local_deploy_root: Path, decl
                 mount["bind"].setdefault("create_host_path", True)
                 mount.pop("volume", None)
                 mount_type = "bind"
-            if mount_type == "bind":
+            if mount_type == "bind" and "$" in source:
+                mount["source"] = strip_deploy_root_from_template_path(source, local_deploy_root)
+            elif mount_type == "bind":
                 project_relative = project_relative_source(source, local_deploy_root)
                 if project_relative is not None:
                     mount["source"] = project_relative
@@ -464,11 +470,17 @@ def normalize_service_env_files(service_config: dict, local_deploy_root: Path) -
         if isinstance(entry, dict):
             entry_copy = dict(entry)
             path = entry_copy.get("path")
-            if isinstance(path, str):
+            if isinstance(path, str) and "$" in path:
+                entry_copy["path"] = strip_deploy_root_from_template_path(path, local_deploy_root)
+            elif isinstance(path, str):
                 project_relative = project_relative_source(path, local_deploy_root)
                 if project_relative is not None:
                     entry_copy["path"] = project_relative
             normalized_env_files.append(entry_copy)
+            continue
+
+        if isinstance(entry, str) and "$" in entry:
+            normalized_env_files.append(strip_deploy_root_from_template_path(entry, local_deploy_root))
             continue
 
         if isinstance(entry, str):

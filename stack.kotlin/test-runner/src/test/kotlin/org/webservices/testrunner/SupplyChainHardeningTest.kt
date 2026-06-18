@@ -253,6 +253,85 @@ class SupplyChainHardeningTest {
     }
 
     @Test
+    fun `systemd renderer preserves absolute env template bind sources`() {
+        val renderer = repoRoot().resolve("scripts/deploy/render-systemd-user.py")
+        val workspace = Files.createTempDirectory("webservices-render-template-path-test-")
+        try {
+            val composeConfig = workspace.resolve("compose.json")
+            val graph = workspace.resolve("graph.json")
+            val baseNetworks = workspace.resolve("base-networks.json")
+            val outputDir = workspace.resolve("output")
+            val templateSource = workspace.resolve("${'$'}{HOST_SSH_DIR:?Set HOST_SSH_DIR}")
+
+            Files.writeString(
+                composeConfig,
+                """
+                {
+                  "services": {
+                    "svc": {
+                      "image": "alpine:3.20",
+                      "restart": "no",
+                      "volumes": [
+                        {
+                          "type": "bind",
+                          "source": "$templateSource",
+                          "target": "/home/tunnel/.ssh",
+                          "read_only": true
+                        }
+                      ]
+                    }
+                  },
+                  "networks": {},
+                  "volumes": {}
+                }
+                """.trimIndent() + "\n",
+            )
+            Files.writeString(baseNetworks, "{ \"networks\": {} }\n")
+            Files.writeString(
+                graph,
+                """
+                {
+                  "unitPrefix": "webservices",
+                  "defaultTarget": {
+                    "name": "webservices.target",
+                    "description": "Platform target",
+                    "install": true,
+                    "includeUnitsFromNonOnDemandDomains": true
+                  }
+                }
+                """.trimIndent() + "\n",
+            )
+
+            val result = runCommand(
+                workspace,
+                "python3",
+                renderer.toString(),
+                "--local-bundle-root", workspace.toString(),
+                "--local-deploy-root", workspace.toString(),
+                "--deploy-root-template", "/home/gerald/webservices",
+                "--unit-root-template", "/home/gerald/webservices/build/systemd-user",
+                "--runtime-env-file-template", "/home/gerald/webservices/runtime/stack.env",
+                "--compose-config-json", composeConfig.toString(),
+                "--graph-path", graph.toString(),
+                "--output-dir", outputDir.toString(),
+                "--compose-project-name", "webservices",
+                "--systemd-notify-bin", "/usr/bin/systemd-notify",
+                "--compose-helper", "/home/gerald/webservices/build/scripts/lib/systemd-compose-unit.sh",
+                "--infra-helper", "/home/gerald/webservices/build/scripts/lib/systemd-docker-infra.sh",
+                "--diagnostics-helper", "/home/gerald/webservices/build/scripts/lib/systemd-diagnostics.sh",
+                "--base-networks-json", baseNetworks.toString(),
+            )
+
+            assertTrue(result.exitCode == 0, result.stderr)
+            val shard = Files.readString(outputDir.resolve("compose/svc.compose.json"))
+            assertTrue(shard.contains("\"source\": \"${'$'}{HOST_SSH_DIR:?Set HOST_SSH_DIR}\""), shard)
+            assertFalse(shard.contains("\"source\": \"./${'$'}{HOST_SSH_DIR:?Set HOST_SSH_DIR}\""), shard)
+        } finally {
+            workspace.toFile().deleteRecursively()
+        }
+    }
+
+    @Test
     fun `systemd user unit install copies rendered units instead of linking bundle files`() {
         val text = repoFileText("scripts/deploy/install-systemd-user-units.sh")
 
