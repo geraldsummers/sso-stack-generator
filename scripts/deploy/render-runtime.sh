@@ -23,6 +23,7 @@ BUNDLE_ROOT="$(cd "$SCRIPT_DIR/.." && pwd -P)"
 DEPLOY_ROOT="$(cd "$BUNDLE_ROOT/.." && pwd -P)"
 SITE_MANIFEST_PATH="$BUNDLE_ROOT/site/manifest.json"
 RUNTIME_ROOT="$DEPLOY_ROOT/runtime"
+RUNTIME_ROOT_EXPLICIT=0
 SKIP_COMPOSE_VALIDATE=0
 
 prepare_host_runtime_dirs() {
@@ -50,6 +51,7 @@ while [ "$#" -gt 0 ]; do
       ;;
     --runtime-root)
       RUNTIME_ROOT="$2"
+      RUNTIME_ROOT_EXPLICIT=1
       shift
       ;;
     --skip-compose-validate)
@@ -68,6 +70,10 @@ EOF_USAGE
   esac
   shift
 done
+
+if [ "$RUNTIME_ROOT_EXPLICIT" = "0" ]; then
+  RUNTIME_ROOT="$DEPLOY_ROOT/runtime"
+fi
 
 require_cmd jq
 require_cmd envsubst

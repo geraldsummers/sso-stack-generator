@@ -34,6 +34,12 @@ class StackDeploymentHelpersTest {
             renderRuntime.contains("export STACK_RUNTIME_DIR=\"\$runtime_root\""),
             "render-runtime should pass the selected deploy runtime root into env rendering"
         )
+        assertTrue(
+            renderRuntime.contains("RUNTIME_ROOT_EXPLICIT=0") &&
+                renderRuntime.contains("RUNTIME_ROOT_EXPLICIT=1") &&
+                renderRuntime.contains("RUNTIME_ROOT=\"\$DEPLOY_ROOT/runtime\""),
+            "render-runtime should recompute the default runtime root after parsing --deploy-root"
+        )
         assertFalse(
             progressionCompose.contains("SYSTEMD_USER_RUNTIME_DIR") && progressionCompose.contains("webservices-runtime/progression"),
             "Progression must not bypass the selected fallback runtime directory"
