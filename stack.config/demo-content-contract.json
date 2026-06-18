@@ -1,0 +1,24 @@
+{
+  "schemaVersion": 1,
+  "canonicalScenario": "Northstar Portal Cleanup for Harbor & Pine Studio",
+  "personas": [
+    {"id": "alice", "name": "Alice Morgan", "role": "delivery lead", "avatarKind": "geometric"},
+    {"id": "bob", "name": "Bob Chen", "role": "platform operator", "avatarKind": "terminal"},
+    {"id": "charlie", "name": "Charlie Reed", "role": "documentation owner", "avatarKind": "notebook"},
+    {"id": "damian", "name": "Damian Walsh", "role": "finance admin", "avatarKind": "ledger"},
+    {"id": "evan", "name": "Evan Park", "role": "developer", "avatarKind": "build"},
+    {"id": "francis", "name": "Francis Vale", "role": "client reviewer", "avatarKind": "compass"}
+  ],
+  "requiredEvidence": {
+    "bookstack": ["business_runbook", "restore_drill", "handoff_page", "english_only"],
+    "sogo": ["business_inbox", "group_calendar", "contacts"],
+    "mastodon": ["multiple_personas", "progress_updates", "screenshot_context"],
+    "element": ["multiple_personas", "delivery_room", "screenshot_context"],
+    "seafile": ["library", "sharing", "permissions", "versioned_files"],
+    "onlyoffice": ["document_edit", "spreadsheet_edit", "presentation_edit"],
+    "grafana": ["stack_monitoring_dashboard", "economic_data_panel", "non_zero_data"],
+    "jupyterhub": ["executed_notebook_output"],
+    "vaultwarden": ["diverse_secrets", "collection_view"],
+    "workspaces": ["create", "access_material", "file_write_read", "cleanup_expiry", "role_denial", "invalid_input"]
+  }
+}

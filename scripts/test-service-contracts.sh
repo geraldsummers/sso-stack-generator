@@ -2,7 +2,7 @@
 set -Eeuo pipefail
 trap 'status=$?; printf "[service-contract-test] failed at line %s: %s (exit %s)\n" "$LINENO" "$BASH_COMMAND" "$status" >&2' ERR
 
-ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd -P)"
+ROOT_DIR="${WEBSERVICES_CONTRACT_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd -P)}"
 catalog="$ROOT_DIR/stack.config/components.json"
 contracts="$ROOT_DIR/stack.config/service-contracts.json"
 keycloak_realm="$ROOT_DIR/stack.config/keycloak/realm/webservices-realm.json.template"

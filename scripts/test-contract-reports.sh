@@ -2,7 +2,7 @@
 set -Eeuo pipefail
 trap 'status=$?; printf "[contract-reports-test] failed at line %s: %s (exit %s)\n" "$LINENO" "$BASH_COMMAND" "$status" >&2' ERR
 
-ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd -P)"
+ROOT_DIR="${WEBSERVICES_CONTRACT_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd -P)}"
 tmp_dir="$(mktemp -d)"
 trap 'rm -rf "$tmp_dir"' EXIT
 
@@ -19,6 +19,10 @@ EOF_JSON
 "$ROOT_DIR/scripts/generate-contract-reports.sh" \
   --catalog "$ROOT_DIR/stack.config/components.json" \
   --contracts "$ROOT_DIR/stack.config/service-contracts.json" \
+  --profiles "$ROOT_DIR/stack.config/portal-profiles.json" \
+  --theme "$ROOT_DIR/stack.config/theme-contract.json" \
+  --demo-content "$ROOT_DIR/stack.config/demo-content-contract.json" \
+  --pos-exploration "$ROOT_DIR/stack.config/pos-exploration.json" \
   --lock "$lock_file" \
   --output-dir "$reports_dir"
 

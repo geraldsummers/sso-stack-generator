@@ -5,6 +5,9 @@ global.settings/volumes.yml
 global.settings/networks.yml
 stack.systemd/graph.json
 stack.config/components.json
+stack.config/demo-content-contract.json
+stack.config/pos-exploration.json
+stack.config/theme-contract.json
 scripts/lib
 scripts/modules
 stack.kotlin/pipeline-common/src/main/kotlin/org/webservices/pipeline/config/Config.kt

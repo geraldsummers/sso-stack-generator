@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 1,
+  "status": "exploration-only",
+  "scope": "FOSS POS on Linux-connected POS hardware with server-backed reporting.",
+  "excludedFromBuild": true,
+  "candidatePatterns": [
+    "Linux POS terminal running a browser or native POS client",
+    "Server-side POS database or ERP integration",
+    "Receipt printer, cash drawer, barcode scanner, and card terminal treated as hardware contracts"
+  ],
+  "acceptanceBeforeImplementation": [
+    "Choose POS application and licensing model",
+    "Identify hardware interfaces and driver support",
+    "Decide whether payment processing is in scope",
+    "Define offline mode and sync behavior",
+    "Define security boundary for till users versus platform operators"
+  ]
+}

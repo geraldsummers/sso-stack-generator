@@ -7,6 +7,10 @@ LIB_DIR="$SCRIPT_DIR/lib"
 source "$LIB_DIR/common.sh"
 # shellcheck source=scripts/lib/build-metadata.sh
 source "$LIB_DIR/build-metadata.sh"
+# shellcheck source=scripts/lib/components.sh
+source "$LIB_DIR/components.sh"
+# shellcheck source=scripts/lib/external-modules.sh
+source "$LIB_DIR/external-modules.sh"
 
 TARGET="//:web_services_release"
 
@@ -40,6 +44,24 @@ require_cmd tar
 cd "$SOURCE_ROOT"
 require_clean_git_tree "$SOURCE_ROOT"
 
+contract_test_root="$SOURCE_ROOT"
+contract_test_tmp=""
+if [ -d "$EXTERNAL_MODULES_MATERIALIZED_DIR" ] && find "$EXTERNAL_MODULES_MATERIALIZED_DIR" -type f -print -quit | grep -q .; then
+  contract_test_tmp="$(mktemp -d)"
+  cleanup_contract_test_root() {
+    [ -z "$contract_test_tmp" ] || rm -rf "$contract_test_tmp"
+  }
+  trap cleanup_contract_test_root EXIT
+  for root in global.settings stack.compose stack.config stack.containers stack.kotlin stack.js stack.systemd scripts docs; do
+    if [ -e "$SOURCE_ROOT/$root" ]; then
+      cp -a "$SOURCE_ROOT/$root" "$contract_test_tmp/$root"
+    fi
+  done
+  external_modules_overlay_into "$contract_test_tmp"
+  component_catalog_merge_external "$contract_test_tmp/stack.config/components.json"
+  contract_test_root="$contract_test_tmp"
+fi
+
 local_test_dir="$SOURCE_ROOT/stack.containers/test-runner/playwright-tests"
 if [ -f "$local_test_dir/package.json" ]; then
   if [ ! -d "$local_test_dir/node_modules" ] || [ ! -f "$local_test_dir/node_modules/jest-cli/package.json" ] || [ ! -f "$local_test_dir/node_modules/typescript/package.json" ] || [ ! -f "$local_test_dir/node_modules/@playwright/test/package.json" ]; then
@@ -59,10 +81,10 @@ log "running external module checks"
 "$SCRIPT_DIR/test-external-modules.sh" >&2
 
 log "running service contract checks"
-"$SCRIPT_DIR/test-service-contracts.sh" >&2
+WEBSERVICES_CONTRACT_ROOT="$contract_test_root" "$SCRIPT_DIR/test-service-contracts.sh" >&2
 
 log "running contract report checks"
-"$SCRIPT_DIR/test-contract-reports.sh" >&2
+WEBSERVICES_CONTRACT_ROOT="$contract_test_root" "$SCRIPT_DIR/test-contract-reports.sh" >&2
 
 log "running mount diagnostics checks"
 "$SCRIPT_DIR/test-mount-diagnostics.sh" >&2
