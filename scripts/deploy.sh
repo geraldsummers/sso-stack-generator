@@ -1076,12 +1076,18 @@ reload_runtime_config_units() {
 
   if [ "${#reload_units[@]}" -gt 0 ]; then
     deploy_log "reloading active lifecycle units with runtime config mounts: $(join_array_limited "$SYSTEMD_PROGRESS_MAX_ITEMS" "${reload_units[@]}")"
-    user_systemctl reload "${reload_units[@]}"
+    for unit_name in "${reload_units[@]}"; do
+      deploy_log "reloading runtime-config lifecycle unit under systemd --user: $unit_name"
+      user_systemctl reload "$unit_name"
+    done
   fi
   if [ "${#restart_units[@]}" -gt 0 ]; then
     deploy_log "restarting active lifecycle units with runtime config mounts: $(join_array_limited "$SYSTEMD_PROGRESS_MAX_ITEMS" "${restart_units[@]}")"
     user_systemctl reset-failed "${restart_units[@]}" || true
-    user_systemctl restart "${restart_units[@]}"
+    for unit_name in "${restart_units[@]}"; do
+      deploy_log "restarting runtime-config lifecycle unit under systemd --user: $unit_name"
+      user_systemctl restart "$unit_name"
+    done
   fi
 }
 
