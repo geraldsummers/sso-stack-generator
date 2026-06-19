@@ -48,15 +48,33 @@ fi
 
 section "Mutable image tags"
 if have rg; then
-  rg -n '^\s*image:\s*\S+:latest(\s|$)' stack.compose global.settings stack.config 2>/dev/null || true
-  rg -n '^FROM\s+\S+:latest(\s|$)' stack.containers stack.config 2>/dev/null || true
+  image_roots=()
+  for root in stack.compose global.settings stack.config; do
+    [ -e "$root" ] && image_roots+=( "$root" )
+  done
+  if [ "${#image_roots[@]}" -gt 0 ]; then
+    rg -n '^\s*image:\s*\S+:latest(\s|$)' "${image_roots[@]}" 2>/dev/null || true
+  fi
+  dockerfile_roots=()
+  for root in stack.containers stack.config; do
+    [ -e "$root" ] && dockerfile_roots+=( "$root" )
+  done
+  if [ "${#dockerfile_roots[@]}" -gt 0 ]; then
+    rg -n '^FROM\s+\S+:latest(\s|$)' "${dockerfile_roots[@]}" 2>/dev/null || true
+  fi
 else
   printf '[skip] rg is not installed; image tag scan not run\n'
 fi
 
 section "High-risk container options"
 if have rg; then
-  rg -n '^\s*(privileged:\s*true|network_mode:\s*host|-\s*/var/run/docker\.sock:|-\s*/run/docker-labware/docker\.sock:)' stack.compose global.settings 2>/dev/null || true
+  option_roots=()
+  for root in stack.compose global.settings; do
+    [ -e "$root" ] && option_roots+=( "$root" )
+  done
+  if [ "${#option_roots[@]}" -gt 0 ]; then
+    rg -n '^\s*(privileged:\s*true|network_mode:\s*host|-\s*/var/run/docker\.sock:|-\s*/run/docker-labware/docker\.sock:)' "${option_roots[@]}" 2>/dev/null || true
+  fi
 else
   printf '[skip] rg is not installed; container option scan not run\n'
 fi
@@ -64,11 +82,17 @@ fi
 section "Compose syntax"
 if have docker && docker compose version >/dev/null 2>&1; then
   compose_args=()
-  while IFS= read -r compose_file; do
-    compose_args+=("-f" "$compose_file")
-  done < <(find stack.compose -maxdepth 1 -type f -name '*.yml' | sort)
-  docker compose "${compose_args[@]}" config --no-interpolate >/dev/null
-  printf '[compose] ok\n'
+  if [ -d stack.compose ]; then
+    while IFS= read -r compose_file; do
+      compose_args+=("-f" "$compose_file")
+    done < <(find stack.compose -maxdepth 1 -type f -name '*.yml' | sort)
+  fi
+  if [ "${#compose_args[@]}" -gt 0 ]; then
+    docker compose "${compose_args[@]}" config --no-interpolate >/dev/null
+    printf '[compose] ok\n'
+  else
+    printf '[skip] no stack.compose files in this checkout\n'
+  fi
 else
   printf '[skip] docker compose is not available\n'
 fi

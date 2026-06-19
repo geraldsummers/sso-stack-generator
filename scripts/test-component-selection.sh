@@ -205,10 +205,14 @@ PATH="$fake_bin:$PATH" "$ROOT_DIR/scripts/deploy/render-runtime.sh" \
 
 caddy_file="$tmp_root/bundle/runtime/configs/caddy/Caddyfile"
 keycloak_configure="$tmp_root/bundle/runtime/configs/keycloak/configure-runtime.sh"
+runtime_contracts="$tmp_root/bundle/runtime/configs/service-contracts.json"
 
 assert_contains "$caddy_file" 'reverse_proxy keycloak:8080' "core Keycloak route"
 assert_contains "$caddy_file" 'reverse_proxy onboarding:8080' "core onboarding route"
 assert_contains "$caddy_file" 'webservices core stack' "core apex fallback"
+if [ -f "$runtime_contracts" ]; then
+  jq -e '.components.core and (.components | has("bookstack") | not)' "$runtime_contracts" >/dev/null
+fi
 
 assert_not_contains "$caddy_file" 'reverse_proxy (vaultwarden|grafana|portal:8080|bookstack|matrix-authentication-service|mastodon|jupyterhub|homeassistant|search-service|chatgpt-connector|kopia|progression)' "disabled app Caddy upstream"
 assert_not_contains "$keycloak_configure" 'ensure_confidential_client "(bookstack|vaultwarden|matrix|planka|forgejo|mastodon|sogo|jellyfin|donetick|erpnext)' "disabled app Keycloak client"
@@ -256,6 +260,9 @@ assert_contains "$caddy_file" 'reverse_proxy portal:8080' "full Portal route"
 assert_contains "$caddy_file" 'redir https://portal' "full Homepage compatibility redirect"
 assert_contains "$caddy_file" 'reverse_proxy progression:8130' "full Progression route"
 assert_contains "$keycloak_configure" 'ensure_confidential_client "vaultwarden"' "full Vaultwarden Keycloak client"
+if [ -f "$runtime_contracts" ]; then
+  jq -e '.components.vaultwarden and .components.progression and (.components | has("huly") | not)' "$runtime_contracts" >/dev/null
+fi
 assert_not_contains "$caddy_file" 'webservices-component-(start|end)' "component marker"
 validate_caddy_file "$caddy_file"
 

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-REMOTE_HOST="${TESTDEV_REMOTE_HOST:-gerald@labware.local}"
+REMOTE_HOST="${TESTDEV_REMOTE_HOST:-}"
 REMOTE_DIR="${TESTDEV_REMOTE_DIR:-/tmp/sso-testdev-e2e}"
 
 usage() {
@@ -13,13 +13,18 @@ Usage:
   scripts/testdev/remote.sh status
 
 Environment:
-  TESTDEV_REMOTE_HOST  SSH target. Default: gerald@labware.local
+  TESTDEV_REMOTE_HOST  SSH target. Required.
   TESTDEV_REMOTE_DIR   Remote testdev bundle dir. Default: /tmp/sso-testdev-e2e
 EOF
 }
 
 [ "$#" -gt 0 ] || {
   usage >&2
+  exit 2
+}
+
+[ -n "$REMOTE_HOST" ] || {
+  printf 'TESTDEV_REMOTE_HOST is required for remote testdev commands\n' >&2
   exit 2
 }
 

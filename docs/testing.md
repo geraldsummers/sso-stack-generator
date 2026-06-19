@@ -17,14 +17,14 @@ git ls-files 'scripts/**/*.sh' 'ops/**/*.sh' 'stack.config/**/*.sh' | xargs -r s
 ./scripts/test-docs.sh
 ```
 
-## TypeScript Tests
+## Module-Owned TypeScript Tests
 
-The Playwright test-runner package has compile checks and unit coverage for
-route catalogs, identity helpers, telemetry, browser route drivers, and OIDC
-login helpers.
+The Playwright test-runner package is provided by the `test-runners` module and
+is available after module materialization or inside a built bundle. From a public
+generator-only checkout, run module tests in the module repository instead.
 
 ```bash
-cd stack.containers/test-runner/playwright-tests
+cd modules-workspace/test-runners-stack-module/stack.containers/test-runner/playwright-tests
 npm ci
 npm run build
 npm run test:unit
@@ -32,8 +32,8 @@ npm run test:unit
 
 ## Kotlin Tests
 
-Kotlin modules are built and tested through Gradle. CI also builds shadow jars
-to catch packaging regressions.
+Kotlin service modules are built and tested in their source or stack-module
+repositories, then materialized into the bundle.
 
 ```bash
 ./gradlew test shadowJar --no-daemon
@@ -42,7 +42,7 @@ to catch packaging regressions.
 ## Artifact Tests
 
 The release artifact path validates generated contracts, package assembly, and
-selected component output.
+selected component output after the configured modules have been materialized.
 
 ```bash
 ./scripts/test-component-selection.sh

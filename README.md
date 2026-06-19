@@ -64,14 +64,15 @@ cd ~/webservices
 ./run-tests.sh plan all
 ```
 
-Targeted test iteration from a source checkout uses the platform test runner:
+Targeted runtime test iteration uses the platform test runner after modules are
+materialized or from a built bundle:
 
 ```bash
-./stack.containers/test-runner/run-tests.sh source-unit
-./stack.containers/test-runner/run-tests.sh changed
-./stack.containers/test-runner/run-tests.sh kt-tests stack-contract
-./stack.containers/test-runner/run-tests.sh kt-plan stack-contract
-./stack.containers/test-runner/run-tests.sh kt-one <id> stack-contract
+./run-tests.sh source-unit
+./run-tests.sh changed
+./run-tests.sh kt-tests stack-contract
+./run-tests.sh kt-plan stack-contract
+./run-tests.sh kt-one <id> stack-contract
 ```
 
 The bundled `./run-tests.sh` supports `list`, `plan [target]`, `changed`,
@@ -85,10 +86,11 @@ a deployment.
 | --- | --- |
 | `build.sh` | Public local build entry point. |
 | `scripts/` | Build, resolver, deploy rendering, module, and validation helpers. |
-| `stack.kotlin/` | Kotlin services and test-runner code. |
-| `stack.compose/` | Base Compose source still owned by the generator. New deployable service overlays should usually live in modules. |
+| `modules/` | Public module catalog, group definitions, and module metadata schema. |
+| `stack.kotlin/` | Materialized Kotlin services in a built bundle. Source lives in modules. |
+| `stack.compose/` | Materialized Compose files in a built bundle. Deployable service overlays usually live in modules. |
 | `stack.config/` | Base config, schemas, Caddy/Keycloak templates, and runtime helper inputs. |
-| `stack.containers/` | Base custom container contexts still owned by the generator. |
+| `stack.containers/` | Materialized custom container contexts in a built bundle. |
 | `stack.systemd/` | Source graph for generated systemd user units. |
 | `global.settings/` | Shared non-secret defaults for generated bundles. |
 | `modules/` | Generator-owned module catalog, schemas, and pull/test helpers. |

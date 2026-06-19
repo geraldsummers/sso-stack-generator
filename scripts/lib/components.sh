@@ -181,6 +181,24 @@ component_selection_write_metadata() {
   rm -f "$temp_components"
 }
 
+component_selection_filter_contracts_file() {
+  local contracts_file="$1"
+  local temp_file
+
+  [ -f "$contracts_file" ] || return 0
+  require_cmd jq
+  temp_file="$(mktemp)"
+  jq \
+    --argjson selected "$(component_selection_env_value | tr ' ' '\n' | awk 'NF { print }' | jq -R . | jq -s .)" \
+    '
+      .components = (
+        .components
+        | with_entries(select(.key as $key | $selected | index($key)))
+      )
+    ' "$contracts_file" > "$temp_file"
+  mv "$temp_file" "$contracts_file"
+}
+
 component_selection_clear_runtime() {
   WEBSERVICES_SELECTED_COMPONENTS=()
 }

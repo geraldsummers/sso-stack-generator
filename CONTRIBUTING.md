@@ -87,8 +87,9 @@ At minimum, a user-facing service needs:
 Use targeted tests while iterating:
 
 ```bash
-./stack.containers/test-runner/run-tests.sh ts-unit
-./stack.containers/test-runner/run-tests.sh kt stack-contract
+./scripts/test-docs.sh
+./scripts/test-external-modules.sh
+./scripts/test-module-runners.sh
 ```
 
 After deploy, use:

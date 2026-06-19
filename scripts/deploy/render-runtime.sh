@@ -21,7 +21,7 @@ source "$LIB_DIR/components.sh"
 
 BUNDLE_ROOT="$(cd "$SCRIPT_DIR/.." && pwd -P)"
 DEPLOY_ROOT="$(cd "$BUNDLE_ROOT/.." && pwd -P)"
-SITE_MANIFEST_PATH="$BUNDLE_ROOT/site/manifest.json"
+SITE_MANIFEST_PATH=""
 RUNTIME_ROOT="$DEPLOY_ROOT/runtime"
 RUNTIME_ROOT_EXPLICIT=0
 SKIP_COMPOSE_VALIDATE=0
@@ -79,6 +79,9 @@ require_cmd jq
 require_cmd envsubst
 require_cmd sops
 
+if [ -z "$SITE_MANIFEST_PATH" ]; then
+  SITE_MANIFEST_PATH="$BUNDLE_ROOT/site/manifest.json"
+fi
 site_manifest_path="$(resolve_site_manifest_file "$SITE_MANIFEST_PATH")"
 site_name="$(site_manifest_site_name "$site_manifest_path")"
 site_config_file="$(resolve_site_manifest_stack_config_path "$site_manifest_path")"
@@ -98,6 +101,7 @@ build_derived_render_values
 prepare_host_runtime_dirs
 prepare_runtime_dir "$runtime_root"
 render_config_tree "$BUNDLE_ROOT/stack.config" "$runtime_configs_dir"
+component_selection_filter_contracts_file "$runtime_configs_dir/service-contracts.json"
 mapfile -t runtime_env_keys < <(collect_runtime_env_keys "$runtime_configs_dir" "$BUNDLE_ROOT/global.settings" "$BUNDLE_ROOT/docker-compose.yml")
 mapfile -t runtime_env_keys < <(printf '%s\n' "${runtime_env_keys[@]}" STACK_RUNTIME_DIR | sort -u)
 write_env_file "$runtime_env_file" "${runtime_env_keys[@]}"

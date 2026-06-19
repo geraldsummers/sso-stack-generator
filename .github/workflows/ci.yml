@@ -48,9 +48,8 @@ jobs:
 
       - name: Check for private path leaks in public files
         run: |
-          ! git grep -nE '(/home/gerald|latium\.local|datamancy\.net)' -- \
-            README.md CONTRIBUTING.md SECURITY.md AGENTS.md docs global.settings \
-            stack.config stack.compose scripts ops
+          ! git grep -nE '(/home/gerald|gerald@|latium\.local|datamancy\.net|labware\.local)' -- \
+            README.md CONTRIBUTING.md SECURITY.md AGENTS.md docs scripts ops modules
 
       - name: Check shell syntax
         run: |
@@ -71,105 +70,21 @@ jobs:
       - name: Run documentation checks
         run: ./scripts/test-docs.sh
 
-  typescript-tests:
-    name: TypeScript test runner
+  generator-tests:
+    name: Generator script tests
     runs-on: ubuntu-24.04
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
 
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: "22"
-          cache: npm
-          cache-dependency-path: stack.containers/test-runner/playwright-tests/package-lock.json
+      - name: Run module runner checks
+        run: ./scripts/test-module-runners.sh
 
-      - name: Install dependencies
-        working-directory: stack.containers/test-runner/playwright-tests
-        run: npm ci
+      - name: Run external module checks
+        run: ./scripts/test-external-modules.sh
 
-      - name: Compile tests
-        working-directory: stack.containers/test-runner/playwright-tests
-        run: npm run build
+      - name: Run pull-module checks
+        run: ./scripts/test-pull-modules.sh
 
-      - name: Run unit tests
-        working-directory: stack.containers/test-runner/playwright-tests
-        run: npm run test:unit
-
-  kotlin-tests:
-    name: Kotlin and package build
-    runs-on: ubuntu-24.04
-    steps:
-      - name: Check out repository
-        uses: actions/checkout@v4
-
-      - name: Set up Java
-        uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: "21"
-
-      - name: Set up Gradle
-        uses: gradle/actions/setup-gradle@v4
-
-      - name: Build test runner npm dependencies
-        uses: actions/setup-node@v4
-        with:
-          node-version: "22"
-          cache: npm
-          cache-dependency-path: stack.containers/test-runner/playwright-tests/package-lock.json
-
-      - name: Install test runner dependencies
-        working-directory: stack.containers/test-runner/playwright-tests
-        run: npm ci
-
-      - name: Run Gradle tests and shadow jars
-        run: ./gradlew test shadowJar --no-daemon
-
-      - name: Run component selection checks
-        run: ./scripts/test-component-selection.sh
-
-  bazel-release:
-    name: Bazel release artifact
-    runs-on: ubuntu-24.04
-    needs:
-      - hygiene
-      - typescript-tests
-      - kotlin-tests
-    steps:
-      - name: Check out repository
-        uses: actions/checkout@v4
-
-      - name: Set up Java
-        uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: "21"
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: "22"
-          cache: npm
-          cache-dependency-path: stack.containers/test-runner/playwright-tests/package-lock.json
-
-      - name: Set up Bazelisk
-        uses: bazelbuild/setup-bazelisk@v3
-
-      - name: Restore Bazel cache
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.cache/bazel
-            ~/.cache/bazelisk
-          key: bazel-${{ runner.os }}-${{ hashFiles('MODULE.bazel', '**/BUILD.bazel', 'WORKSPACE*') }}
-          restore-keys: |
-            bazel-${{ runner.os }}-
-
-      - name: Install test runner dependencies
-        working-directory: stack.containers/test-runner/playwright-tests
-        run: npm ci
-
-      - name: Build immutable release artifact
-        run: ./scripts/build-artifact.sh
+      - name: Run mount diagnostic checks
+        run: ./scripts/test-mount-diagnostics.sh

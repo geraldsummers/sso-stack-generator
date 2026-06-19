@@ -161,7 +161,7 @@ load_site_values() {
   elif [ -n "$isolated_docker_vm_host" ]; then
     render_set WORKSPACE_RUNTIME_PUBLIC_HOST "${isolated_docker_vm_host##*@}"
   else
-    render_set WORKSPACE_RUNTIME_PUBLIC_HOST "labware.local"
+    render_set WORKSPACE_RUNTIME_PUBLIC_HOST "localhost"
   fi
 
   local workspace_runtime_public_address

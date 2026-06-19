@@ -41,10 +41,10 @@ and synthetic stand-ins are not acceptable.
 Before publishing a generator change, check the same paths CI checks:
 
 ```bash
-npm --prefix stack.containers/test-runner/playwright-tests ci
-npm --prefix stack.containers/test-runner/playwright-tests run build
-npm --prefix stack.containers/test-runner/playwright-tests run test:unit
-./gradlew test shadowJar --no-daemon
-./scripts/test-component-selection.sh
-./scripts/build-artifact.sh
+./scripts/test-docs.sh
+./scripts/test-env-file-security.sh
+./scripts/test-external-modules.sh
+./scripts/test-module-runners.sh
+./scripts/test-pull-modules.sh
+./build.sh --manifest /path/to/site/manifest.json
 ```

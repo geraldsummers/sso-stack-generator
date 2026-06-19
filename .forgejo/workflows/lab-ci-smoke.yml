@@ -26,9 +26,8 @@ jobs:
           test -f scripts/security-audit.sh
           test -f scripts/test-env-file-security.sh
           test -f scripts/lib/wait-ready.sh
-          test -d stack.compose
-          test -d stack.containers
-          test -d stack.kotlin
+          test -f modules/catalog.json
+          test -f modules/stack.module.schema.json
           test ! -f deploy.sh
           test ! -f render.sh
           test ! -f sync-dist.sh
