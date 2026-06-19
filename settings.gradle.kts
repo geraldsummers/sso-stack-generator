@@ -1,8 +1,10 @@
 rootProject.name = "webservices"
 
+val includedProjectNames = mutableSetOf<String>()
+
 fun includeProjectIfPresent(projectName: String, relativePath: String) {
     val dir = file(relativePath)
-    if (File(dir, "build.gradle.kts").isFile) {
+    if (File(dir, "build.gradle.kts").isFile && includedProjectNames.add(projectName)) {
         include(":$projectName")
         project(":$projectName").projectDir = dir
     }
@@ -21,13 +23,20 @@ includeProjectIfPresent("chatgpt-connector", "stack.kotlin/chatgpt-connector")
 includeProjectIfPresent("progression", "stack.kotlin/progression")
 includeProjectIfPresent("portal", "stack.kotlin/portal")
 
+file("stack.kotlin")
+    .takeIf { it.isDirectory }
+    ?.listFiles()
+    ?.filter { File(it, "build.gradle.kts").isFile }
+    ?.sortedBy { it.name }
+    ?.forEach { moduleDir ->
+        includeProjectIfPresent(moduleDir.name, "stack.kotlin/${moduleDir.name}")
+    }
+
 file("out/external-modules/materialized/stack.kotlin")
     .takeIf { it.isDirectory }
     ?.listFiles()
     ?.filter { File(it, "build.gradle.kts").isFile }
     ?.sortedBy { it.name }
     ?.forEach { moduleDir ->
-        val projectName = moduleDir.name
-        include(":$projectName")
-        project(":$projectName").projectDir = moduleDir
+        includeProjectIfPresent(moduleDir.name, "out/external-modules/materialized/stack.kotlin/${moduleDir.name}")
     }
