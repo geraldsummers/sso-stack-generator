@@ -349,7 +349,7 @@ path_is_deploy_state_only() {
   local path="$1"
 
   case "$path" in
-    docker-compose.yml|site/components.lock.json|scripts/*)
+    docker-compose.yml|site/components.lock.json|scripts/*|systemd-user/compose/*.stopping)
       return 0
       ;;
   esac
@@ -500,12 +500,23 @@ activate_auto_partial_deploy_if_safe() {
       continue
     fi
     case "$path" in
-      systemd-user/*.service)
-        unit_name="${path#systemd-user/}"
-        append_unique "$unit_name" mapped_units
-        continue
-        ;;
-    esac
+	    systemd-user/*.service)
+	        unit_name="${path#systemd-user/}"
+	        append_unique "$unit_name" mapped_units
+	        continue
+	        ;;
+	      systemd-user/compose/*.compose.json)
+	        service_name="${path#systemd-user/compose/}"
+	        service_name="${service_name%.compose.json}"
+	        if compose_service_exists "$service_name"; then
+	          append_unique "$service_name" mapped_services
+	        else
+	          unit_name="$(deploy_scope_normalize_unit "$service_name" "$PROJECT_NAME")"
+	          append_unique "$unit_name" mapped_units
+	        fi
+	        continue
+	        ;;
+	    esac
     if service_output="$(services_for_changed_bundle_path "$path" "$compose_config_json")" && [ -n "$service_output" ]; then
       while IFS= read -r service_name; do
         append_unique "$service_name" mapped_services
