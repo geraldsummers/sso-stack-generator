@@ -4,6 +4,7 @@ trap 'status=$?; printf "[component-selection-test] failed at line %s: %s (exit 
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
 ROOT_DIR="$(cd "$SCRIPT_DIR/.." && pwd -P)"
+CONTRACT_ROOT="${WEBSERVICES_CONTRACT_ROOT:-$ROOT_DIR}"
 # shellcheck source=scripts/lib/common.sh
 source "$ROOT_DIR/scripts/lib/common.sh"
 # shellcheck source=scripts/lib/components.sh
@@ -143,10 +144,10 @@ cat "$last"
 EOF_SOPS
 chmod +x "$fake_bin/sops"
 
-copy_tree "$ROOT_DIR/global.settings" "$bundle_root/global.settings"
-copy_tree "$ROOT_DIR/stack.compose" "$bundle_root/stack.compose"
-copy_tree "$ROOT_DIR/stack.config" "$bundle_root/stack.config"
-copy_tree "$ROOT_DIR/stack.systemd" "$bundle_root/stack.systemd"
+copy_tree "$CONTRACT_ROOT/global.settings" "$bundle_root/global.settings"
+copy_tree "$CONTRACT_ROOT/stack.compose" "$bundle_root/stack.compose"
+copy_tree "$CONTRACT_ROOT/stack.config" "$bundle_root/stack.config"
+copy_tree "$CONTRACT_ROOT/stack.systemd" "$bundle_root/stack.systemd"
 copy_tree "$ROOT_DIR/scripts" "$bundle_root/scripts"
 
 cat > "$site_root/manifest.json" <<'EOF_MANIFEST'
