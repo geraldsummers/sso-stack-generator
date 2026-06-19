@@ -1,0 +1,47 @@
+[
+  {
+    "assertion": "Jellyfin ffmpeg wrapper applies browser-safe HLS/H.264 overrides",
+    "currentFile": "scripts/test-jellyfin-ffmpeg-websafe.sh",
+    "currentOwner": "sso-stack-generator",
+    "correctOwner": "jellyfin-stack-module",
+    "targetModule": "jellyfin-stack-module",
+    "targetTestFile": "tests/contract.sh",
+    "fixtureMovement": "inline fake ffmpeg fixture moved into module contract script",
+    "generatorHarnessChange": "build-artifact no longer invokes Jellyfin-specific generator test",
+    "assertionType": "contract",
+    "materializedExternalModules": true,
+    "deployedRuntime": false,
+    "status": "migrated",
+    "validationCommand": "scripts/test-module.sh --contract /home/gerald/sso-stack-repos/modules-workspace/jellyfin-stack-module"
+  },
+  {
+    "assertion": "Progression BookStack MVP artifacts are present in release artifact",
+    "currentFile": "scripts/build-artifact.sh",
+    "currentOwner": "sso-stack-generator",
+    "correctOwner": "progression-stack-module",
+    "targetModule": "progression-stack-module",
+    "targetTestFile": "tests/contract.sh",
+    "fixtureMovement": "module overlay ownership now checked by module contract",
+    "generatorHarnessChange": "release artifact check reduced to generic entrypoints",
+    "assertionType": "bundle-packaging/module contract",
+    "materializedExternalModules": true,
+    "deployedRuntime": false,
+    "status": "genericized; module contract owns overlay existence",
+    "validationCommand": "scripts/test-module.sh --contract /home/gerald/sso-stack-repos/modules-workspace/progression-stack-module"
+  },
+  {
+    "assertion": "Service contract schema and cross-component aggregation remain coherent",
+    "currentFile": "scripts/test-service-contracts.sh",
+    "currentOwner": "sso-stack-generator",
+    "correctOwner": "sso-stack-generator for schema/aggregation; modules for service-local details",
+    "targetModule": "multiple",
+    "targetTestFile": "tests/contract.sh",
+    "fixtureMovement": "none in this pass",
+    "generatorHarnessChange": "module contracts added and can run via --contract/--all",
+    "assertionType": "generator-platform/cross-module-integration",
+    "materializedExternalModules": true,
+    "deployedRuntime": false,
+    "status": "retained pending finer service assertion split",
+    "validationCommand": "scripts/test-service-contracts.sh and scripts/test-module-group.sh --contract <workspace>"
+  }
+]

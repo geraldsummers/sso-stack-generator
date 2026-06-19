@@ -4,11 +4,12 @@ trap 'status=$?; printf "[module-group-test] failed at line %s: %s (exit %s)\n" 
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
 run_smoke=false
+run_contract=false
 workspace=""
 
 usage() {
   cat >&2 <<'EOF'
-Usage: scripts/test-module-group.sh [--smoke] /path/to/workspace
+Usage: scripts/test-module-group.sh [--contract] [--smoke] [--all] /path/to/workspace
 
 Runs scripts/test-module.sh for every direct child containing stack.module.json.
 EOF
@@ -17,6 +18,15 @@ EOF
 while [ "$#" -gt 0 ]; do
   case "$1" in
     --smoke)
+      run_smoke=true
+      shift
+      ;;
+    --contract)
+      run_contract=true
+      shift
+      ;;
+    --all)
+      run_contract=true
       run_smoke=true
       shift
       ;;
@@ -51,17 +61,37 @@ if [ "${#module_dirs[@]}" -eq 0 ]; then
 fi
 
 failed=()
+passed=0
+smoke_required=0
+smoke_external_only=0
+smoke_unsupported=0
 for module_dir in "${module_dirs[@]}"; do
-  if [ "$run_smoke" = true ]; then
-    "$SCRIPT_DIR/test-module.sh" --smoke "$module_dir" || failed+=("$module_dir")
+  smoke_status="$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1], encoding="utf-8")).get("smoke", "missing"))' "$module_dir/stack.module.json" 2>/dev/null || printf 'invalid')"
+  case "$smoke_status" in
+    required) smoke_required=$((smoke_required + 1)) ;;
+    external-only) smoke_external_only=$((smoke_external_only + 1)) ;;
+    unsupported) smoke_unsupported=$((smoke_unsupported + 1)) ;;
+  esac
+
+  args=()
+  [ "$run_contract" = true ] && args+=(--contract)
+  [ "$run_smoke" = true ] && args+=(--smoke)
+  if "$SCRIPT_DIR/test-module.sh" "${args[@]}" "$module_dir"; then
+    passed=$((passed + 1))
   else
-    "$SCRIPT_DIR/test-module.sh" "$module_dir" || failed+=("$module_dir")
+    failed+=("$module_dir")
   fi
 done
 
+skipped_non_stack="$(find "$workspace" -mindepth 1 -maxdepth 1 -type d '!' -exec test -f '{}/stack.module.json' ';' -print | wc -l | tr -d ' ')"
+
 if [ "${#failed[@]}" -gt 0 ]; then
-  printf '[module-group-test] failed modules: %s\n' "${failed[*]}" >&2
+  printf '[module-group-test] summary: scanned=%s passed=%s failed=%s skipped_non_stack=%s smoke_required=%s smoke_external_only=%s smoke_unsupported=%s\n' \
+    "${#module_dirs[@]}" "$passed" "${#failed[@]}" "$skipped_non_stack" "$smoke_required" "$smoke_external_only" "$smoke_unsupported" >&2
+  printf '[module-group-test] failed modules:\n' >&2
+  printf '  %s\n' "${failed[@]}" >&2
   exit 1
 fi
 
-printf '[module-group-test] ok: %s modules\n' "${#module_dirs[@]}"
+printf '[module-group-test] summary: scanned=%s passed=%s failed=0 skipped_non_stack=%s smoke_required=%s smoke_external_only=%s smoke_unsupported=%s\n' \
+  "${#module_dirs[@]}" "$passed" "$skipped_non_stack" "$smoke_required" "$smoke_external_only" "$smoke_unsupported"

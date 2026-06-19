@@ -30,6 +30,27 @@ npm run build
 npm run test:unit
 ```
 
+## Stack Module Contracts
+
+Stack modules own service-specific assumptions: their templates, shell scripts,
+Dockerfiles, expected artifact names, healthcheck assumptions, and local smoke
+status. The generator owns the shared schema, resolver, overlay materialization,
+component selection, bundle packaging, and deployed verification orchestration.
+
+Every stack module must declare `runtimeDependencies`, `contracts`, `smoke`, and
+`testAssets` in `stack.module.json`. Use the strict runner when validating a
+module checkout:
+
+```bash
+./scripts/test-module.sh --all /path/to/module
+./scripts/test-module-group.sh --all /path/to/modules-workspace
+```
+
+`smoke: required` means `tests/smoke.sh` must exist and run. `smoke:
+external-only` or `smoke: unsupported` must include a concrete
+`smokeUnsupportedReason`; deployed browser, SSO, DNS, TLS, and screenshot suites
+remain generated-bundle responsibilities.
+
 ## Kotlin Tests
 
 Kotlin service modules are built and tested in their source or stack-module

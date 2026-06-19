@@ -94,11 +94,13 @@ WEBSERVICES_CONTRACT_ROOT="$contract_test_root" "$SCRIPT_DIR/test-service-contra
 log "running contract report checks"
 WEBSERVICES_CONTRACT_ROOT="$contract_test_root" "$SCRIPT_DIR/test-contract-reports.sh" >&2
 
+if [ -d "$EXTERNAL_MODULES_MATERIALIZED_DIR" ] && find "$EXTERNAL_MODULES_MATERIALIZED_DIR" -mindepth 2 -maxdepth 2 -name stack.module.json -print -quit | grep -q .; then
+  log "running materialized module contract checks"
+  "$SCRIPT_DIR/test-module-group.sh" --contract "$EXTERNAL_MODULES_MATERIALIZED_DIR" >&2
+fi
+
 log "running mount diagnostics checks"
 "$SCRIPT_DIR/test-mount-diagnostics.sh" >&2
-
-log "running Jellyfin ffmpeg wrapper checks"
-WEBSERVICES_CONTRACT_ROOT="$contract_test_root" "$SCRIPT_DIR/test-jellyfin-ffmpeg-websafe.sh" >&2
 
 log "running deploy-state guard checks"
 "$SCRIPT_DIR/test-deploy-state.sh" >&2
@@ -131,18 +133,10 @@ else
   artifact_path="$execution_root/$artifact_rel"
 fi
 
-required_artifact_paths=(
-  "./stack.config/progression/tasks/bookstack-mvp.json"
-  "./stack.config/progression/dashboards/bookstack-mvp.json"
-  "./stack.kotlin/progression/src/main/resources/static/index.html"
-)
 artifact_listing="$(mktemp)"
 tar -tf "$artifact_path" > "$artifact_listing"
-for required_artifact_path in "${required_artifact_paths[@]}"; do
-  if ! grep -Fxq "$required_artifact_path" "$artifact_listing"; then
-    die "release artifact missing required test-runner fixture: $required_artifact_path"
-  fi
-done
+grep -Fxq "./build.sh" "$artifact_listing" || die "release artifact missing generic build entrypoint: ./build.sh"
+grep -Fxq "./scripts/verify.sh" "$artifact_listing" || die "release artifact missing generic verify entrypoint: ./scripts/verify.sh"
 rm -f "$artifact_listing"
 
 mkdir -p "$SOURCE_ROOT/out"

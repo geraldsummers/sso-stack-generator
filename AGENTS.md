@@ -116,11 +116,17 @@ Preferred generator test entrypoints:
 - `./scripts/test-component-selection.sh`
 - `./scripts/test-external-modules.sh`
 - `./scripts/test-module-runners.sh`
+- `./scripts/test-module.sh --all /path/to/module`
+- `./scripts/test-module-group.sh --all /path/to/modules-workspace`
 - `./scripts/test-docs.sh`
 
 The Playwright/test-runner package is module-owned. Run it from the
 test-runners module checkout during module development, or from the generated
 bundle after module materialization.
+
+Keep module-specific service contracts in the owning module's `tests/contract.sh`
+and use `smoke` metadata to distinguish local smoke from deployed-only
+verification.
 
 Important constraints:
 - Playwright and deep auth suites depend on deployed runtime env and compose DNS

@@ -90,6 +90,8 @@ Use targeted tests while iterating:
 ./scripts/test-docs.sh
 ./scripts/test-external-modules.sh
 ./scripts/test-module-runners.sh
+./scripts/test-module.sh --all /path/to/module
+./scripts/test-module-group.sh --all /path/to/modules-workspace
 ```
 
 After deploy, use:
