@@ -57,12 +57,20 @@ if [ -d "$EXTERNAL_MODULES_MATERIALIZED_DIR" ] && find "$EXTERNAL_MODULES_MATERI
       cp -a "$SOURCE_ROOT/$root" "$contract_test_tmp/$root"
     fi
   done
+  for file in .bazelrc BUILD.bazel MODULE.bazel build.gradle.kts settings.gradle.kts gradlew gradlew.bat; do
+    if [ -e "$SOURCE_ROOT/$file" ]; then
+      cp -a "$SOURCE_ROOT/$file" "$contract_test_tmp/$file"
+    fi
+  done
+  if [ -d "$SOURCE_ROOT/gradle" ]; then
+    cp -a "$SOURCE_ROOT/gradle" "$contract_test_tmp/gradle"
+  fi
   external_modules_overlay_into "$contract_test_tmp"
   component_catalog_merge_external "$contract_test_tmp/stack.config/components.json"
   contract_test_root="$contract_test_tmp"
 fi
 
-local_test_dir="$SOURCE_ROOT/stack.containers/test-runner/playwright-tests"
+local_test_dir="$contract_test_root/stack.containers/test-runner/playwright-tests"
 if [ -f "$local_test_dir/package.json" ]; then
   if [ ! -d "$local_test_dir/node_modules" ] || [ ! -f "$local_test_dir/node_modules/jest-cli/package.json" ] || [ ! -f "$local_test_dir/node_modules/typescript/package.json" ] || [ ! -f "$local_test_dir/node_modules/@playwright/test/package.json" ]; then
     log "installing TypeScript test dependencies"
@@ -105,17 +113,17 @@ log "running docs link checks"
 "$SCRIPT_DIR/test-docs.sh" >&2
 
 log "running Gradle tests and shadow jars"
-./gradlew test shadowJar --no-daemon >&2
+(cd "$contract_test_root" && ./gradlew test shadowJar --no-daemon) >&2
 
 log "packaging immutable release artifact with Bazel"
-bazel build "$TARGET" >&2
+(cd "$contract_test_root" && bazel build "$TARGET") >&2
 
-artifact_rel="$(bazel cquery --output=files "$TARGET" | tail -n 1)"
+artifact_rel="$(cd "$contract_test_root" && bazel cquery --output=files "$TARGET" | tail -n 1)"
 [ -n "$artifact_rel" ] || die "failed to resolve Bazel artifact path for $TARGET"
 if [[ "$artifact_rel" = /* ]]; then
   artifact_path="$artifact_rel"
 else
-  execution_root="$(bazel info execution_root)"
+  execution_root="$(cd "$contract_test_root" && bazel info execution_root)"
   artifact_path="$execution_root/$artifact_rel"
 fi
 
