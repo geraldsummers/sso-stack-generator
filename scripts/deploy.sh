@@ -1030,6 +1030,61 @@ reload_deploy_sensitive_units() {
   done
 }
 
+reload_runtime_config_units() {
+  local service_name unit_name seen=" "
+  local services=() reload_units=() restart_units=()
+
+  mapfile -t services < <(
+    COMPOSE_PROJECT_NAME="$PROJECT_NAME" run_compose_from_bundle \
+      "$BUNDLE_ROOT" \
+      "$DEPLOY_ROOT/runtime/stack.env" \
+      config --format json | jq -r '
+        .services
+        | to_entries[]
+        | select(
+            any((.value.volumes // [])[]?;
+              (.type == "bind")
+              and (((.source // "") | test("(^|/)runtime/configs/")))
+            )
+          )
+        | .key
+      ' | sort
+  )
+
+  for service_name in "${services[@]}"; do
+    [ -n "$service_name" ] || continue
+    unit_name="$(unit_for_compose_service "$service_name")"
+    [ -f "$BUNDLE_ROOT/systemd-user/$unit_name" ] || continue
+    if ! user_systemctl is-active --quiet "$unit_name"; then
+      continue
+    fi
+    if [[ "$seen" == *" $unit_name "* ]]; then
+      continue
+    fi
+    seen="$seen$unit_name "
+    if grep -q '^ExecReload=' "$BUNDLE_ROOT/systemd-user/$unit_name"; then
+      reload_units+=("$unit_name")
+    else
+      restart_units+=("$unit_name")
+    fi
+  done
+
+  if [ "${#reload_units[@]}" -eq 0 ] && [ "${#restart_units[@]}" -eq 0 ]; then
+    deploy_log "no active runtime-config lifecycle units need refresh"
+    return 0
+  fi
+
+  if [ "${#reload_units[@]}" -gt 0 ]; then
+    deploy_log "reloading active lifecycle units with runtime config mounts: $(join_array_limited "$SYSTEMD_PROGRESS_MAX_ITEMS" "${reload_units[@]}")"
+    user_systemctl reload "${reload_units[@]}"
+  fi
+  if [ "${#restart_units[@]}" -gt 0 ]; then
+    deploy_log "restarting active lifecycle units with runtime config mounts: $(join_array_limited "$SYSTEMD_PROGRESS_MAX_ITEMS" "${restart_units[@]}")"
+    user_systemctl reset-failed "${restart_units[@]}" || true
+    user_systemctl restart "${restart_units[@]}"
+  fi
+}
+
 recreate_env_sensitive_containers() {
   local container_name
   local configured_containers="${DEPLOY_RECREATE_ENV_CONTAINERS:-opensearch nats airflow-init airflow-webserver airflow-scheduler ingestion-runner embedding-gpu keycloak bookstack bookstack-procedural-docs onlyoffice mailserver seafile workspace-provisioner chatgpt-connector}"
@@ -1212,6 +1267,13 @@ if [ "$PARTIAL_DEPLOY" = "1" ]; then
   deploy_log "skipping global deploy-sensitive reloads for scoped deploy"
 else
   reload_deploy_sensitive_units
+fi
+
+set_phase "systemd-reload-runtime-config-units"
+if [ "$PARTIAL_DEPLOY" = "1" ]; then
+  deploy_log "skipping global runtime-config reloads for scoped deploy"
+else
+  reload_runtime_config_units
 fi
 
 set_phase "systemd-reconcile-target"
