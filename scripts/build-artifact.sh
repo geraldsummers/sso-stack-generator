@@ -113,7 +113,11 @@ log "running docs link checks"
 "$SCRIPT_DIR/test-docs.sh" >&2
 
 log "running Gradle tests and shadow jars"
-(cd "$contract_test_root" && ./gradlew test shadowJar --no-daemon) >&2
+gradle_args=(test shadowJar --no-daemon)
+if [ -f "$contract_test_root/stack.kotlin/test-runner/build.gradle.kts" ]; then
+  gradle_args+=(-x :test-runner:test)
+fi
+(cd "$contract_test_root" && ./gradlew "${gradle_args[@]}") >&2
 
 log "packaging immutable release artifact with Bazel"
 (cd "$contract_test_root" && bazel build "$TARGET") >&2
