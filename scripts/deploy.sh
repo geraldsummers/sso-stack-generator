@@ -338,7 +338,18 @@ path_requires_full_deploy() {
   local path="$1"
 
   case "$path" in
-    .dockerignore|docker-compose.yml|global.settings/*|scripts/*|site/*|stack.systemd/*|systemd-user/infra/*|systemd-user/*.target)
+    .dockerignore|docker-compose.yml|global.settings/*|site/*|stack.systemd/*|systemd-user/infra/*|systemd-user/*.target)
+      return 0
+      ;;
+  esac
+  return 1
+}
+
+path_is_deploy_state_only() {
+  local path="$1"
+
+  case "$path" in
+    scripts/*)
       return 0
       ;;
   esac
@@ -429,7 +440,7 @@ services_for_changed_bundle_path() {
 activate_auto_partial_deploy_if_safe() {
   local changed_output path service_output service_name unit_name
   local compose_config_json changed_paths=()
-  local mapped_services=() mapped_units=() unmapped_paths=() full_paths=()
+  local mapped_services=() mapped_units=() unmapped_paths=() full_paths=() state_only_paths=()
 
   [ "$PARTIAL_DEPLOY" = "0" ] || return 0
   [ "${DEPLOY_AUTO_SCOPE:-1}" = "1" ] || {
@@ -484,6 +495,10 @@ activate_auto_partial_deploy_if_safe() {
       full_paths+=("$path")
       continue
     fi
+    if path_is_deploy_state_only "$path"; then
+      state_only_paths+=("$path")
+      continue
+    fi
     case "$path" in
       systemd-user/*.service)
         unit_name="${path#systemd-user/}"
@@ -510,6 +525,11 @@ activate_auto_partial_deploy_if_safe() {
     return 0
   fi
   if [ "${#mapped_services[@]}" -eq 0 ] && [ "${#mapped_units[@]}" -eq 0 ]; then
+    if [ "$RUNTIME_CONFIG_CHANGE_STATUS" = "known" ] && [ "${#RUNTIME_CONFIG_CHANGED_PATHS[@]}" -eq 0 ] && [ "${#state_only_paths[@]}" -gt 0 ]; then
+      NOOP_DEPLOY=1
+      deploy_log "auto-scope found only deploy-state/script changes; deploy is a no-op"
+      return 0
+    fi
     deploy_log "auto-scope using full deploy because no changed services or units were resolved"
     return 0
   fi
