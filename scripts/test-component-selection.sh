@@ -33,6 +33,17 @@ assert_contains() {
   fi
 }
 
+assert_not_private_mode() {
+  local file="$1"
+  local label="$2"
+  local mode
+  mode="$(stat -c '%a' "$file")"
+  if [ "$mode" = "600" ]; then
+    printf '[component-selection-test] %s should preserve readable source mode, got %s: %s\n' "$label" "$mode" "$file" >&2
+    exit 1
+  fi
+}
+
 validate_caddy_file() {
   local caddy_file="$1"
   local caddy_log
@@ -227,6 +238,7 @@ assert_contains "$caddy_file" 'reverse_proxy onboarding:8080' "core onboarding r
 assert_contains "$caddy_file" 'webservices core stack' "core apex fallback"
 if [ -f "$runtime_contracts" ]; then
   jq -e '.components.core and (.components | has("bookstack") | not)' "$runtime_contracts" >/dev/null
+  assert_not_private_mode "$runtime_contracts" "filtered runtime service contracts"
 fi
 
 assert_not_contains "$caddy_file" 'reverse_proxy (vaultwarden|grafana|portal:8080|bookstack|matrix-authentication-service|mastodon|jupyterhub|homeassistant|search-service|chatgpt-connector|kopia|progression)' "disabled app Caddy upstream"
@@ -278,6 +290,7 @@ assert_contains "$caddy_file" 'reverse_proxy progression:8130' "full Progression
 assert_contains "$keycloak_configure" 'ensure_confidential_client "vaultwarden"' "full Vaultwarden Keycloak client"
 if [ -f "$runtime_contracts" ]; then
   jq -e '.components.vaultwarden and .components.progression and (.components | has("huly") | not)' "$runtime_contracts" >/dev/null
+  assert_not_private_mode "$runtime_contracts" "filtered runtime service contracts"
 fi
 assert_not_contains "$caddy_file" 'webservices-component-(start|end)' "component marker"
 validate_caddy_file "$caddy_file"

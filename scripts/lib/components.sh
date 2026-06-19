@@ -196,6 +196,7 @@ component_selection_filter_contracts_file() {
         | with_entries(select(.key as $key | $selected | index($key)))
       )
     ' "$contracts_file" > "$temp_file"
+  chmod --reference="$contracts_file" "$temp_file"
   mv "$temp_file" "$contracts_file"
 }
 
