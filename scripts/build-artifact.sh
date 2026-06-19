@@ -135,7 +135,7 @@ fi
 
 artifact_listing="$(mktemp)"
 tar -tf "$artifact_path" > "$artifact_listing"
-grep -Fxq "./build.sh" "$artifact_listing" || die "release artifact missing generic build entrypoint: ./build.sh"
+grep -Fxq "./scripts/deploy.sh" "$artifact_listing" || die "release artifact missing generic deploy entrypoint: ./scripts/deploy.sh"
 grep -Fxq "./scripts/verify.sh" "$artifact_listing" || die "release artifact missing generic verify entrypoint: ./scripts/verify.sh"
 rm -f "$artifact_listing"
 
