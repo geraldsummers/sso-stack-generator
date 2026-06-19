@@ -38,6 +38,11 @@ component_catalog_merge_external() {
   done < <(find "$external_dir" -maxdepth 1 -type f -name '*.json' | sort)
   [ "${#external_catalogs[@]}" -gt 0 ] || return 0
 
+  if [ ! -f "$catalog" ]; then
+    mkdir -p "$(dirname "$catalog")"
+    printf '%s\n' '{"schemaVersion":1,"defaultComponents":[],"components":{}}' > "$catalog"
+  fi
+
   component_catalog_validate "$catalog"
   for external_catalog in "${external_catalogs[@]}"; do
     component_catalog_validate "$external_catalog"

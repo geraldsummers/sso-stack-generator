@@ -135,7 +135,6 @@ assert_file "$EXTERNAL_MODULES_MATERIALIZED_DIR/stack.config/components.external
 jq -e '.enabled == true and (.modules | length) == 1 and .modules[0].name == "demo-module"' \
   "$EXTERNAL_MODULES_METADATA_FILE" >/dev/null
 
-cp "$ROOT_DIR/stack.config/components.json" "$bundle_root/stack.config/components.json"
 external_modules_overlay_into "$bundle_root"
 component_catalog_merge_external "$bundle_root/stack.config/components.json"
 jq -e '.components["demo-module"].composeFiles == ["demo.yml"]' "$bundle_root/stack.config/components.json" >/dev/null
