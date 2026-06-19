@@ -149,6 +149,19 @@ copy_tree "$CONTRACT_ROOT/stack.compose" "$bundle_root/stack.compose"
 copy_tree "$CONTRACT_ROOT/stack.config" "$bundle_root/stack.config"
 copy_tree "$CONTRACT_ROOT/stack.systemd" "$bundle_root/stack.systemd"
 copy_tree "$ROOT_DIR/scripts" "$bundle_root/scripts"
+mkdir -p "$bundle_root/stack.compose"
+
+cat > "$bundle_root/stack.compose/component-marker-test.yml" <<'EOF_COMPOSE_MARKER'
+volumes:
+  component_marker_always:
+  # webservices-component-start bookstack
+  component_marker_bookstack:
+  # webservices-component-end bookstack
+EOF_COMPOSE_MARKER
+catalog_temp="$(mktemp)"
+jq '.components.core.composeFiles += ["component-marker-test.yml"]' \
+  "$bundle_root/stack.config/components.json" > "$catalog_temp"
+mv "$catalog_temp" "$bundle_root/stack.config/components.json"
 
 cat > "$site_root/manifest.json" <<'EOF_MANIFEST'
 {
@@ -195,6 +208,8 @@ component_selection_write_metadata \
   "$site_root/components.lock.json"
 
 build_merged_compose "$bundle_root" "$bundle_root/docker-compose.yml" "$site_root/manifest.json"
+assert_contains "$bundle_root/docker-compose.yml" 'component_marker_always:' "always-on compose marker test volume"
+assert_not_contains "$bundle_root/docker-compose.yml" 'component_marker_bookstack:' "disabled compose marker test volume"
 
 PATH="$fake_bin:$PATH" "$ROOT_DIR/scripts/deploy/render-runtime.sh" \
   --bundle-root "$bundle_root" \
@@ -233,6 +248,7 @@ component_selection_write_metadata \
   "$site_root/components.lock.json"
 
 build_merged_compose "$bundle_root" "$bundle_root/docker-compose.full.yml" "$site_root/manifest.json"
+assert_contains "$bundle_root/docker-compose.full.yml" 'component_marker_bookstack:' "enabled compose marker test volume"
 cp "$bundle_root/docker-compose.full.yml" "$bundle_root/docker-compose.yml"
 
 "$ROOT_DIR/scripts/deploy/render-systemd-user.sh" \
