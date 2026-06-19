@@ -1,9 +1,0 @@
-node_modules/
-/test-results/
-/playwright-report/
-/coverage/
-/latest-screenshots/
-playwright/.cache/
-.auth/
-*.log
-.eslintcache

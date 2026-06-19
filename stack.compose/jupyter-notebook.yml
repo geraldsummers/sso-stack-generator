@@ -1,9 +1,0 @@
-services:
-  jupyter-notebook-build:
-    image: ${JUPYTER_NOTEBOOK_IMAGE:-platform-jupyter-notebook:5.4.3}
-    build:
-      context: .
-      dockerfile: ./stack.containers/jupyter-notebook/Dockerfile
-    container_name: jupyter-notebook-build
-    restart: "no"
-    command: ["true"]

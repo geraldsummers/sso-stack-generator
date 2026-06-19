@@ -1,4 +1,0 @@
-services:
-  hello:
-    image: alpine:3.21
-    command: ["sh", "-lc", "echo DOCKER_COMPOSE_OK"]

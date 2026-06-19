@@ -1,1 +1,0 @@
-Reply exactly with AGENT_RUNTIME_OK and nothing else.
