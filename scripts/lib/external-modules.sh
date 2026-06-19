@@ -97,7 +97,7 @@ external_modules_validate_tree() {
 external_modules_path_allowed() {
   local rel_path="$1"
   case "$rel_path" in
-    README.md|stack.module.json|tests/*)
+    README.md|stack.module.json|tests/*|.github/*)
       return 0
       ;;
     global.settings/*|stack.compose/*|stack.config/*|stack.containers/*|stack.kotlin/*|stack.js/*|stack.systemd/*|scripts/lib/*|scripts/modules/*|docs/modules/*)
@@ -138,7 +138,7 @@ external_modules_materialize_one() {
       stack.config/components.json|stack.config/components.overlay.json)
         dest_path="$EXTERNAL_MODULES_MATERIALIZED_DIR/stack.config/components.external/$name.json"
         ;;
-      README.md|stack.module.json|tests/*)
+      README.md|stack.module.json|tests/*|.github/*)
         continue
         ;;
       *)
