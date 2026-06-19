@@ -86,7 +86,7 @@ repo = metadata.get("repo")
 if not isinstance(repo, str) or not re.fullmatch(r"[A-Za-z0-9._-]+", repo):
     raise SystemExit("repo must be a repository name")
 
-expected_repos = {f"{module_id}-stack-module", f"{module_id}-module"}
+expected_repos = {module_id, f"{module_id}-stack-module", f"{module_id}-module"}
 if repo not in expected_repos:
     expected = " or ".join(sorted(expected_repos))
     raise SystemExit(f"repo must match module id: expected {expected}, got {repo}")
