@@ -24,6 +24,7 @@ source "$SCRIPT_DIR/lib/components.sh"
 PROJECT_NAME="${PROJECT_NAME:-webservices}"
 PREFLIGHT_ONLY=0
 PARTIAL_DEPLOY=0
+AUTO_PARTIAL_DEPLOY=0
 PLAN_ONLY=0
 SCOPED_COMPONENT_DEPENDENCIES=0
 CURRENT_PHASE="initializing"
@@ -35,6 +36,8 @@ declare -A BUILT_IMAGE_IDS_BEFORE=()
 declare -a SCOPED_COMPONENTS=()
 declare -a SCOPED_SERVICES=()
 declare -a SCOPED_UNITS=()
+declare -a RUNTIME_CONFIG_CHANGED_PATHS=()
+RUNTIME_CONFIG_CHANGE_STATUS="unknown"
 
 usage() {
   cat <<'EOF_USAGE'
@@ -316,6 +319,185 @@ read_lines_into_array() {
   target_array=()
   [ -n "$output" ] || return 0
   mapfile -t target_array <<< "$output"
+}
+
+compose_config_snapshot() {
+  local output_file="$1"
+  COMPOSE_PROJECT_NAME="$PROJECT_NAME" run_compose_from_bundle \
+    "$BUNDLE_ROOT" \
+    "$DEPLOY_ROOT/runtime/stack.env" \
+    config --format json > "$output_file"
+}
+
+path_requires_full_deploy() {
+  local path="$1"
+
+  case "$path" in
+    .dockerignore|docker-compose.yml|global.settings/*|scripts/*|site/*|stack.systemd/*|systemd-user/infra/*|systemd-user/*.target)
+      return 0
+      ;;
+  esac
+  return 1
+}
+
+services_for_build_owner() {
+  local owner="$1"
+  local compose_config_json="$2"
+
+  jq -r --arg owner "$owner" '
+    .services
+    | to_entries[]
+    | select(
+        .key == $owner
+        or (((.value.build // {}).dockerfile // "") | test("(^|/)stack\\.containers/" + ($owner | gsub("([][.^$*+?{}()|\\\\])"; "\\\\&")) + "(/|$)"))
+        or (((.value.build // {}).context // "") | test("(^|/)" + ($owner | gsub("([][.^$*+?{}()|\\\\])"; "\\\\&")) + "(/|$)"))
+      )
+    | .key
+  ' "$compose_config_json"
+}
+
+services_for_runtime_config_path() {
+  local config_path="$1"
+  local compose_config_json="$2"
+
+  config_path="${config_path#./}"
+  jq -r --arg config "$config_path" '
+    def rel_config_source:
+      (.source // "")
+      | sub("^.*runtime/configs/?"; "")
+      | sub("^\\./"; "");
+
+    .services
+    | to_entries[]
+    | select(
+        any((.value.volumes // [])[]?;
+          (.type == "bind")
+          and (((.source // "") | test("(^|/)runtime/configs($|/)")))
+          and (
+            (rel_config_source == "")
+            or ($config == rel_config_source)
+            or ($config | startswith(rel_config_source + "/"))
+            or (rel_config_source | startswith($config + "/"))
+          )
+        )
+      )
+    | .key
+  ' "$compose_config_json"
+}
+
+services_for_changed_bundle_path() {
+  local path="$1"
+  local compose_config_json="$2"
+  local owner compose_file config_path output
+
+  case "$path" in
+    stack.compose/*)
+      compose_file="${path#stack.compose/}"
+      compose_file="${compose_file%%/*}"
+      services_from_compose_file "$compose_file"
+      return 0
+      ;;
+    stack.containers/*|stack.kotlin/*|stack.js/*)
+      owner="${path#*/}"
+      owner="${owner%%/*}"
+      services_for_build_owner "$owner" "$compose_config_json"
+      return 0
+      ;;
+    stack.config/*)
+      config_path="${path#stack.config/}"
+      output="$(services_for_runtime_config_path "$config_path" "$compose_config_json")"
+      if [ -n "$output" ]; then
+        printf '%s\n' "$output"
+        return 0
+      fi
+      owner="${config_path%%/*}"
+      if compose_service_exists "$owner"; then
+        printf '%s\n' "$owner"
+      fi
+      return 0
+      ;;
+  esac
+
+  return 1
+}
+
+activate_auto_partial_deploy_if_safe() {
+  local changed_output path service_output service_name unit_name
+  local compose_config_json changed_paths=()
+  local mapped_services=() mapped_units=() unmapped_paths=() full_paths=()
+
+  [ "$PARTIAL_DEPLOY" = "0" ] || return 0
+  [ "${DEPLOY_AUTO_SCOPE:-1}" = "1" ] || {
+    deploy_log "auto-scope disabled by DEPLOY_AUTO_SCOPE=0"
+    return 0
+  }
+
+  if ! deploy_state_global_signature_matches "$BUNDLE_ROOT" "$DEPLOY_ROOT"; then
+    deploy_log "auto-scope unavailable: global deployment signature changed or is missing; using full deploy"
+    return 0
+  fi
+
+  if ! changed_output="$(deploy_state_changed_file_paths "$BUNDLE_ROOT" "$DEPLOY_ROOT")"; then
+    deploy_log "auto-scope unavailable: previous bundle file manifest is missing; using full deploy"
+    return 0
+  fi
+  read_lines_into_array "$changed_output" changed_paths
+  if [ "${#changed_paths[@]}" -eq 0 ]; then
+    deploy_log "auto-scope found no tracked bundle file changes; using full deploy to preserve external runtime reconciliation"
+    return 0
+  fi
+
+  compose_config_json="$(mktemp "${TMPDIR:-/tmp}/webservices-auto-scope-compose.XXXXXX.json")"
+  compose_config_snapshot "$compose_config_json"
+
+  for path in "${changed_paths[@]}"; do
+    [ -n "$path" ] || continue
+    if path_requires_full_deploy "$path"; then
+      full_paths+=("$path")
+      continue
+    fi
+    case "$path" in
+      systemd-user/*.service)
+        unit_name="${path#systemd-user/}"
+        append_unique "$unit_name" mapped_units
+        continue
+        ;;
+    esac
+    if service_output="$(services_for_changed_bundle_path "$path" "$compose_config_json")" && [ -n "$service_output" ]; then
+      while IFS= read -r service_name; do
+        append_unique "$service_name" mapped_services
+      done <<< "$service_output"
+    else
+      unmapped_paths+=("$path")
+    fi
+  done
+  rm -f "$compose_config_json"
+
+  if [ "${#full_paths[@]}" -gt 0 ]; then
+    deploy_log "auto-scope using full deploy because global paths changed: $(join_array_limited "$SYSTEMD_PROGRESS_MAX_ITEMS" "${full_paths[@]}")"
+    return 0
+  fi
+  if [ "${#unmapped_paths[@]}" -gt 0 ]; then
+    deploy_log "auto-scope using full deploy because paths have no clear service owner: $(join_array_limited "$SYSTEMD_PROGRESS_MAX_ITEMS" "${unmapped_paths[@]}")"
+    return 0
+  fi
+  if [ "${#mapped_services[@]}" -eq 0 ] && [ "${#mapped_units[@]}" -eq 0 ]; then
+    deploy_log "auto-scope using full deploy because no changed services or units were resolved"
+    return 0
+  fi
+
+  PARTIAL_DEPLOY=1
+  AUTO_PARTIAL_DEPLOY=1
+  SCOPED_SERVICES=("${mapped_services[@]}")
+  SCOPED_UNITS=("${mapped_units[@]}")
+  if [ "${#SCOPED_SERVICES[@]}" -gt 0 ]; then
+    deploy_log "auto-scope selected changed services: $(join_array_limited "$SYSTEMD_PROGRESS_MAX_ITEMS" "${SCOPED_SERVICES[@]}")"
+  else
+    deploy_log "auto-scope selected changed services: none"
+  fi
+  if [ "${#SCOPED_UNITS[@]}" -gt 0 ]; then
+    deploy_log "auto-scope selected changed units: $(join_array_limited "$SYSTEMD_PROGRESS_MAX_ITEMS" "${SCOPED_UNITS[@]}")"
+  fi
 }
 
 resolve_scoped_services() {
@@ -1033,23 +1215,42 @@ reload_deploy_sensitive_units() {
 reload_runtime_config_units() {
   local service_name unit_name seen=" "
   local services=() reload_units=() restart_units=()
+  local compose_config_json changed_path service_output
 
-  mapfile -t services < <(
-    COMPOSE_PROJECT_NAME="$PROJECT_NAME" run_compose_from_bundle \
-      "$BUNDLE_ROOT" \
-      "$DEPLOY_ROOT/runtime/stack.env" \
-      config --format json | jq -r '
-        .services
-        | to_entries[]
-        | select(
-            any((.value.volumes // [])[]?;
-              (.type == "bind")
-              and (((.source // "") | test("(^|/)runtime/configs/")))
+  compose_config_json="$(mktemp "${TMPDIR:-/tmp}/webservices-runtime-config-compose.XXXXXX.json")"
+  compose_config_snapshot "$compose_config_json"
+
+  if [ "$RUNTIME_CONFIG_CHANGE_STATUS" = "known" ]; then
+    if [ "${#RUNTIME_CONFIG_CHANGED_PATHS[@]}" -eq 0 ]; then
+      deploy_log "no changed runtime-config files detected"
+      rm -f "$compose_config_json"
+      return 0
+    fi
+    for changed_path in "${RUNTIME_CONFIG_CHANGED_PATHS[@]}"; do
+      [ -n "$changed_path" ] || continue
+      service_output="$(services_for_runtime_config_path "$changed_path" "$compose_config_json")"
+      while IFS= read -r service_name; do
+        append_unique "$service_name" services
+      done <<< "$service_output"
+    done
+    deploy_log "changed runtime-config files: $(join_array_limited "$SYSTEMD_PROGRESS_MAX_ITEMS" "${RUNTIME_CONFIG_CHANGED_PATHS[@]}")"
+  else
+    deploy_log "previous runtime-config manifest is missing; checking all runtime-config mounts"
+    mapfile -t services < <(
+      jq -r '
+          .services
+          | to_entries[]
+          | select(
+              any((.value.volumes // [])[]?;
+                (.type == "bind")
+                and (((.source // "") | test("(^|/)runtime/configs/")))
+              )
             )
-          )
-        | .key
-      ' | sort
-  )
+          | .key
+        ' "$compose_config_json" | sort
+    )
+  fi
+  rm -f "$compose_config_json"
 
   for service_name in "${services[@]}"; do
     [ -n "$service_name" ] || continue
@@ -1172,8 +1373,16 @@ fi
 set_phase "render-runtime"
 ensure_runtime_links "$DEPLOY_ROOT" >/dev/null
 "$SCRIPT_DIR/deploy/render-runtime.sh" --bundle-root "$BUNDLE_ROOT" --deploy-root "$DEPLOY_ROOT" --site-manifest "$site_manifest_path"
+if runtime_config_changes="$(deploy_state_changed_runtime_config_paths "$DEPLOY_ROOT")"; then
+  RUNTIME_CONFIG_CHANGE_STATUS="known"
+  read_lines_into_array "$runtime_config_changes" RUNTIME_CONFIG_CHANGED_PATHS
+else
+  RUNTIME_CONFIG_CHANGE_STATUS="unknown"
+  RUNTIME_CONFIG_CHANGED_PATHS=()
+fi
 
 set_phase "deploy-plan"
+activate_auto_partial_deploy_if_safe
 if [ "$PARTIAL_DEPLOY" = "1" ]; then
   if ! deploy_state_check_global_signature "$BUNDLE_ROOT" "$DEPLOY_ROOT"; then
     if deploy_state_missing_global_signature "$DEPLOY_ROOT" && deploy_state_bootstrap_missing_global_signature "$BUNDLE_ROOT" "$DEPLOY_ROOT" "webservices.target"; then
@@ -1299,5 +1508,9 @@ reload_deploy_reconcile_units
 
 set_phase "complete"
 deploy_state_write_global_signature "$BUNDLE_ROOT" "$DEPLOY_ROOT"
+if [ "$PARTIAL_DEPLOY" = "0" ] || [ "$AUTO_PARTIAL_DEPLOY" = "1" ]; then
+  deploy_state_write_file_manifest "$BUNDLE_ROOT" "$DEPLOY_ROOT"
+  deploy_state_write_runtime_config_manifest "$DEPLOY_ROOT"
+fi
 deploy_log "deploy complete"
 deploy_log "next step: cd $DEPLOY_ROOT && ./verify.sh"

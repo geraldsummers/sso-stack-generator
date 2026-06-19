@@ -14,8 +14,11 @@ fake_bin="$tmp_dir/bin"
 mkdir -p \
   "$fake_bin" \
   "$bundle_root/site" \
+  "$bundle_root/stack.config/caddy" \
+  "$bundle_root/stack.compose" \
   "$bundle_root/stack.systemd" \
   "$bundle_root/systemd-user/infra" \
+  "$deploy_root/runtime/configs/caddy" \
   "$deploy_root/runtime"
 
 cat > "$bundle_root/site/components.lock.json" <<'EOF_JSON'
@@ -33,13 +36,62 @@ EOF_JSON
 cat > "$bundle_root/systemd-user/infra/volumes.json" <<'EOF_JSON'
 []
 EOF_JSON
+cat > "$bundle_root/docker-compose.yml" <<'EOF_YAML'
+services: {}
+EOF_YAML
+cat > "$bundle_root/stack.compose/caddy.yml" <<'EOF_YAML'
+services:
+  caddy:
+    image: caddy:latest
+EOF_YAML
+cat > "$bundle_root/stack.config/caddy/Caddyfile" <<'EOF_CADDY'
+example.test {
+  respond "ok"
+}
+EOF_CADDY
+cat > "$deploy_root/runtime/configs/caddy/Caddyfile" <<'EOF_CADDY'
+example.test {
+  respond "ok"
+}
+EOF_CADDY
 
 deploy_state_write_global_signature "$bundle_root" "$deploy_root"
 deploy_state_check_global_signature "$bundle_root" "$deploy_root"
+deploy_state_write_file_manifest "$bundle_root" "$deploy_root"
+deploy_state_write_runtime_config_manifest "$deploy_root"
 
 signature_file="$deploy_root/runtime/deploy-state/global-signature.json"
 if grep -q 'core' "$signature_file"; then
   printf '[deploy-state-test] signature leaked component contents\n' >&2
+  exit 1
+fi
+
+if [ -n "$(deploy_state_changed_file_paths "$bundle_root" "$deploy_root")" ]; then
+  printf '[deploy-state-test] unchanged bundle manifest reported changed paths\n' >&2
+  exit 1
+fi
+
+cat > "$bundle_root/stack.config/caddy/Caddyfile" <<'EOF_CADDY'
+example.test {
+  respond "changed"
+}
+EOF_CADDY
+
+if [ "$(deploy_state_changed_file_paths "$bundle_root" "$deploy_root")" != "stack.config/caddy/Caddyfile" ]; then
+  printf '[deploy-state-test] changed bundle manifest did not report the changed config path\n' >&2
+  deploy_state_changed_file_paths "$bundle_root" "$deploy_root" >&2 || true
+  exit 1
+fi
+
+cat > "$deploy_root/runtime/configs/caddy/Caddyfile" <<'EOF_CADDY'
+example.test {
+  respond "changed"
+}
+EOF_CADDY
+
+if [ "$(deploy_state_changed_runtime_config_paths "$deploy_root")" != "caddy/Caddyfile" ]; then
+  printf '[deploy-state-test] changed runtime config manifest did not report the changed config path\n' >&2
+  deploy_state_changed_runtime_config_paths "$deploy_root" >&2 || true
   exit 1
 fi
 
