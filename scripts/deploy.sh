@@ -338,7 +338,7 @@ path_requires_full_deploy() {
   local path="$1"
 
   case "$path" in
-    .dockerignore|docker-compose.yml|global.settings/*|site/*|stack.systemd/*|systemd-user/infra/*|systemd-user/*.target)
+    .dockerignore|global.settings/*|site/manifest.json|stack.systemd/*|systemd-user/infra/*|systemd-user/*.target)
       return 0
       ;;
   esac
@@ -349,7 +349,7 @@ path_is_deploy_state_only() {
   local path="$1"
 
   case "$path" in
-    scripts/*)
+    docker-compose.yml|site/components.lock.json|scripts/*)
       return 0
       ;;
   esac
