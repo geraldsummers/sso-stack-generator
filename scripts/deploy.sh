@@ -25,6 +25,7 @@ PROJECT_NAME="${PROJECT_NAME:-webservices}"
 PREFLIGHT_ONLY=0
 PARTIAL_DEPLOY=0
 AUTO_PARTIAL_DEPLOY=0
+NOOP_DEPLOY=0
 PLAN_ONLY=0
 SCOPED_COMPONENT_DEPENDENCIES=0
 CURRENT_PHASE="initializing"
@@ -62,6 +63,10 @@ Scoped deploys are guarded by the last full deploy signature. If component
 selection, the systemd graph, or Docker network/volume metadata changed, the
 deploy aborts and asks for a full deploy so global control-plane changes are
 reconciled together.
+
+Unscoped deploys automatically narrow to changed service owners when the last
+deploy wrote bundle/runtime manifests and global control-plane inputs are
+unchanged. Set DEPLOY_AUTO_SCOPE=0 to force the legacy full-target deploy path.
 EOF_USAGE
 }
 
@@ -443,7 +448,30 @@ activate_auto_partial_deploy_if_safe() {
   fi
   read_lines_into_array "$changed_output" changed_paths
   if [ "${#changed_paths[@]}" -eq 0 ]; then
-    deploy_log "auto-scope found no tracked bundle file changes; using full deploy to preserve external runtime reconciliation"
+    if [ "$RUNTIME_CONFIG_CHANGE_STATUS" = "known" ] && [ "${#RUNTIME_CONFIG_CHANGED_PATHS[@]}" -eq 0 ]; then
+      NOOP_DEPLOY=1
+      deploy_log "auto-scope found no tracked bundle or runtime-config changes; deploy is a no-op"
+      return 0
+    fi
+    if [ "$RUNTIME_CONFIG_CHANGE_STATUS" = "known" ] && [ "${#RUNTIME_CONFIG_CHANGED_PATHS[@]}" -gt 0 ]; then
+      compose_config_json="$(mktemp "${TMPDIR:-/tmp}/webservices-auto-scope-compose.XXXXXX.json")"
+      compose_config_snapshot "$compose_config_json"
+      for path in "${RUNTIME_CONFIG_CHANGED_PATHS[@]}"; do
+        service_output="$(services_for_runtime_config_path "$path" "$compose_config_json")"
+        while IFS= read -r service_name; do
+          append_unique "$service_name" mapped_services
+        done <<< "$service_output"
+      done
+      rm -f "$compose_config_json"
+      if [ "${#mapped_services[@]}" -gt 0 ]; then
+        PARTIAL_DEPLOY=1
+        AUTO_PARTIAL_DEPLOY=1
+        SCOPED_SERVICES=("${mapped_services[@]}")
+        deploy_log "auto-scope selected runtime-config-only services: $(join_array_limited "$SYSTEMD_PROGRESS_MAX_ITEMS" "${SCOPED_SERVICES[@]}")"
+        return 0
+      fi
+    fi
+    deploy_log "auto-scope using full deploy because runtime-config changes have no clear service owner"
     return 0
   fi
 
@@ -632,7 +660,10 @@ emit_deploy_plan() {
   local services=() units=() health_units=()
   local service_output unit_output health_output
 
-  if [ "$PARTIAL_DEPLOY" = "1" ]; then
+  if [ "$NOOP_DEPLOY" = "1" ]; then
+    deploy_log "deploy plan: mode=no-op"
+    deploy_log "plan action: no tracked bundle or runtime-config changes; no build, unit reload, restart, or target reconcile required"
+  elif [ "$PARTIAL_DEPLOY" = "1" ]; then
     if ! service_output="$(resolve_scoped_services)"; then
       die "failed to resolve scoped services for deploy plan"
     fi
@@ -1396,6 +1427,14 @@ fi
 emit_deploy_plan
 if [ "$PLAN_ONLY" = "1" ]; then
   deploy_log "plan-only complete; no build, systemd, or Docker changes applied"
+  exit 0
+fi
+if [ "$NOOP_DEPLOY" = "1" ]; then
+  set_phase "complete"
+  deploy_state_write_global_signature "$BUNDLE_ROOT" "$DEPLOY_ROOT"
+  deploy_state_write_file_manifest "$BUNDLE_ROOT" "$DEPLOY_ROOT"
+  deploy_state_write_runtime_config_manifest "$DEPLOY_ROOT"
+  deploy_log "deploy complete; no changes applied"
   exit 0
 fi
 
