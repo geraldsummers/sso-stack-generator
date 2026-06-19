@@ -333,9 +333,15 @@ service_start() {
       sleep 1
       continue
     fi
+    now="$(date +%s)"
+    elapsed="$((now - start_time))"
+    if [ "$running_rc" -eq 2 ] && [ "$elapsed" -lt "$prehealthy_grace_seconds" ]; then
+      printf '[webservices-unit] %s tolerating transient startup state after %ss\n' "$UNIT_NAME" "$elapsed" >&2
+      log_service_snapshot "$config_json"
+      sleep "$POLL_INTERVAL_SECONDS"
+      continue
+    fi
     if [ "$has_any_healthcheck" = "true" ] && [ "$health_seen_healthy" -eq 0 ]; then
-      now="$(date +%s)"
-      elapsed="$((now - start_time))"
       if [ "$elapsed" -lt "$prehealthy_grace_seconds" ]; then
         printf '[webservices-unit] %s waiting for first healthy state; tolerating transient startup state after %ss\n' "$UNIT_NAME" "$elapsed" >&2
         log_service_snapshot "$config_json"
