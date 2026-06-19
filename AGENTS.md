@@ -112,13 +112,15 @@ Rules:
 
 ## Testing
 
-Preferred repo test entrypoint:
-- `./stack.containers/test-runner/run-tests.sh`
+Preferred generator test entrypoints:
+- `./scripts/test-component-selection.sh`
+- `./scripts/test-external-modules.sh`
+- `./scripts/test-module-runners.sh`
+- `./scripts/test-docs.sh`
 
-Common commands:
-- `./stack.containers/test-runner/run-tests.sh ts-unit`
-- `./stack.containers/test-runner/run-tests.sh kt`
-- `./stack.containers/test-runner/run-tests.sh kt stack-contract`
+The Playwright/test-runner package is module-owned. Run it from the
+test-runners module checkout during module development, or from the generated
+bundle after module materialization.
 
 Important constraints:
 - Playwright and deep auth suites depend on deployed runtime env and compose DNS

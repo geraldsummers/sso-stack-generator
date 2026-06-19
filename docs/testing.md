@@ -19,12 +19,12 @@ git ls-files 'scripts/**/*.sh' 'ops/**/*.sh' 'stack.config/**/*.sh' | xargs -r s
 
 ## Module-Owned TypeScript Tests
 
-The Playwright test-runner package is provided by the `test-runners` module and
-is available after module materialization or inside a built bundle. From a public
-generator-only checkout, run module tests in the module repository instead.
+The Playwright test-runner package is provided by the external `test-runners`
+module and is available after module materialization or inside a built bundle.
+From a public generator-only checkout, run module tests in that module
+repository instead of expecting `stack.containers/test-runner` to exist here.
 
 ```bash
-cd modules-workspace/test-runners-stack-module/stack.containers/test-runner/playwright-tests
 npm ci
 npm run build
 npm run test:unit
