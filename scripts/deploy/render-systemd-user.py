@@ -620,6 +620,8 @@ def render_path_contract_condition(contract: PathContract, runtime_env_file: str
         if "$(" in contract.path or "`" in contract.path:
             raise ValueError(f"path contract contains disallowed shell substitution: {contract.path}")
         quoted_path = contract.path.replace("\\", "\\\\").replace('"', '\\"')
+        if "ISOLATED_DOCKER_VM_SSH_DIR" in contract.path:
+            return f"ExecCondition=/bin/sh -c {shlex.quote(f'. {runtime_env_file}; test -r \"{quoted_path}/id_ed25519\"')}"
         return f"ExecCondition=/bin/sh -c {shlex.quote(f'. {runtime_env_file}; test {test_flag} \"{quoted_path}\"')}"
     return f"ExecCondition=/usr/bin/test {test_flag} {contract.path}"
 

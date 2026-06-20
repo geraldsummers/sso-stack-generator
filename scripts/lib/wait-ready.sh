@@ -126,6 +126,35 @@ systemd_unit_is_oneshot() {
   [ "$(systemd_unit_type "$unit_name")" = "oneshot" ]
 }
 
+isolated_docker_vm_identity_file() {
+  (
+    set -a
+    # shellcheck disable=SC1090
+    . "$RUNTIME_ENV_FILE"
+    if [ -n "${ISOLATED_DOCKER_VM_SSH_DIR:-}" ]; then
+      printf '%s/id_ed25519\n' "$ISOLATED_DOCKER_VM_SSH_DIR"
+    fi
+  )
+}
+
+isolated_docker_vm_identity_configured() {
+  local identity_file
+  identity_file="$(isolated_docker_vm_identity_file)"
+  [ -n "$identity_file" ] && [ -r "$identity_file" ]
+}
+
+service_is_optional_without_isolated_docker_vm_identity() {
+  local service_name="$1"
+  case "$service_name" in
+    isolated-docker-vm-tunnel|docker-vm-socket-proxy|docker-vm-controller-proxy|workspace-provisioner|forgejo-runner|chatgpt-connector)
+      ! isolated_docker_vm_identity_configured
+      ;;
+    *)
+      return 1
+      ;;
+  esac
+}
+
 systemd_unit_successful_oneshot() {
   local unit_name="$1"
   local active_state sub_state result
@@ -145,6 +174,10 @@ service_state() {
   local compose_config="$1"
   local service_name="$2"
   local container_name unit_name
+  if service_is_optional_without_isolated_docker_vm_identity "$service_name"; then
+    printf 'skipped\n'
+    return 0
+  fi
   container_name="$(service_container_name "$compose_config" "$service_name")"
   unit_name="$(systemd_unit_name_for_service "$service_name")"
   [ -n "$container_name" ] || {
@@ -181,6 +214,10 @@ service_exit_code() {
   local compose_config="$1"
   local service_name="$2"
   local container_name unit_name result
+  if service_is_optional_without_isolated_docker_vm_identity "$service_name"; then
+    printf '0\n'
+    return 0
+  fi
   container_name="$(service_container_name "$compose_config" "$service_name")"
   unit_name="$(systemd_unit_name_for_service "$service_name")"
   [ -n "$container_name" ] || {

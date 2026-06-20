@@ -267,6 +267,19 @@ derive_if_missing() {
   fi
 }
 
+derive_laravel_app_key_if_missing() {
+  local key="$1"
+  local label="$2"
+  local current=""
+  if render_has "$key"; then
+    current="$(render_get "$key")"
+  fi
+  if [ -n "$current" ] && printf '%s' "$current" | grep -Eq '^base64:[A-Za-z0-9+/]{43}=?$'; then
+    return 0
+  fi
+  render_set "$key" "base64:$(python3 -c 'import base64, sys; print(base64.b64encode(bytes.fromhex(sys.argv[1])).decode().rstrip("="))' "$(derive_stack_secret "$label" 64)")"
+}
+
 derive_policy_secret() {
   local label="$1"
   local length="${2:-32}"
@@ -295,6 +308,11 @@ build_derived_render_values() {
   fi
   if render_has ISOLATED_DOCKER_VM_HOST && { ! render_has ISOLATED_DOCKER_VM_SSH_DIR || [ -z "$(render_get ISOLATED_DOCKER_VM_SSH_DIR)" ]; }; then
     render_set ISOLATED_DOCKER_VM_SSH_DIR "$(normalize_host_path "$HOME/.ssh")"
+  fi
+  if render_has ISOLATED_DOCKER_VM_SSH_DIR && [ -r "$(render_get ISOLATED_DOCKER_VM_SSH_DIR)/id_ed25519" ]; then
+    render_set ISOLATED_DOCKER_VM_IDENTITY_CONFIGURED "true"
+  else
+    render_set ISOLATED_DOCKER_VM_IDENTITY_CONFIGURED "false"
   fi
   render_set SYSTEMD_USER_UID "$(id -u)"
   render_set SYSTEMD_USER_GID "$(id -g)"
@@ -333,10 +351,15 @@ build_derived_render_values() {
   derive_if_missing VALKEY_MASTODON_PASSWORD valkey-mastodon 48
   derive_if_missing OAUTH2_PROXY_CLIENT_SECRET oauth2-proxy-client 48
   derive_if_missing OAUTH2_PROXY_COOKIE_SECRET oauth2-proxy-cookie 32
-  derive_if_missing BOOKSTACK_APP_KEY bookstack-app-key 48
+  derive_laravel_app_key_if_missing BOOKSTACK_APP_KEY bookstack-app-key
   derive_if_missing BOOKSTACK_OAUTH_SECRET bookstack-oauth 48
   derive_if_missing FORGEJO_OAUTH_SECRET forgejo-oauth 48
   derive_if_missing MASTODON_OAUTH_SECRET mastodon-oauth 48
+  derive_if_missing MASTODON_SECRET_KEY_BASE mastodon-secret-key-base 64
+  derive_if_missing MASTODON_OTP_SECRET mastodon-otp-secret 64
+  derive_if_missing MASTODON_ACTIVE_RECORD_ENCRYPTION_DETERMINISTIC_KEY mastodon-active-record-deterministic 64
+  derive_if_missing MASTODON_ACTIVE_RECORD_ENCRYPTION_KEY_DERIVATION_SALT mastodon-active-record-salt 64
+  derive_if_missing MASTODON_ACTIVE_RECORD_ENCRYPTION_PRIMARY_KEY mastodon-active-record-primary 64
   derive_if_missing MATRIX_OAUTH_SECRET matrix-oauth 48
   derive_if_missing PLANKA_OAUTH_SECRET planka-oauth 48
   derive_if_missing TEST_RUNNER_OAUTH_SECRET test-runner-oauth 48
@@ -351,6 +374,13 @@ build_derived_render_values() {
   derive_if_missing ONLYOFFICE_JWT_SECRET onlyoffice-jwt 48
   derive_if_missing SEAFILE_EMAIL_PASSWORD seafile-email 48
   derive_if_missing SEAFILE_SECRET_KEY seafile-secret 48
+  derive_if_missing KOPIA_PASSWORD kopia-password 64
+  if ! render_has KOPIA_SERVER_USERNAME || [ -z "$(render_get KOPIA_SERVER_USERNAME)" ]; then
+    render_set KOPIA_SERVER_USERNAME "kopia"
+  fi
+  if ! render_has KOPIA_PROXY_AUTHORIZATION || [ -z "$(render_get KOPIA_PROXY_AUTHORIZATION)" ]; then
+    render_set KOPIA_PROXY_AUTHORIZATION "Basic $(printf '%s:%s' "$(render_get KOPIA_SERVER_USERNAME)" "$(render_get KOPIA_PASSWORD)" | base64 | tr -d '\n')"
+  fi
   derive_if_missing SYNAPSE_FORM_SECRET synapse-form 48
   derive_if_missing SYNAPSE_MACAROON_SECRET synapse-macaroon 48
   derive_if_missing SYNAPSE_REGISTRATION_SECRET synapse-registration 48
