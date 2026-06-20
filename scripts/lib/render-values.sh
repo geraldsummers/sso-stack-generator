@@ -131,8 +131,8 @@ load_site_values() {
   render_set MEDIA_WRITER_UID "$(yaml_get_scalar "$site_config_file" 'storage.media_writer_uid')"
   render_set MEDIA_WRITER_GID "$(yaml_get_scalar "$site_config_file" 'storage.media_writer_gid')"
 
-  [ -n "$(render_get PG_SSD_ROOT)" ] || render_set PG_SSD_ROOT "/mnt/pg_ssd"
-  [ -n "$(render_get NOCOW_DB_DIR)" ] || render_set NOCOW_DB_DIR "/mnt/raid/docker/nocow"
+  [ -n "$(render_get PG_SSD_ROOT)" ] || render_set PG_SSD_ROOT "/mnt/stack/pg-ssd"
+  [ -n "$(render_get NOCOW_DB_DIR)" ] || render_set NOCOW_DB_DIR "/mnt/stack/nocow"
   [ -n "$(render_get STACK_VOLUME_ROOT)" ] || render_set STACK_VOLUME_ROOT "/mnt/stack/volumes"
   [ -n "$(render_get QBITTORRENT_DATA_ROOT)" ] || render_set QBITTORRENT_DATA_ROOT "/mnt/media/qbittorrent"
   [ -n "$(render_get SEAFILE_MEDIA_ROOT)" ] || render_set SEAFILE_MEDIA_ROOT "/mnt/media/seafile-media"
