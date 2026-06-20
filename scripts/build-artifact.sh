@@ -111,6 +111,12 @@ log "running scoped deploy planner checks"
 log "running env-file security checks"
 "$SCRIPT_DIR/test-env-file-security.sh" >&2
 
+log "running deploy preflight checks"
+"$SCRIPT_DIR/test-deploy-preflight.sh" >&2
+
+log "running bundle installer checks"
+"$SCRIPT_DIR/test-install-bundle.sh" >&2
+
 log "running docs link checks"
 "$SCRIPT_DIR/test-docs.sh" >&2
 
@@ -137,6 +143,7 @@ artifact_listing="$(mktemp)"
 tar -tf "$artifact_path" > "$artifact_listing"
 grep -Fxq "./scripts/deploy.sh" "$artifact_listing" || die "release artifact missing generic deploy entrypoint: ./scripts/deploy.sh"
 grep -Fxq "./scripts/verify.sh" "$artifact_listing" || die "release artifact missing generic verify entrypoint: ./scripts/verify.sh"
+grep -Fxq "./scripts/install-bundle.sh" "$artifact_listing" || die "release artifact missing bundle installer entrypoint: ./scripts/install-bundle.sh"
 rm -f "$artifact_listing"
 
 mkdir -p "$SOURCE_ROOT/out"

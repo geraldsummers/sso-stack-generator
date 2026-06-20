@@ -22,6 +22,10 @@ source "$SCRIPT_DIR/lib/systemd-user.sh"
 source "$SCRIPT_DIR/lib/components.sh"
 
 PROJECT_NAME="${PROJECT_NAME:-webservices}"
+: "${COMPOSE_PARALLEL_LIMIT:=2}"
+export COMPOSE_PARALLEL_LIMIT
+EXPECTED_DEPLOY_ROOT="${WEBSERVICES_DEPLOY_ROOT:-$HOME/webservices}"
+ALLOW_NONSTANDARD_DEPLOY_ROOT="${WEBSERVICES_ALLOW_NONSTANDARD_DEPLOY_ROOT:-0}"
 PREFLIGHT_ONLY=0
 PARTIAL_DEPLOY=0
 AUTO_PARTIAL_DEPLOY=0
@@ -173,6 +177,98 @@ on_deploy_error() {
 
 trap 'on_deploy_error' ERR
 
+canonicalize_existing_or_parent() {
+  local path="$1"
+  local parent basename
+  if [ -e "$path" ]; then
+    cd "$path" && pwd -P
+    return
+  fi
+  parent="$(dirname "$path")"
+  basename="$(basename "$path")"
+  mkdir -p "$parent"
+  printf '%s/%s\n' "$(cd "$parent" && pwd -P)" "$basename"
+}
+
+validate_deploy_root() {
+  local expected_root
+  expected_root="$(canonicalize_existing_or_parent "$EXPECTED_DEPLOY_ROOT")"
+  if [ "$DEPLOY_ROOT" = "$expected_root" ]; then
+    return 0
+  fi
+  if [ "$ALLOW_NONSTANDARD_DEPLOY_ROOT" = "1" ]; then
+    deploy_log "nonstandard deploy root allowed: actual=$DEPLOY_ROOT expected=$expected_root"
+    return 0
+  fi
+
+  cat >&2 <<EOF_DEPLOY_ROOT
+[webservices-deploy] This bundle is running from:
+  $DEPLOY_ROOT
+
+[webservices-deploy] The generated systemd units are rendered for:
+  $expected_root
+
+[webservices-deploy] Stage the bundle before deploying:
+  ./install.sh --target "$expected_root"
+  cd "$expected_root" && ./deploy.sh
+
+[webservices-deploy] Set WEBSERVICES_ALLOW_NONSTANDARD_DEPLOY_ROOT=1 only when the systemd templates were intentionally rendered for another root.
+EOF_DEPLOY_ROOT
+  die "deploy root does not match rendered systemd unit root"
+}
+
+component_selected() {
+  local component="$1"
+  jq -e --arg component "$component" '(.components // []) | index($component) != null' \
+    "$BUNDLE_ROOT/site/components.lock.json" >/dev/null 2>&1
+}
+
+print_nvidia_toolkit_help() {
+  cat >&2 <<'EOF_NVIDIA_HELP'
+[webservices-deploy] GPU inference requires the NVIDIA Container Toolkit. Install and configure it with:
+  curl -fsSL https://nvidia.github.io/libnvidia-container/gpgkey \
+    | sudo gpg --dearmor -o /usr/share/keyrings/nvidia-container-toolkit-keyring.gpg
+
+  curl -s -L https://nvidia.github.io/libnvidia-container/stable/deb/nvidia-container-toolkit.list \
+    | sed 's#deb https://#deb [signed-by=/usr/share/keyrings/nvidia-container-toolkit-keyring.gpg] https://#g' \
+    | sudo tee /etc/apt/sources.list.d/nvidia-container-toolkit.list >/dev/null
+
+  sudo apt-get update
+  sudo apt-get install -y nvidia-container-toolkit
+  sudo nvidia-ctk runtime configure --runtime=docker
+  sudo systemctl restart docker
+EOF_NVIDIA_HELP
+}
+
+docker_has_nvidia_runtime() {
+  docker info --format '{{json .Runtimes}}' 2>/dev/null | jq -e 'has("nvidia")' >/dev/null 2>&1
+}
+
+check_gpu_preflight() {
+  if [ "${DEPLOY_SKIP_GPU_PREFLIGHT:-0}" = "1" ]; then
+    deploy_log "GPU preflight skipped by DEPLOY_SKIP_GPU_PREFLIGHT=1"
+    return 0
+  fi
+  component_selected inference || return 0
+
+  command -v nvidia-smi >/dev/null 2>&1 || {
+    print_nvidia_toolkit_help
+    die "selected inference component requires nvidia-smi on the deployment host"
+  }
+  nvidia-smi >/dev/null 2>&1 || {
+    print_nvidia_toolkit_help
+    die "nvidia-smi failed on the deployment host"
+  }
+  docker_has_nvidia_runtime || {
+    print_nvidia_toolkit_help
+    die "Docker is missing the nvidia runtime required by --gpus services"
+  }
+
+  if [ "${DEPLOY_GPU_SMOKE_TEST:-0}" = "1" ]; then
+    docker run --rm --gpus all nvidia/cuda:12.4.1-base-ubuntu22.04 nvidia-smi >/dev/null
+  fi
+}
+
 preflight() {
   require_cmd docker
   require_cmd jq
@@ -180,11 +276,13 @@ preflight() {
   require_cmd sops
   require_cmd systemctl
   docker compose version >/dev/null 2>&1 || die "docker compose plugin is unavailable"
+  validate_deploy_root
   resolve_site_manifest_file "$site_manifest_path" >/dev/null
+  check_gpu_preflight
   ensure_runtime_links "$DEPLOY_ROOT" >/dev/null
   mkdir -p "$DEPLOY_ROOT/runtime/progression"
   ensure_user_systemd_env
-  deploy_log "preflight ok (bundle=$BUNDLE_ROOT siteManifestPath=$site_manifest_path)"
+  deploy_log "preflight ok (bundle=$BUNDLE_ROOT siteManifestPath=$site_manifest_path composeParallelLimit=$COMPOSE_PARALLEL_LIMIT)"
 }
 
 model_prep_services() {
