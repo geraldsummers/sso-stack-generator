@@ -321,6 +321,7 @@ build_derived_render_values() {
   if ! render_has PLAYWRIGHT_IGNORE_HTTPS_ERRORS || [ -z "$(render_get PLAYWRIGHT_IGNORE_HTTPS_ERRORS)" ]; then
     render_set PLAYWRIGHT_IGNORE_HTTPS_ERRORS "false"
   fi
+  derive_if_missing MODEL_CONTEXT_PROXY_AUTH_SECRET model-context-proxy-auth 64
   if ! render_has ADMIN_SSHA_PASSWORD || [ -z "$(render_get ADMIN_SSHA_PASSWORD)" ]; then
     render_set ADMIN_SSHA_PASSWORD "$(compute_ssha "$(render_get STACK_ADMIN_PASSWORD)")"
   fi

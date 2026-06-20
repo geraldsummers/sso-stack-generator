@@ -1227,8 +1227,21 @@ wait_for_target_reconcile() {
     target_state="$(user_systemctl is-active webservices.target 2>/dev/null || true)"
 
     if [ "${#failed_units[@]}" -gt 0 ]; then
-      deploy_log "systemd reconcile failed units: $(join_array_limited "$SYSTEMD_PROGRESS_MAX_ITEMS" "${failed_units[@]}")"
-      return 1
+      local failed_unit has_restart_job filtered_failed=()
+      for failed_unit in "${failed_units[@]}"; do
+        has_restart_job=0
+        for job in "${jobs[@]}"; do
+          if [ "${job%%:*}" = "$failed_unit" ]; then
+            has_restart_job=1
+            break
+          fi
+        done
+        [ "$has_restart_job" = "1" ] || filtered_failed+=("$failed_unit")
+      done
+      if [ "${#filtered_failed[@]}" -gt 0 ]; then
+        deploy_log "systemd reconcile failed units: $(join_array_limited "$SYSTEMD_PROGRESS_MAX_ITEMS" "${filtered_failed[@]}")"
+        return 1
+      fi
     fi
 
     if [ "${#jobs[@]}" -eq 0 ]; then
@@ -1524,6 +1537,56 @@ refresh_infra_units() {
     --env-file "$DEPLOY_ROOT/runtime/stack.env"
 }
 
+run_deploy_audit() {
+  "$SCRIPT_DIR/deploy/deploy-audit.py" "$@"
+}
+
+validate_runtime_secrets() {
+  run_deploy_audit validate-secrets \
+    --bundle-root "$BUNDLE_ROOT" \
+    --env-file "$DEPLOY_ROOT/runtime/stack.env" \
+    --project-name "$PROJECT_NAME"
+}
+
+write_storage_report() {
+  run_deploy_audit storage-report \
+    --bundle-root "$BUNDLE_ROOT" \
+    --env-file "$DEPLOY_ROOT/runtime/stack.env" \
+    --project-name "$PROJECT_NAME" \
+    --output "$BUNDLE_ROOT/reports/storage-audit.json"
+}
+
+cleanup_optional_orphan_containers() {
+  run_deploy_audit cleanup-optional-orphans \
+    --bundle-root "$BUNDLE_ROOT" \
+    --env-file "$DEPLOY_ROOT/runtime/stack.env" \
+    --project-name "$PROJECT_NAME"
+}
+
+write_module_deployment_report() {
+  run_deploy_audit module-report \
+    --bundle-root "$BUNDLE_ROOT" \
+    --env-file "$DEPLOY_ROOT/runtime/stack.env" \
+    --project-name "$PROJECT_NAME" \
+    --output "$BUNDLE_ROOT/reports/module-deployment.json" \
+    --strict
+}
+
+validate_qdrant_schema() {
+  run_deploy_audit qdrant-schema \
+    --env-file "$DEPLOY_ROOT/runtime/stack.env" \
+    --project-name "$PROJECT_NAME"
+}
+
+wait_for_final_readiness() {
+  "$SCRIPT_DIR/lib/wait-ready.sh" \
+    --bundle-dir "$BUNDLE_ROOT" \
+    --runtime-env-file "$DEPLOY_ROOT/runtime/stack.env" \
+    --project-name "$PROJECT_NAME" \
+    --timeout-seconds "${DEPLOY_FINAL_READINESS_TIMEOUT_SECONDS:-900}" \
+    --interval-seconds "${DEPLOY_FINAL_READINESS_INTERVAL_SECONDS:-5}"
+}
+
 preflight
 if [ "$PREFLIGHT_ONLY" = "1" ]; then
   set_phase "preflight-only"
@@ -1533,6 +1596,8 @@ fi
 set_phase "render-runtime"
 ensure_runtime_links "$DEPLOY_ROOT" >/dev/null
 "$SCRIPT_DIR/deploy/render-runtime.sh" --bundle-root "$BUNDLE_ROOT" --deploy-root "$DEPLOY_ROOT" --site-manifest "$site_manifest_path"
+validate_runtime_secrets
+write_storage_report
 if runtime_config_changes="$(deploy_state_changed_runtime_config_paths "$DEPLOY_ROOT")"; then
   RUNTIME_CONFIG_CHANGE_STATUS="known"
   read_lines_into_array "$runtime_config_changes" RUNTIME_CONFIG_CHANGED_PATHS
@@ -1598,6 +1663,7 @@ if [ "$PARTIAL_DEPLOY" = "1" ]; then
 else
   cleanup_excluded_service_containers
   recreate_env_sensitive_containers
+  cleanup_optional_orphan_containers
 fi
 
 set_phase "bootstrap-scaffolds"
@@ -1673,6 +1739,11 @@ else
   restart_post_reconcile_units
 fi
 reload_deploy_reconcile_units
+
+set_phase "final-readiness"
+wait_for_final_readiness
+validate_qdrant_schema
+write_module_deployment_report
 
 set_phase "complete"
 deploy_state_write_global_signature "$BUNDLE_ROOT" "$DEPLOY_ROOT"

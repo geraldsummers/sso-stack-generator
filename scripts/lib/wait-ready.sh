@@ -143,16 +143,25 @@ isolated_docker_vm_identity_configured() {
   [ -n "$identity_file" ] && [ -r "$identity_file" ]
 }
 
+optional_capability_services() {
+  local metadata_file="$BUNDLE_DIR/scripts/lib/optional-capabilities.json"
+  if [ -f "$metadata_file" ]; then
+    jq -r '.capabilities.isolatedDockerVm.services[]?' "$metadata_file"
+    return 0
+  fi
+  printf '%s\n' \
+    isolated-docker-vm-tunnel \
+    docker-vm-socket-proxy \
+    docker-vm-controller-proxy \
+    workspace-provisioner \
+    forgejo-runner \
+    chatgpt-connector
+}
+
 service_is_optional_without_isolated_docker_vm_identity() {
   local service_name="$1"
-  case "$service_name" in
-    isolated-docker-vm-tunnel|docker-vm-socket-proxy|docker-vm-controller-proxy|workspace-provisioner|forgejo-runner|chatgpt-connector)
-      ! isolated_docker_vm_identity_configured
-      ;;
-    *)
-      return 1
-      ;;
-  esac
+  optional_capability_services | grep -Fxq "$service_name" || return 1
+  ! isolated_docker_vm_identity_configured
 }
 
 systemd_unit_successful_oneshot() {
