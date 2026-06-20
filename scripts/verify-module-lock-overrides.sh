@@ -61,6 +61,17 @@ manifest_path = Path(sys.argv[1])
 cache_dir = Path(sys.argv[2])
 lock = json.loads(manifest_path.read_text(encoding="utf-8"))
 violations: list[str] = []
+deploy_roots = (
+    "global.settings/",
+    "stack.compose/",
+    "stack.config/",
+    "stack.containers/",
+    "stack.kotlin/",
+    "stack.js/",
+    "stack.systemd/",
+    "scripts/lib/",
+    "scripts/modules/",
+)
 
 for entry in lock.get("modules", []):
     module_id = entry.get("id", "")
@@ -84,6 +95,13 @@ for entry in lock.get("modules", []):
     overrides = sorted({str(path).rstrip("/") for path in entry.get("overrides", [])})
     tracked = git_lines(repo_dir, "ls-files")
     tracked_set = set(tracked)
+
+    for path in tracked:
+        if not path.startswith(deploy_roots):
+            continue
+        covered = any(path == overlay or path.startswith(overlay + "/") for overlay in overlays)
+        if not covered:
+            violations.append(f"{module_id}: tracked deploy-surface file is outside declared overlays: {path}")
 
     for override in overrides:
         exists = override in tracked_set or any(path.startswith(override + "/") for path in tracked)
