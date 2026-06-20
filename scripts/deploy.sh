@@ -1624,6 +1624,11 @@ if [ "$PLAN_ONLY" = "1" ]; then
   exit 0
 fi
 if [ "$NOOP_DEPLOY" = "1" ]; then
+  set_phase "final-readiness"
+  wait_for_final_readiness
+  validate_qdrant_schema
+  write_module_deployment_report
+
   set_phase "complete"
   deploy_state_write_global_signature "$BUNDLE_ROOT" "$DEPLOY_ROOT"
   deploy_state_write_file_manifest "$BUNDLE_ROOT" "$DEPLOY_ROOT"
