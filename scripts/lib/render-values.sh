@@ -124,6 +124,8 @@ load_site_values() {
   render_set VECTOR_DB_ROOT "$(normalize_host_path "$(yaml_get_scalar "$site_config_file" 'storage.vector_dbs')")"
   render_set PG_SSD_ROOT "$(normalize_host_path "$(yaml_get_scalar "$site_config_file" 'storage.pg_ssd_root')")"
   render_set NOCOW_DB_DIR "$(normalize_host_path "$(yaml_get_scalar "$site_config_file" 'storage.nocow_db_dir')")"
+  render_set STACK_VOLUME_ROOT "$(normalize_host_path "$(yaml_get_scalar "$site_config_file" 'storage.volume_root')")"
+  render_set QBITTORRENT_DATA_ROOT "$(normalize_host_path "$(yaml_get_scalar "$site_config_file" 'storage.custom.qbittorrent_data')")"
   render_set SEAFILE_MEDIA_ROOT "$(normalize_host_path "$(yaml_get_scalar "$site_config_file" 'storage.custom.seafile_media')")"
   render_set JELLYFIN_MEDIA_ROOT "$(normalize_host_path "$(yaml_get_scalar "$site_config_file" 'storage.custom.jellyfin_media')")"
   render_set MEDIA_WRITER_UID "$(yaml_get_scalar "$site_config_file" 'storage.media_writer_uid')"
@@ -131,6 +133,8 @@ load_site_values() {
 
   [ -n "$(render_get PG_SSD_ROOT)" ] || render_set PG_SSD_ROOT "/mnt/pg_ssd"
   [ -n "$(render_get NOCOW_DB_DIR)" ] || render_set NOCOW_DB_DIR "/mnt/raid/docker/nocow"
+  [ -n "$(render_get STACK_VOLUME_ROOT)" ] || render_set STACK_VOLUME_ROOT "/mnt/stack/volumes"
+  [ -n "$(render_get QBITTORRENT_DATA_ROOT)" ] || render_set QBITTORRENT_DATA_ROOT "/mnt/media/qbittorrent"
   [ -n "$(render_get SEAFILE_MEDIA_ROOT)" ] || render_set SEAFILE_MEDIA_ROOT "/mnt/media/seafile-media"
   [ -n "$(render_get JELLYFIN_MEDIA_ROOT)" ] || render_set JELLYFIN_MEDIA_ROOT "/mnt/media/jellyfin-media"
   [ -n "$(render_get MEDIA_WRITER_UID)" ] || render_set MEDIA_WRITER_UID "1000"
