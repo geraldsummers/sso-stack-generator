@@ -11,8 +11,8 @@ PRINT_ONLY=0
 
 TARGET_DIRS=(
   "/mnt/stack/pg-ssd/postgres-ssd"
-  "/mnt/stack/nocow/postgres"
-  "/mnt/stack/nocow/mariadb"
+  "/mnt/stack/volumes/postgres_data"
+  "/mnt/stack/volumes/mariadb_data"
   "/mnt/stack/vector-dbs/qdrant"
   "/mnt/stack/vector-dbs/opensearch"
   "/mnt/media/seafile-media"
@@ -46,8 +46,8 @@ validate_target_dir() {
   local target_dir="$1"
   case "$target_dir" in
     /mnt/stack/pg-ssd/postgres-ssd|\
-    /mnt/stack/nocow/postgres|\
-    /mnt/stack/nocow/mariadb|\
+    /mnt/stack/volumes/postgres_data|\
+    /mnt/stack/volumes/mariadb_data|\
     /mnt/stack/vector-dbs/qdrant|\
     /mnt/stack/vector-dbs/opensearch|\
     /mnt/media/seafile-media)

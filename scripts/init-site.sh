@@ -249,7 +249,6 @@ storage:
   volume_root: "/mnt/stack/volumes"
   vector_dbs: "/mnt/stack/vector-dbs"
   pg_ssd_root: "/mnt/stack/pg-ssd"
-  nocow_db_dir: "/mnt/stack/nocow"
   media_writer_uid: "1000"
   media_writer_gid: "1000"
   custom:

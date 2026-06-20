@@ -126,7 +126,6 @@ export MASTODON_VAPID_PRIVATE_KEY=component-test-secret
 export MASTODON_VAPID_PUBLIC_KEY=component-test-secret
 export MEDIA_WRITER_GID="$(id -g)"
 export MEDIA_WRITER_UID="$(id -u)"
-export NOCOW_DB_DIR="$host_paths_dir/nocow"
 export NTFY_PASSWORD=component-test-secret
 export NTFY_USERNAME=component-test
 export PG_SSD_ROOT="$host_paths_dir/pg-ssd"
