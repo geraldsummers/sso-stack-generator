@@ -62,6 +62,22 @@ class PathContract:
     kind: str
 
 
+VM_IDENTITY_DEPENDENT_DOMAINS = {
+    "docker-vm-proxy",
+    "docker-vm-controller-proxy",
+    "workspace-provisioner",
+    "forgejo-runner",
+    "chatgpt-connector",
+}
+VM_IDENTITY_DEPENDENT_SERVICES = {
+    "isolated-docker-vm-tunnel",
+    "docker-vm-socket-proxy",
+    "docker-vm-controller-proxy",
+    "workspace-provisioner",
+    "forgejo-runner",
+    "chatgpt-connector",
+}
+
 SAFE_IDENTIFIER_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.-]*$")
 SAFE_TARGET_UNIT_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.@:-]*\.target$")
 SAFE_UNIT_REF_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.@:-]*\.(?:service|target)$")
@@ -405,6 +421,14 @@ def infer_path_kind(source_path: Path, local_deploy_root: Path, local_bundle_roo
 
 def collect_path_contracts(domain: Domain, compose_config: dict, local_deploy_root: Path, local_bundle_root: Path, deploy_root_template: str) -> List[PathContract]:
     contracts: Dict[str, PathContract] = {}
+    if (
+        domain.name in VM_IDENTITY_DEPENDENT_DOMAINS
+        or any(service_name in VM_IDENTITY_DEPENDENT_SERVICES for service_name in domain.services)
+    ):
+        contracts["${ISOLATED_DOCKER_VM_SSH_DIR:?Set ISOLATED_DOCKER_VM_SSH_DIR for isolated Docker VM access}"] = PathContract(
+            path="${ISOLATED_DOCKER_VM_SSH_DIR:?Set ISOLATED_DOCKER_VM_SSH_DIR for isolated Docker VM access}",
+            kind="dir",
+        )
     for service_name in domain.services:
         for mount in compose_config["services"][service_name].get("volumes") or []:
             if not isinstance(mount, dict) or mount.get("type") != "bind":
