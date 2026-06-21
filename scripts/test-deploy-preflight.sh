@@ -18,5 +18,7 @@ assert_contains 'COMPOSE_PARALLEL_LIMIT:=2'
 assert_contains 'check_gpu_preflight'
 assert_contains 'nvidia-container-toolkit'
 assert_contains 'DEPLOY_GPU_SMOKE_TEST'
+assert_contains 'if type == "object" then (.source // "") else "" end'
+assert_contains '(type == "object")'
 
 printf '[test-deploy-preflight] ok\n'

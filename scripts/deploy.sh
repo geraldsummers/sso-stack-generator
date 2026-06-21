@@ -477,7 +477,7 @@ services_for_runtime_config_path() {
   config_path="${config_path#./}"
   jq -r --arg config "$config_path" '
     def rel_config_source:
-      (.source // "")
+      (if type == "object" then (.source // "") else "" end)
       | sub("^.*runtime/configs/?"; "")
       | sub("^\\./"; "");
 
@@ -485,7 +485,8 @@ services_for_runtime_config_path() {
     | to_entries[]
     | select(
         any((.value.volumes // [])[]?;
-          (.type == "bind")
+          (type == "object")
+          and (.type == "bind")
           and (((.source // "") | test("(^|/)runtime/configs($|/)")))
           and (
             (rel_config_source == "")
@@ -1415,7 +1416,8 @@ reload_runtime_config_units() {
           | to_entries[]
           | select(
               any((.value.volumes // [])[]?;
-                (.type == "bind")
+                (type == "object")
+                and (.type == "bind")
                 and (((.source // "") | test("(^|/)runtime/configs/")))
               )
             )
