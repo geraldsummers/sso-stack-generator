@@ -144,6 +144,9 @@ tar -tf "$artifact_path" > "$artifact_listing"
 grep -Fxq "./scripts/deploy.sh" "$artifact_listing" || die "release artifact missing generic deploy entrypoint: ./scripts/deploy.sh"
 grep -Fxq "./scripts/verify.sh" "$artifact_listing" || die "release artifact missing generic verify entrypoint: ./scripts/verify.sh"
 grep -Fxq "./scripts/install-bundle.sh" "$artifact_listing" || die "release artifact missing bundle installer entrypoint: ./scripts/install-bundle.sh"
+if [ -d "$contract_test_root/stack.js" ] && find "$contract_test_root/stack.js" -type f -print -quit | grep -q .; then
+  grep -qE '^\./stack\.js/.+' "$artifact_listing" || die "release artifact missing materialized stack.js sources"
+fi
 rm -f "$artifact_listing"
 
 mkdir -p "$SOURCE_ROOT/out"
