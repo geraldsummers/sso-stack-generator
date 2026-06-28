@@ -129,10 +129,11 @@ set_phase() {
 }
 
 dump_deploy_diagnostics() {
-  local failed_units unit_name
+  local failed_units unit_name stack_targets=()
   deploy_log "diagnostics begin (phase=$CURRENT_PHASE)"
-  deploy_log "systemd target status"
-  user_systemd_show_status webservices.target >&2
+  mapfile -t stack_targets < <(user_systemd_default_stack_targets "$BUNDLE_ROOT/stack.systemd/graph.json")
+  deploy_log "systemd stack target status"
+  user_systemd_show_status "${stack_targets[@]}" >&2
 
   deploy_log "systemd dependency tree"
   user_systemd_list_dependencies webservices.target >&2
@@ -436,7 +437,7 @@ path_requires_full_deploy() {
   local path="$1"
 
   case "$path" in
-    .dockerignore|global.settings/*|site/manifest.json|stack.systemd/*|systemd-user/infra/*|systemd-user/*.target)
+    .dockerignore|global.settings/*|site/manifest.json|stack.systemd/*|systemd-user/infra/*)
       return 0
       ;;
   esac
@@ -447,7 +448,7 @@ path_is_deploy_state_only() {
   local path="$1"
 
   case "$path" in
-    docker-compose.yml|site/components.lock.json|scripts/*|systemd-user/compose/*.stopping)
+    docker-compose.yml|site/components.lock.json|scripts/*|systemd-user/*.target|systemd-user/compose/*.stopping|stack.compose/test-runners.yml|stack.config/test-runner/*|stack.containers/test-runner/*|stack.kotlin/test-runner/*)
       return 0
       ;;
   esac
@@ -1281,13 +1282,7 @@ wait_for_target_reconcile() {
 reconcile_target() {
   local graph_file aux_targets=() excluded_aux_targets=() main_action aux_action
   graph_file="$BUNDLE_ROOT/stack.systemd/graph.json"
-  mapfile -t aux_targets < <(
-    jq -r '
-      (.defaultTarget.wantsTargets // []) as $wanted
-      | [(.auxiliaryTargets // [] | .[]?.name | . as $target | select($target != null and ($wanted | index($target)) != null))]
-      | .[]
-    ' "$graph_file"
-  )
+  mapfile -t aux_targets < <(default_auxiliary_targets_from_graph "$graph_file")
   mapfile -t excluded_aux_targets < <(
     jq -r '
       (.defaultTarget.wantsTargets // []) as $wanted

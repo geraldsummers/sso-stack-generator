@@ -44,7 +44,7 @@ require_cmd tar
 cd "$SOURCE_ROOT"
 require_clean_git_tree "$SOURCE_ROOT"
 
-contract_test_root="$SOURCE_ROOT"
+contract_test_root="${WEBSERVICES_CONTRACT_ROOT:-$SOURCE_ROOT}"
 contract_test_tmp=""
 if [ -d "$EXTERNAL_MODULES_MATERIALIZED_DIR" ] && find "$EXTERNAL_MODULES_MATERIALIZED_DIR" -type f -print -quit | grep -q .; then
   contract_test_tmp="$(mktemp -d)"
@@ -53,17 +53,17 @@ if [ -d "$EXTERNAL_MODULES_MATERIALIZED_DIR" ] && find "$EXTERNAL_MODULES_MATERI
   }
   trap cleanup_contract_test_root EXIT
   for root in global.settings stack.compose stack.config stack.containers stack.kotlin stack.js stack.systemd scripts docs; do
-    if [ -e "$SOURCE_ROOT/$root" ]; then
-      cp -a "$SOURCE_ROOT/$root" "$contract_test_tmp/$root"
+    if [ -e "$contract_test_root/$root" ]; then
+      cp -a "$contract_test_root/$root" "$contract_test_tmp/$root"
     fi
   done
   for file in .bazelrc BUILD.bazel MODULE.bazel build.gradle.kts settings.gradle.kts gradlew gradlew.bat; do
-    if [ -e "$SOURCE_ROOT/$file" ]; then
-      cp -a "$SOURCE_ROOT/$file" "$contract_test_tmp/$file"
+    if [ -e "$contract_test_root/$file" ]; then
+      cp -a "$contract_test_root/$file" "$contract_test_tmp/$file"
     fi
   done
-  if [ -d "$SOURCE_ROOT/gradle" ]; then
-    cp -a "$SOURCE_ROOT/gradle" "$contract_test_tmp/gradle"
+  if [ -d "$contract_test_root/gradle" ]; then
+    cp -a "$contract_test_root/gradle" "$contract_test_tmp/gradle"
   fi
   external_modules_overlay_into "$contract_test_tmp"
   component_catalog_merge_external "$contract_test_tmp/stack.config/components.json"
@@ -121,7 +121,16 @@ log "running docs link checks"
 "$SCRIPT_DIR/test-docs.sh" >&2
 
 log "running Gradle tests and shadow jars"
-gradle_args=(test shadowJar --no-daemon --max-workers=2)
+mapfile -t shadow_projects < <(
+  find "$contract_test_root/stack.kotlin" -mindepth 2 -maxdepth 2 -name build.gradle.kts -printf '%h\n' 2>/dev/null \
+    | sed "s#^$contract_test_root/stack.kotlin/##" \
+    | sort
+)
+gradle_args=(test)
+for project_name in "${shadow_projects[@]}"; do
+  gradle_args+=(":$project_name:shadowJar")
+done
+gradle_args+=(--no-daemon --max-workers=2)
 if [ -f "$contract_test_root/stack.kotlin/test-runner/build.gradle.kts" ]; then
   gradle_args+=(-x :test-runner:test)
 fi

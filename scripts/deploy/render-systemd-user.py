@@ -612,7 +612,7 @@ def compose_shard(domain: Domain, compose_config: dict, service_to_domain: dict,
     return top_level
 
 
-def render_target(target: Target, wanted_units: List[str]) -> str:
+def render_target(target: Target, wanted_units: List[str], stop_propagates_to: Optional[List[str]] = None) -> str:
     lines = ["[Unit]", f"Description={target.description}"]
     for unit in wanted_units:
         lines.append(f"Wants={unit}")
@@ -624,6 +624,8 @@ def render_target(target: Target, wanted_units: List[str]) -> str:
         lines.append(f"Conflicts={target_name}")
     for target_name in target.part_of_targets:
         lines.append(f"PartOf={target_name}")
+    for target_name in sorted(dict.fromkeys(stop_propagates_to or [])):
+        lines.append(f"PropagatesStopTo={target_name}")
     lines.extend(["", "[Install]"])
     if target.install:
         lines.append("WantedBy=default.target")
@@ -1085,6 +1087,7 @@ def main() -> int:
     write_text_within(output_dir, default_target.name, render_target(
         default_target,
         sorted(dict.fromkeys(target_units[default_target.name])),
+        [target.name for target in auxiliary_targets if target.name in default_target.wants_targets],
     ))
 
     for target in auxiliary_targets:

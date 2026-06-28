@@ -274,6 +274,8 @@ assert_contains "$progression_unit" '%h/webservices/build/build-info.json' "Prog
 assert_contains "$progression_unit" '%h/webservices/build/docker-compose.yml' "Progression compose preflight"
 assert_contains "$progression_unit" '%h/webservices/build/stack.config/progression' "Progression registry preflight"
 assert_not_contains "$progression_unit" '%h/webservices/build-info.json|%h/webservices/docker-compose.yml|%h/webservices/stack.config/progression' "root-level Progression preflight"
+assert_contains "$bundle_root/systemd-user/webservices.target" 'PropagatesStopTo=webservices-core.target' "core target stop propagation"
+assert_contains "$bundle_root/systemd-user/webservices.target" 'PropagatesStopTo=webservices-apps.target' "apps target stop propagation"
 
 PATH="$fake_bin:$PATH" "$ROOT_DIR/scripts/deploy/render-runtime.sh" \
   --bundle-root "$bundle_root" \

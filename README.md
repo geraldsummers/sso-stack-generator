@@ -64,6 +64,11 @@ cd ~/webservices
 ./run-tests.sh plan all
 ```
 
+`run-tests.sh` answers are produced by the managed test-runner container. Even
+metadata-oriented commands such as `list` and `plan` may build
+`stack/test-runner:local-build` and start a short-lived container so the output
+matches the materialized bundle.
+
 Targeted runtime test iteration uses the platform test runner after modules are
 materialized or from a built bundle:
 
