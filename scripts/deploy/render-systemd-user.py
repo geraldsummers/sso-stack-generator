@@ -846,6 +846,7 @@ def main() -> int:
         for domain in domains
     }
     ordered_domains = topo_sort_domains(domains, dependency_map)
+    vm_identity_domains, vm_identity_services = load_vm_identity_dependent_sets(local_bundle_root)
 
     base_network_configs = (base_networks.get("networks") or {})
     shared_networks = []
